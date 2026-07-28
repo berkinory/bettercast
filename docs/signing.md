@@ -1,6 +1,6 @@
 # Signing
 
-Tinycast is signed with a **stable self-signed identity** called `Tinycast Self-Signed`. It's not an
+Bettercast is signed with a **stable self-signed identity** called `Tinycast Self-Signed`. It's not an
 Apple Developer ID (there's no paid Apple account), but keeping the *same* identity on every build is
 what makes macOS remember the Accessibility permission across rebuilds and updates — ad-hoc signing
 changes every build and macOS forgets the grant.
@@ -26,11 +26,11 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
 
 # Bundle it as a .p12 (the non-empty password keeps `security import` happy).
 openssl pkcs12 -export -inkey /tmp/tc-key.pem -in /tmp/tc-cert.pem \
-  -name "Tinycast Self-Signed" -out /tmp/tc.p12 -passout pass:tinycast
+  -name "Tinycast Self-Signed" -out /tmp/tc.p12 -passout pass:bettercast
 
 # Import into the login keychain so codesign can use it without prompting.
 security import /tmp/tc.p12 -k ~/Library/Keychains/login.keychain-db \
-  -P tinycast -A -T /usr/bin/codesign
+  -P bettercast -A -T /usr/bin/codesign
 
 rm -f /tmp/tc-key.pem /tmp/tc-cert.pem /tmp/tc.p12
 ```
@@ -64,8 +64,8 @@ Then set the two secrets on the repo (via `gh`, authed as the repo owner, or pas
 UI under **Settings → Secrets and variables → Actions**):
 
 ```sh
-gh secret set SIGNING_P12_BASE64   --repo abue-ammar/tinycast < /tmp/signing.p12.base64
-gh secret set SIGNING_P12_PASSWORD --repo abue-ammar/tinycast --body "$P12_PASSWORD"
+gh secret set SIGNING_P12_BASE64   --repo abue-ammar/bettercast < /tmp/signing.p12.base64
+gh secret set SIGNING_P12_PASSWORD --repo abue-ammar/bettercast --body "$P12_PASSWORD"
 rm -f /tmp/signing.p12.base64   # holds your private key — delete it
 ```
 

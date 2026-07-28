@@ -20,7 +20,7 @@ invalidates the cached order. `rank` resolves the whole learned table for a quer
 `boosts(query:)` — one fold and one clock read per pass, not per candidate.
 
 > **Invariant:** `Tools/fuzz-test.swift` contains a **copy** of `FuzzyMatch` from
-> `Tinycast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test
+> `Bettercast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test
 > is meaningless.
 
 The ranking harness covers prefix learning, frequency/recency scoring, persistence, and both reset
@@ -38,7 +38,7 @@ running dot and the availability of the quit actions:
   instance of the bundle and reports whether anything was running; the palette only dismisses when
   something was, and it restores focus unless the app it just quit *was* `previousApp`.
 - **Quit All Applications** — a `CommandRegistry` command. `AppLauncher.quitAllTargets()` is the
-  policy (every `.regular` app except Finder — `terminate()` only relaunches it — and Tinycast,
+  policy (every `.regular` app except Finder — `terminate()` only relaunches it — and Bettercast,
   excluded by PID because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()`
   resolves that list **once**, confirms it with an `NSAlert`, then terminates exactly what was
   confirmed. The palette hides before the alert — it is a floating panel and would sit above it.

@@ -1,7 +1,7 @@
-# Contributing to Tinycast
+# Contributing to Bettercast
 
-Check existing [issues](https://github.com/abue-ammar/tinycast/issues) and
-[pull requests](https://github.com/abue-ammar/tinycast/pulls) first.
+Check existing [issues](https://github.com/abue-ammar/bettercast/issues) and
+[pull requests](https://github.com/abue-ammar/bettercast/pulls) first.
 
 > **Don't hurry your code. Make sure it works well and is well designed. Don't worry about timing.**
 
@@ -12,14 +12,14 @@ Check existing [issues](https://github.com/abue-ammar/tinycast/issues) and
   after the palette closes.
 - **Design.** New UI must look like it shipped with the app — spacing, type, radii and motion from the
   existing tokens ([`docs/ui.md`](docs/ui.md)). If you genuinely need a new one, justify it in the PR.
-- **No bloat.** Tinycast stays small on purpose — quality over quantity. A clean patch still gets
+- **No bloat.** Bettercast stays small on purpose — quality over quantity. A clean patch still gets
   declined if the feature isn't worth its weight, so open an issue and settle that before you build.
 - **Never break the Critical Invariants** in [`AGENTS.md`](AGENTS.md).
 
 ## Setup
 
 - macOS 26+, Xcode 26. Do the one-time signing setup ([`docs/signing.md`](docs/signing.md) §1).
-- `open Tinycast.xcodeproj` → ⌘R. Debug builds are their own channel (`Tinycast Dev.app`).
+- `open Bettercast.xcodeproj` → ⌘R. Debug builds are their own channel (`Bettercast Dev.app`).
 - After editing `project.yml`: `xcodegen generate`, commit the result. No SwiftPM.
 - Details: [`docs/development.md`](docs/development.md). Architecture:
   [`docs/architecture.md`](docs/architecture.md).
@@ -53,7 +53,7 @@ Match the surrounding code.
 - Single-line comments only. Comment the *why*, never the *what*.
 - Views stay declarative; logic lives in models and managers.
 - Swift 6 isolation — heavy work off the main actor.
-- [`Core/Theme.swift`](Tinycast/Core/Theme.swift) tokens only. Read [`docs/ui.md`](docs/ui.md) before
+- [`Core/Theme.swift`](Bettercast/Core/Theme.swift) tokens only. Read [`docs/ui.md`](docs/ui.md) before
   any new view or restyle. Dark only — no light-mode styling.
 - New long-lived state goes on `AppCore`, wired in `start()`.
 - Networked features ship **off** and consent-gated. Follow `CurrencyRateStore`.
@@ -62,7 +62,7 @@ Match the surrounding code.
 
 ## Bugs
 
-macOS version, Tinycast version + channel, steps, expected vs actual. A recording beats a paragraph.
+macOS version, Bettercast version + channel, steps, expected vs actual. A recording beats a paragraph.
 
 ## Security
 

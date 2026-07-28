@@ -1,6 +1,6 @@
 # Development
 
-How to build, test, package, and release Tinycast.
+How to build, test, package, and release Bettercast.
 
 ## Requirements
 
@@ -18,26 +18,26 @@ macOS Accessibility grant from being forgotten every rebuild. Follow **[signing.
 Open the project in Xcode and run it:
 
 ```sh
-open Tinycast.xcodeproj    # then press ⌘R
+open Bettercast.xcodeproj    # then press ⌘R
 ```
 
 Or from the command line:
 
 ```sh
-xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Debug build
+xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug build
 ```
 
 `xcodebuild` uses whatever `xcode-select` points at; if that's the Command Line Tools rather than
 Xcode, prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (the SwiftUI
 `@State`/`@FocusState` macros need Xcode's macOS platform).
 
-`Tinycast.xcodeproj` is committed and generated from `project.yml` via
+`Bettercast.xcodeproj` is committed and generated from `project.yml` via
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) — after changing project settings in `project.yml`,
 run `xcodegen generate` and commit the result.
 
 ### The dev channel
 
-Debug builds are a separate channel: **`Tinycast Dev.app`**, bundle id `com.tinycast.app.dev`. Since
+Debug builds are a separate channel: **`Bettercast Dev.app`**, bundle id `com.bettercast.app.dev`. Since
 every persisted thing is keyed by bundle
 id — `~/Library/Preferences/<id>.plist` (settings + hotkey bindings),
 `~/Library/Caches/<id>/` (clipboard history, calculator history, exchange rates, frequent emoji),
@@ -62,7 +62,7 @@ once (it's machine-specific and git-ignored):
 
 ```sh
 brew install xcode-build-server
-xcode-build-server config -project Tinycast.xcodeproj -scheme Tinycast \
+xcode-build-server config -project Bettercast.xcodeproj -scheme Bettercast \
     --build_root "$PWD/build/DerivedData"
 ```
 
@@ -76,17 +76,17 @@ There's no XCTest target. Standalone harnesses:
 
 ```sh
 swift Tools/fuzz-test.swift                                        # launcher fuzzy matcher
-swiftc -swift-version 6 Tinycast/Core/LauncherRankingStore.swift Tools/ranking-test.swift \
+swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift \
     -o /tmp/ranking-test && /tmp/ranking-test                      # learned launcher ranking
-swiftc Tinycast/Core/Calculator/*.swift Tools/calc-test.swift \
+swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift \
     -o /tmp/calc-test && /tmp/calc-test                           # calculator engine
-swiftc -swift-version 6 Tinycast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
+swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
     -o /tmp/clipboard-test && /tmp/clipboard-test                 # clipboard store
 ```
 
-`Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Tinycast/Core/AppIndex.swift` —
+`Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Bettercast/Core/AppIndex.swift` —
 change the scoring in one and mirror it in the other. The calc harness compiles the real engine
-sources, which is why `Tinycast/Core/Calculator/` must stay Foundation-only.
+sources, which is why `Bettercast/Core/Calculator/` must stay Foundation-only.
 
 The clipboard harness likewise compiles the real `ClipboardStore.swift`, so that file must keep to
 Foundation + SQLite3 and depend on no other app source. Each case drives a store rooted in a
@@ -98,8 +98,8 @@ Two Swift files are emitted by scripts and must never be hand-edited. Both downl
 run them online, then commit the result:
 
 ```sh
-node Tools/gen-emoji.js            # -> Tinycast/Core/Emoji/EmojiData.generated.swift
-node Tools/gen-currencies.js       # -> Tinycast/Core/Calculator/CurrencyData.generated.swift
+node Tools/gen-emoji.js            # -> Bettercast/Core/Emoji/EmojiData.generated.swift
+node Tools/gen-currencies.js       # -> Bettercast/Core/Calculator/CurrencyData.generated.swift
 ```
 
 `gen-currencies.js` joins two sources on the ISO code: **Frankfurter**'s currency list (the same feed
@@ -118,11 +118,11 @@ an unquoted code just reports "no exchange rate".
 For a local signed DMG:
 
 ```sh
-./build-dmg.sh            # -> build/Tinycast-<version>.dmg (version from project.yml)
-./build-dmg.sh 0.5.7      # -> build/Tinycast-0.5.7.dmg
+./build-dmg.sh            # -> build/Bettercast-<version>.dmg (version from project.yml)
+./build-dmg.sh 0.5.7      # -> build/Bettercast-0.5.7.dmg
 ```
 
-It builds a Release `Tinycast.app` signed with `Tinycast Self-Signed` and packs it (with an
+It builds a Release `Bettercast.app` signed with `Tinycast Self-Signed` and packs it (with an
 `/Applications` symlink). Official per-channel releases (beta/stable) are built by CI — see
 below and [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
@@ -130,7 +130,7 @@ below and [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 Both local builds and CI releases sign with the same stable `Tinycast Self-Signed` identity (not an
 Apple Developer ID), so macOS quarantines a directly-downloaded DMG — the Homebrew cask strips that
-automatically, and direct downloaders run `xattr -dr com.apple.quarantine "…/Tinycast.app"` once.
+automatically, and direct downloaders run `xattr -dr com.apple.quarantine "…/Bettercast.app"` once.
 Full details in [signing.md](signing.md).
 
 ## CI releases
@@ -139,28 +139,28 @@ Full details in [signing.md](signing.md).
 needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pick:
 
 - **channel** — `beta` or `stable`. Each builds a distinct app
-  (`Tinycast Beta.app` / `Tinycast.app`) with its own bundle id, alongside the local
-  `Tinycast Dev.app` (above).
+  (`Bettercast Beta.app` / `Bettercast.app`) with its own bundle id, alongside the local
+  `Bettercast Dev.app` (above).
   Beta gets an auto-incrementing `-beta.N` suffix (`N` = the Actions run number)
   so re-running never collides; stable ships the version as-is.
 - **version** — base semver, e.g. `0.2.0`.
 
 It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
-`v<full-version>` with a versioned DMG asset (`Tinycast-<full-version>.dmg`), marked prerelease
+`v<full-version>` with a versioned DMG asset (`Bettercast-<full-version>.dmg`), marked prerelease
 for beta. On success it also bumps the matching cask in the tap (below).
 
 ### Homebrew tap automation
 
-The release job's final step rewrites the `version` + `sha256` of the channel's cask (`tinycast`
-or `tinycast@beta`) in the
-[`homebrew-tinycast`](https://github.com/abue-ammar/homebrew-tinycast) tap and pushes. It needs a
+The release job's final step rewrites the `version` + `sha256` of the channel's cask (`bettercast`
+or `bettercast@beta`) in the
+[`homebrew-bettercast`](https://github.com/abue-ammar/homebrew-bettercast) tap and pushes. It needs a
 `HOMEBREW_TAP_TOKEN` repo secret — a fine-grained PAT with **Contents: read/write** on the tap
 repo. Without the secret the step logs a warning and skips (the release still publishes).
 
 ## Website
 
 `.github/workflows/website.yml` builds `website/` (Vite + React + TS) and deploys it to GitHub
-Pages at `https://abue-ammar.github.io/tinycast/` on every push to `main` that touches
+Pages at `https://abue-ammar.github.io/bettercast/` on every push to `main` that touches
 `website/`. Enable it once via **Settings → Pages → Source = GitHub Actions**.
 
 ```sh
