@@ -8,27 +8,35 @@ struct PermissionsSettingsView: View {
     var body: some View {
         SettingsPane(
             title: "Permissions",
-            subtitle: "Access Bettercast needs to work with other apps."
+            subtitle: "System access Bettercast needs to work across apps.",
+            systemImage: "checkmark.shield",
+            tint: .green
         ) {
-            SettingsCard(header: "Accessibility") {
-                SettingsRow(
-                    title: "Accessibility",
-                    subtitle: "Lets Bettercast paste a clipboard item into the app you were using.",
-                    systemImage: "accessibility",
+            SettingsStatusCard(
+                title: accessibilityTrusted ? "Accessibility is ready" : "Accessibility access needed",
+                message: accessibilityTrusted
+                    ? "Bettercast can restore focus and paste into the app you were using."
+                    : "Grant access so clipboard and emoji results can be pasted into other apps.",
+                systemImage: accessibilityTrusted
+                    ? "checkmark.shield.fill" : "hand.raised.fill",
+                tint: accessibilityTrusted ? .green : .orange
+            ) {
+                Button(accessibilityTrusted ? "Manage…" : "Open Settings…") {
+                    Permissions.openAccessibilitySettings()
+                }
+                .controlSize(.small)
+            }
+            .settingsDestination(.accessibility)
+
+            SettingsSection(header: "Access") {
+                SettingsControlRow(
+                    title: "Paste into the previous app",
+                    subtitle: "Bettercast records no keystrokes and requests no network access.",
+                    systemImage: "arrow.right.doc.on.clipboard",
                     tint: .blue
                 ) {
-                    statusBadge
-                }
-                SettingsDivider()
-                SettingsRow(
-                    title: accessibilityTrusted ? "Manage in System Settings" : "Grant access",
-                    subtitle: "Opens Privacy & Security › Accessibility.",
-                    systemImage: "arrow.up.forward.app",
-                    tint: .secondary
-                ) {
-                    Button(accessibilityTrusted ? "Open…" : "Open Settings…") {
-                        Permissions.openAccessibilitySettings()
-                    }
+                    Image(systemName: accessibilityTrusted ? "checkmark.circle.fill" : "xmark.circle")
+                        .foregroundStyle(accessibilityTrusted ? Color.green : Color.secondary)
                 }
             }
         }
@@ -37,22 +45,5 @@ struct PermissionsSettingsView: View {
             let trusted = Permissions.isAccessibilityTrusted()
             if trusted != accessibilityTrusted { accessibilityTrusted = trusted }
         }
-    }
-
-    private var statusBadge: some View {
-        HStack(spacing: Theme.Spacing.xs + 1) {
-            Image(
-                systemName: accessibilityTrusted
-                    ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
-            )
-            Text(accessibilityTrusted ? "Granted" : "Not granted")
-        }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(accessibilityTrusted ? Color.green : Color.orange)
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.xs)
-        .background(
-            Capsule().fill((accessibilityTrusted ? Color.green : Color.orange).opacity(0.14))
-        )
     }
 }

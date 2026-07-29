@@ -69,8 +69,9 @@ Always `RoundedRectangle(cornerRadius:, style: .continuous)` — continuous corn
 ### Size (`Theme.Size`)
 
 `panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `rowIcon 24` ·
-`keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` · `menuWidth 276` · `menuIcon 16` ·
-`settingsSidebar 184` · `settingsRowIcon 20`
+`keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` · `menuWidth 276` · `menuIcon 20`
+
+Settings metrics live in the nested `Theme.Settings` namespace so changing its compact fixed-window UI cannot drift the palette: window `760×560`, sidebar `200`, header icon `38`, row icon `28`, and control height `32`.
 
 `keyCap` sizes the palette's keycap chips; `recorderKeyCap` (both size and radius) is the intentionally-smaller Settings shortcut-recorder chip.
 
@@ -180,12 +181,15 @@ pane use the native `.overlayScroller()`. Don't reintroduce native scrollers on 
 
 ## Settings — `Features/Settings/SettingsComponents.swift`
 
-Settings runs in its own `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) but
-shares the palette's `Theme` vocabulary. It reads as macOS System Settings, not the palette:
+Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) and keeps a denser utility-inspector language separate from the palette. Its navigation is specific rather than catch-all: General; Launcher, Clipboard, Emoji & Symbols, Calculator; Shortcuts, Permissions; About. Hyper Key lives under Shortcuts, and networked currency conversion lives under Calculator.
 
-- **`SettingsPane`**: bold `.title2` title + secondary subtitle header, then scrollable content, `xxl` inset all around, the same thin scrollbar.
-- **`SettingsCard`**: rounded `card 10` container, `cardFill` (white 0.05) fill, `cardStroke` (white 0.10) hairline border. Rows inside are split by `SettingsDivider` — an inset hairline aligned under the row title (past the icon).
-- **`SettingsRow`**: optional 20pt SF Symbol, title + optional caption subtitle, trailing control, fixed `.horizontal xl / .vertical lg` rhythm.
+- **`SettingsPane`** owns scrolling, destination jumps, fixed insets, and a compact `SettingsFeatureHeader`: a 38pt tinted icon tile beside a `.title3.semibold` title and one-line subtitle.
+- **`SettingsSection`** groups related controls on one 4.5% white tonal surface with a subtle 8.5% stroke and 14pt continuous corner. `SettingsRowDivider` aligns below the row title, past the icon tile.
+- **`SettingsControlRow`** uses a 28pt tinted icon tile, medium callout title, optional two-line caption, and intrinsic-width trailing control. The fixed trailing width prevents shortcut recorders and pickers from stretching across the pane.
+- **`SettingsStatusCard`** is the stronger tinted surface for permission, warning, and support states.
+- Feature controls do not have to collapse into rows: Launcher uses visual Standard/Compact tiles, Clipboard uses app chips, Emoji uses direct tone swatches, Hyper Key shows physical-key → modifier mapping, and per-item shortcuts use an aligned table with eye buttons instead of a wall of switches.
+- Custom Settings controls use the shared `settingsFocusRing` modifier so they remain visible and operable in the full keyboard-access loop. `ShortcutRecorder` is a real accessibility button: Space or Return starts capture, Escape cancels, and Delete clears the binding.
+- Settings navigation, hover, search mode, and destination scrolling update immediately. The only deliberate animation is the short destination highlight fade; do not add springs or slow pane transitions.
 
 The calculator's inline `CalculatorCard` reuses this card language (`cardFill` + `cardStroke`) rather than the row language, since it's a highlighted answer, not a list item. A value answer is a **two-column** layout: a source column (input echo) and a target column (result), separated by a centered `arrow.right` glyph (no divider line). Each column optionally carries a word-name **badge pill** beneath its value (`keyCap` font, `controlSurface` fill, `keyCap` radius) — the unit long names for a conversion (`Meters`→`Feet`), or the moment labels for a date/time calc (`12:18 AM`→`9:00 AM`, `Friday, 24 July`→`Friday, 9 April, 2027`). Plain arithmetic leaves both badges nil, so the card stays a clean value → value line.
 

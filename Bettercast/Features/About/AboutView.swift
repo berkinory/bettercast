@@ -21,8 +21,6 @@ struct AboutView: View {
         return NSApp.applicationIconImage
     }()
 
-    private static let iconSize: CGFloat = 88
-
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -49,7 +47,10 @@ struct AboutView: View {
             Image(nsImage: Self.appIcon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: Self.iconSize, height: Self.iconSize)
+                .frame(
+                    width: Theme.Settings.Size.aboutIcon,
+                    height: Theme.Settings.Size.aboutIcon
+                )
                 .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
 
             VStack(spacing: Theme.Spacing.sm) {
@@ -68,38 +69,42 @@ struct AboutView: View {
                     )
             }
 
-            Text("A tiny, native macOS launcher.")
+            Text("A focused, native launcher for macOS.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
     }
 
     private var links: some View {
-        SettingsCard(header: "Links") {
+        SettingsSection(header: "Project & Community") {
             // Rows paint a full-bleed hover fill, so the stack is clipped to the card's corner — otherwise the first/last row's highlight squares off the rounded ends.
             VStack(spacing: 0) {
                 ForEach(AboutLink.all) { link in
-                    if link.id != AboutLink.all.first?.id { SettingsDivider() }
+                    if link.id != AboutLink.all.first?.id { SettingsRowDivider() }
                     AboutLinkRow(link: link)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: Theme.Settings.Radius.surface,
+                    style: .continuous
+                )
+            )
         }
     }
 
     // No section header: the callout's own title is the header.
     private var support: some View {
-        SettingsCallout(
-            title: "Buy Me Brave Origin",
-            message:
-                "If you enjoy my work and would like to support me or buy me Brave Origin, feel free to reach out on Discord, X, or via email.",
-            systemImage: "bolt.fill",
+        SettingsStatusCard(
+            title: "Built in the open",
+            message: "Bettercast builds on Tinycast by Abue Ammar and is released under AGPL-3.0.",
+            systemImage: "chevron.left.forwardslash.chevron.right",
             tint: Theme.Colors.brand
         )
     }
 
     private var footer: some View {
-        Text("© 2026 Abue Ammar · Released under AGPL-3.0")
+        Text("Tinycast © 2026 Abue Ammar · AGPL-3.0")
             .font(.caption2)
             .foregroundStyle(.tertiary)
     }
@@ -121,12 +126,12 @@ private struct AboutLink: Identifiable {
 
     static let all: [AboutLink] = [
         AboutLink(
-            id: "github", glyph: .brand("BrandGitHub"), title: "Upstream GitHub",
-            detail: "github.com/abue-ammar/tinycast",
+            id: "github", glyph: .brand("BrandGitHub"), title: "Tinycast Source",
+            detail: "Original open-source project",
             url: URL(string: "https://github.com/abue-ammar/tinycast")!),
         AboutLink(
             id: "discord", glyph: .brand("BrandDiscord"), title: "Discord",
-            detail: "Join the Bettercast community",
+            detail: "Join the community",
             url: URL(string: "https://discord.gg/v2Eeb4QQy3")!),
         AboutLink(
             id: "x", glyph: .brand("BrandX"), title: "X", detail: "@abue_ammar",
@@ -144,12 +149,10 @@ private struct AboutLinkRow: View {
     @State private var hovered = false
 
     var body: some View {
-        Button {
-            NSWorkspace.shared.open(link.url)
-        } label: {
+        Link(destination: link.url) {
             HStack(spacing: Theme.Spacing.lg) {
                 glyph
-                    .frame(width: Theme.Size.settingsRowIcon)
+                    .frame(width: Theme.Settings.Size.controlIcon)
                     .foregroundStyle(.secondary)
                 Text(link.title)
                     .font(.body)
@@ -168,7 +171,9 @@ private struct AboutLinkRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .settingsFocusRing(cornerRadius: Theme.Settings.Radius.surface)
         .onHover { hovered = $0 }
+        .accessibilityHint("Opens in another app")
     }
 
     @ViewBuilder

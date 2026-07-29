@@ -55,9 +55,6 @@ enum Theme {
         static let menuWidth: CGFloat = 276
         /// Square slot for a popover-menu row's leading glyph. 20 (not the 16 the artwork suggests) because an `IconCache` app icon only paints ~85% of its canvas: at 20 its visible artwork is 17pt, matching the 17–18pt a `.body` SF Symbol renders at, so symbol and app-icon rows read the same size.
         static let menuIcon: CGFloat = 20
-        /// Settings window: sidebar column width and the small icon used in setting rows.
-        static let settingsSidebar: CGFloat = 184
-        static let settingsRowIcon: CGFloat = 20
         /// Little state indicator dot next to a settings row title (Hyper Key active/needs-permission).
         static let statusDot: CGFloat = 6
     }
@@ -76,6 +73,71 @@ enum Theme {
         static let menuRow = Font.body
         static let menuShortcut = Font.callout
         static let menuIcon = Font.body
+    }
+
+    enum Settings {
+        enum Size {
+            static let window = CGSize(width: 760, height: 560)
+            static let sidebarWidth: CGFloat = 200
+            static let sidebarIcon: CGFloat = 28
+            static let sidebarRowHeight: CGFloat = 38
+            static let searchHeight: CGFloat = 34
+            static let controlHeight: CGFloat = 32
+            static let headerIcon: CGFloat = 38
+            static let controlIcon: CGFloat = 28
+            static let statusIcon: CGFloat = 34
+            static let modeTileHeight: CGFloat = 92
+            static let modePreviewWidth: CGFloat = 74
+            static let modePreviewHeight: CGFloat = 42
+            static let compactModePreviewHeight: CGFloat = 18
+            static let excludedAppChipMinimum: CGFloat = 150
+            static let excludedAppChipHeight: CGFloat = 36
+            static let skinToneButton: CGFloat = 40
+            static let hyperKeyCap: CGFloat = 26
+            static let shortcutColumn: CGFloat = 132
+            static let visibilityButton: CGFloat = 28
+            static let aboutIcon: CGFloat = 88
+        }
+
+        enum Radius {
+            static let navigation: CGFloat = 11
+            static let search: CGFloat = 12
+            static let iconTile: CGFloat = 7
+            static let headerIcon: CGFloat = 10
+            static let controlIcon: CGFloat = 8
+            static let surface: CGFloat = 14
+            static let rowHighlight: CGFloat = 11
+            static let modeTile: CGFloat = 12
+            static let modePreview: CGFloat = 8
+        }
+
+        enum Layout {
+            static let paneInset: CGFloat = 20
+            static let sectionSpacing: CGFloat = 18
+            static let sidebarInset: CGFloat = 10
+            static let sidebarTopInset: CGFloat = 20
+            static let groupSpacing: CGFloat = 22
+            static let rowHorizontal: CGFloat = 12
+            static let rowVertical: CGFloat = 9
+            static let rowGap: CGFloat = 10
+        }
+
+        enum Colors {
+            static let navigationSelection = Color.white.opacity(0.09)
+            static let navigationSelectionStroke = Color.white.opacity(0.13)
+            static let navigationHover = Color.white.opacity(0.045)
+            static let searchFill = Color.white.opacity(0.065)
+            static let searchStroke = Color.white.opacity(0.11)
+            static let searchFocus = Theme.Colors.brand.opacity(0.72)
+            static let sidebarSeparator = Color.white.opacity(0.08)
+            static let surfaceFill = Color.white.opacity(0.045)
+            static let surfaceStroke = Color.white.opacity(0.085)
+            static let rowDivider = Color.white.opacity(0.075)
+        }
+
+        enum Motion {
+            static let highlightFade = 0.10
+        }
     }
 
     enum Colors {

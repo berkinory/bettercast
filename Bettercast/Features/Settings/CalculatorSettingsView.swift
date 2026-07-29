@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// The catch-all pane. Home to currency conversion — the one feature in Bettercast that reaches the
-/// network, which is why it ships off and needs an explicit yes before it can be switched on.
-struct MiscellaneousSettingsView: View {
+struct CalculatorSettingsView: View {
     @ObservedObject private var currencyRates = AppCore.shared.currencyRates
     @State private var askingConsent = false
     @State private var refreshing = false
@@ -10,45 +8,49 @@ struct MiscellaneousSettingsView: View {
 
     var body: some View {
         SettingsPane(
-            title: "Miscellaneous",
-            subtitle: "Options that don't belong to a single feature."
+            title: "Calculator",
+            subtitle: "Inline calculations and currency conversion.",
+            systemImage: "function",
+            tint: .green
         ) {
-            SettingsCard(header: "Calculator") {
-                SettingsRow(
+            SettingsSection(header: "Currency") {
+                SettingsControlRow(
                     title: "Currency Conversion",
                     subtitle: conversionStatus,
                     systemImage: "dollarsign.arrow.circlepath",
                     tint: .green,
-                    statusDot: currencyRates.isEnabled ? .green : nil
+                    statusDot: currencyRates.isEnabled ? .green : nil,
+                    destination: .currencyConversion
                 ) {
-                    // Deliberately not bound straight to the setting: flipping it on only opens the
-                    // consent sheet, so the switch springs back until the user actually accepts.
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { currencyRates.isEnabled },
-                            set: { wantsOn in
-                                if wantsOn {
-                                    askingConsent = true
-                                } else {
-                                    currencyRates.setEnabled(false)
+                    if currencyRates.isEnabled {
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { true },
+                                set: { enabled in
+                                    if !enabled { currencyRates.setEnabled(false) }
                                 }
-                            })
-                    )
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
+                            )
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                    } else {
+                        Button("Enable…") { askingConsent = true }
+                            .controlSize(.small)
+                    }
                 }
 
                 if currencyRates.isEnabled {
-                    SettingsDivider()
-                    SettingsRow(
+                    SettingsRowDivider()
+                    SettingsControlRow(
                         title: "Exchange Rates",
                         subtitle: ratesStatus,
-                        systemImage: "clock.arrow.circlepath",
-                        tint: .gray
+                        systemImage: "arrow.triangle.2.circlepath",
+                        tint: .green,
+                        destination: .exchangeRates
                     ) {
-                        Button("Update Now") {
+                        Button(refreshing ? "Updating…" : "Update Now") {
                             refreshing = true
                             Task {
                                 let landed = await currencyRates.refreshNow()
@@ -56,10 +58,18 @@ struct MiscellaneousSettingsView: View {
                                 refreshing = false
                             }
                         }
+                        .controlSize(.small)
                         .disabled(refreshing)
                     }
                 }
             }
+
+            SettingsStatusCard(
+                title: currencyRates.isEnabled ? "Rates stay on this Mac" : "Offline by default",
+                message: privacyStatus,
+                systemImage: currencyRates.isEnabled ? "internaldrive" : "network.slash",
+                tint: currencyRates.isEnabled ? .green : .secondary
+            )
         }
         .sheet(isPresented: $askingConsent) {
             CurrencyConsentSheet(
@@ -67,30 +77,36 @@ struct MiscellaneousSettingsView: View {
                 onAccept: {
                     askingConsent = false
                     currencyRates.setEnabled(true)
-                })
+                }
+            )
         }
     }
 
-    /// Carries the off-state promise that used to need its own callout: nothing is contacted until
-    /// the switch is on.
     private var conversionStatus: String {
-        let examples = "Convert inline — \"100 dollars to yen\", \"€20 to GBP\"."
-        return currencyRates.isEnabled ? examples : "\(examples) Off — no service is contacted."
+        currencyRates.isEnabled
+            ? "Convert inline: “100 dollars to yen” or “€20 to GBP”."
+            : "Download daily rates to enable currency queries."
+    }
+
+    private var privacyStatus: String {
+        if currencyRates.isEnabled {
+            return
+                "Bettercast downloads a daily rate table from \(CurrencyRateStore.provider). Nothing you type is sent."
+        }
+        return "No service is contacted until you explicitly enable currency conversion."
     }
 
     private var ratesStatus: String {
-        if refreshing { return "Updating…" }
+        if refreshing { return "Downloading the latest rates…" }
         if refreshFailed { return "Couldn't reach \(CurrencyRateStore.provider). Try again." }
         guard let fetched = currencyRates.rates?.fetchedAt else {
             return "\(CurrencyRateStore.provider) · not downloaded yet."
         }
         let stamp = fetched.formatted(date: .abbreviated, time: .shortened)
-        return "\(CurrencyRateStore.provider) · updated \(stamp). Refreshes daily."
+        return "\(CurrencyRateStore.provider) · updated \(stamp)."
     }
 }
 
-/// The consent step. Three facts are the ones that actually decide the answer — who is contacted, how
-/// often, and that nothing personal goes with it — plus the provider link so the claim is checkable.
 private struct CurrencyConsentSheet: View {
     let onCancel: () -> Void
     let onAccept: () -> Void

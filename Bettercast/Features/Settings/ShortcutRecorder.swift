@@ -2,59 +2,143 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Shortcut recorder that's deliberately *not* a focusable control: the active recorder is just `HotKeyManager.recordingAction`, so clicking one is a plain state flip with no first-responder handoff, and `CaptureSession` captures keystrokes via a local monitor while it's active.
+/// Keeps focus in Settings while a local event monitor captures the binding.
 struct ShortcutRecorder: View {
     let action: HotKeyAction
 
     @ObservedObject private var hotKeys: HotKeyManager = AppCore.shared.hotKeys
-    /// Observed so bound chips re-render when the Hyper Key display settings (✦ collapse, Include Shift) change how `keycaps` renders.
+    /// Observed so bound chips re-render when the Hyper Key display settings change how `keycaps` renders.
     @ObservedObject private var settings = AppCore.shared.settings
     @StateObject private var session = CaptureSession()
     @State private var hovered = false
+    @FocusState private var focused: Bool
 
     private var isRecording: Bool { hotKeys.recordingAction == action }
+    private var shortcut: KeyShortcut? { hotKeys.shortcut(for: action) }
+    private var accent: Color { isRecording ? .orange : .accentColor }
 
     var body: some View {
-        content
-            .padding(.horizontal, Theme.Spacing.lg)
-            .frame(height: 24)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
-                    .fill(Theme.Colors.cardFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous)
-                    .strokeBorder(
-                        isRecording ? Color.accentColor : Theme.Colors.cardStroke,
-                        lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.menu, style: .continuous))
-            .onTapGesture { hotKeys.recordingAction = action }
-            .onHover { hovered = $0 }
-            .onChange(of: isRecording) { _, recording in
-                if recording {
-                    session.start(action: action, hotKeys: hotKeys)
-                } else {
-                    session.stop()
+        ZStack(alignment: .trailing) {
+            Button {
+                hotKeys.recordingAction = action
+            } label: {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(accent)
+                        .frame(width: Theme.Spacing.xl)
+                    content
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .padding(.leading, Theme.Spacing.md)
+                .padding(.trailing, shortcut == nil ? Theme.Spacing.md : Theme.Spacing.xxl)
+                .frame(minWidth: 132, minHeight: Theme.Settings.Size.controlHeight)
+                .background(backgroundShape)
+                .overlay(borderShape)
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius: Theme.Settings.Radius.controlIcon,
+                        style: .continuous
+                    )
+                )
             }
-            // Rows in the app-hotkeys list are lazy: a recording row scrolled out of existence must release its monitors and unpause the global hotkeys.
-            .onDisappear {
-                if isRecording { hotKeys.recordingAction = nil }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .focusable()
+            .focused($focused)
+            .onKeyPress(.return) {
+                hotKeys.recordingAction = action
+                return .handled
+            }
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint(accessibilityHint)
+
+            if shortcut != nil, !isRecording {
+                Button(action: clearShortcut) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                        .frame(
+                            width: Theme.Settings.Size.visibilityButton,
+                            height: Theme.Settings.Size.controlHeight
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
+                .opacity(hovered || focused ? 1 : 0.4)
+                .help("Clear shortcut")
+                .accessibilityLabel("Clear shortcut")
+            }
+        }
+        .onHover { hovered = $0 }
+        .onChange(of: isRecording) { _, recording in
+            if recording {
+                session.start(action: action, hotKeys: hotKeys)
+            } else {
                 session.stop()
             }
-            .animation(.easeOut(duration: 0.12), value: hovered)
+        }
+        // Rows in the app-hotkeys list are lazy: a recording row scrolled out of existence must release its monitors and unpause the global hotkeys.
+        .onDisappear {
+            if isRecording { hotKeys.recordingAction = nil }
+            session.stop()
+        }
+    }
+
+    private var backgroundShape: some View {
+        RoundedRectangle(
+            cornerRadius: Theme.Settings.Radius.controlIcon,
+            style: .continuous
+        )
+        .fill(
+            isRecording
+                ? Color.orange.opacity(0.12)
+                : hovered ? Theme.Colors.rowHover : Theme.Settings.Colors.searchFill
+        )
+    }
+
+    private var borderShape: some View {
+        RoundedRectangle(
+            cornerRadius: Theme.Settings.Radius.controlIcon,
+            style: .continuous
+        )
+        .strokeBorder(
+            isRecording
+                ? Color.orange.opacity(0.55)
+                : focused
+                    ? Theme.Settings.Colors.searchFocus
+                    : hovered ? accent.opacity(0.30) : Theme.Settings.Colors.searchStroke,
+            lineWidth: focused ? 2 : 1
+        )
+    }
+
+    private var accessibilityLabel: String {
+        if isRecording { return "Recording keyboard shortcut" }
+        guard let shortcut else { return "Record keyboard shortcut, not set" }
+        return "Change keyboard shortcut, currently \(shortcut.keycaps.joined())"
+    }
+
+    private var accessibilityHint: String {
+        isRecording
+            ? "Press Escape to cancel or Delete to clear the shortcut"
+            : "Press Space or Return to record a new shortcut"
+    }
+
+    private func clearShortcut() {
+        hotKeys.setShortcut(nil, for: action)
+        hotKeys.recordingAction = nil
     }
 
     @ViewBuilder
     private var content: some View {
         if isRecording {
             recordingLabel
-        } else if let shortcut = hotKeys.shortcut(for: action) {
+        } else if let shortcut {
             boundLabel(shortcut)
         } else {
-            Text("Record Shortcut")
-                .font(Theme.Typography.keyCap)
+            Text("Record shortcut")
+                .font(.callout.weight(.medium))
                 .foregroundStyle(.secondary)
         }
     }
@@ -65,19 +149,18 @@ struct ShortcutRecorder: View {
                 Text("Used by \(owner)")
                     .foregroundStyle(.orange)
             } else if !session.heldModifiers.isEmpty {
-                // Collapsed so holding the Hyper key previews as "✦" while recording.
                 Text(KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers).joined())
                     .foregroundStyle(.primary)
             } else {
-                Text("Type shortcut…")
+                Text("Press shortcut…")
                     .foregroundStyle(.secondary)
             }
         }
-        .font(Theme.Typography.keyCap)
+        .font(.callout.weight(.medium))
     }
 
     private func boundLabel(_ shortcut: KeyShortcut) -> some View {
-        HStack(spacing: Theme.Spacing.xs) {
+        HStack(spacing: Theme.Spacing.xxs) {
             ForEach(Array(shortcut.keycaps.enumerated()), id: \.offset) { _, cap in
                 Text(cap)
                     .font(Theme.Typography.keyCap)
@@ -90,20 +173,9 @@ struct ShortcutRecorder: View {
                         RoundedRectangle(
                             cornerRadius: Theme.Radius.recorderKeyCap, style: .continuous
                         )
-                        .fill(Color.primary.opacity(0.08))
+                        .fill(Theme.Colors.controlSurface)
                     )
             }
-            // Constant-width slot so the clear button doesn't shift the caps on hover.
-            Button {
-                hotKeys.setShortcut(nil, for: action)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-            .buttonStyle(.plain)
-            .opacity(hovered ? 1 : 0)
-            .allowsHitTesting(hovered)
         }
     }
 }

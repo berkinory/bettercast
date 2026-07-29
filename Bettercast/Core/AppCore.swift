@@ -210,30 +210,26 @@ final class AppCore: ObservableObject {
         showPalette(mode: .launcher, restoreAnyMode: true)
     }
 
-    /// Settings runs in its own window (the SwiftUI `Settings` scene is unreliable for accessory apps). A fresh window mounts directly on `tab` (no first-frame flicker); an already-open one is switched in place.
-    func showSettings(tab: SettingsTab = .general) {
+    /// Settings runs in its own window (the SwiftUI `Settings` scene is unreliable for accessory apps). A fresh window mounts directly on its route; an already-open one navigates in place.
+    func showSettings(route: SettingsRoute = .general) {
         let isNew = auxWindows.show(
-            id: "settings", title: "Settings", size: CGSize(width: 720, height: 550),
+            id: "settings", title: "Settings", size: Theme.Settings.Size.window,
             seamlessTitleBar: true
         ) {
-            SettingsRootView(initialTab: tab)
+            SettingsRootView(initialRoute: route)
                 .environmentObject(self.appIndex)
                 .environmentObject(self.visibility)
         }
         if !isNew {
-            NotificationCenter.default.post(name: .bettercastSelectSettingsTab, object: tab)
+            NotificationCenter.default.post(name: .bettercastSelectSettingsRoute, object: route)
         }
     }
 
-    func showBackupSettings() {
-        showSettings(tab: .backup)
-    }
-
     func showAbout() {
-        showSettings(tab: .about)
+        showSettings(route: .about)
     }
 
-    /// The first-run wizard: palette shortcut, Accessibility, Raycast import. Also re-runnable from Settings.
+    /// The first-run wizard: palette shortcut and Accessibility. Also re-runnable from Settings.
     func showOnboarding() {
         auxWindows.show(
             id: "onboarding", title: "Welcome to Bettercast",
@@ -321,9 +317,6 @@ final class AppCore: ObservableObject {
         case .importSettings:
             hidePalette(restoreFocus: false)
             BackupActions.importSettings()
-        case .importFromRaycast:
-            hidePalette(restoreFocus: false)
-            showBackupSettings()
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()

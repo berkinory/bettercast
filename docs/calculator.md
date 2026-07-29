@@ -63,8 +63,8 @@ and a unit on the other produces the same friendly category error as any other m
 
 ### Consent
 
-Currency conversion reaches the network, so it ships **off** and stays off until the user turns it on
-in Settings → Miscellaneous and accepts a sheet naming the provider, the request cadence and what
+Currency conversion reaches the network, so it ships **off** and stays off until the user enables it
+in Settings → Calculator and accepts a sheet naming the provider, the request cadence and what
 leaves the machine. Declining leaves it off; there is no "remind me later" state. Any future feature
 that needs the network should follow the same shape rather than inventing a second one.
 

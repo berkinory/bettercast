@@ -1,7 +1,7 @@
 import AppKit
 import UniformTypeIdentifiers
 
-/// User-facing entry points for the backup flows, shared between the Settings pane and the palette commands. The Raycast decrypt runs off the main actor (scrypt is CPU-heavy); everything else is quick.
+/// User-facing entry points for the backup and import flows. The Raycast decrypt runs off the main actor (scrypt is CPU-heavy); everything else is quick.
 @MainActor
 enum BackupActions {
     struct RaycastOutcome {
@@ -43,7 +43,7 @@ enum BackupActions {
         }
     }
 
-    // MARK: - Raycast (the pane owns the passphrase field + inline status)
+    // MARK: - Raycast
 
     static func importRaycast(file: URL, passphrase: String, options: RaycastImportOptions = .all)
         async throws -> RaycastOutcome
@@ -78,7 +78,7 @@ enum BackupActions {
         }
     }
 
-    /// Shared `.rayconfig` file picker used by the Backup pane and onboarding.
+    /// File picker for a Raycast `.rayconfig` export.
     static func pickRaycastFile() -> URL? {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false

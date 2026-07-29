@@ -2,17 +2,16 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// First-launch wizard: set the palette shortcut, offer Accessibility + launch-at-login, offer a Raycast import, then drop into the launcher. Re-runnable from Settings. Reuses the app's own controls (`ShortcutRecorder`, `SettingsCard`, `BackupActions`) so it looks and behaves like the rest of Bettercast.
+/// First-launch wizard: set the palette shortcut and offer Accessibility + launch-at-login, then drop into the launcher. Re-runnable from Settings.
 struct OnboardingView: View {
     @State private var step = 0
-    @StateObject private var model = OnboardingModel()
     @ObservedObject private var settings = AppCore.shared.settings
     @ObservedObject private var hotKeys = AppCore.shared.hotKeys
 
     @State private var accessibilityTrusted = Permissions.isAccessibilityTrusted()
     private let refreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    private static let lastStep = 3
+    private static let lastStep = 2
     /// Fixed content size; also the window size in `AppCore.showOnboarding()`. A hard frame keeps `NSHostingView` from sizing the window to the content's unbounded ideal height.
     static let windowSize = CGSize(width: 520, height: 400)
 
@@ -77,7 +76,6 @@ struct OnboardingView: View {
         switch step {
         case 0: "Welcome to Bettercast"
         case 1: "Enable Pasting"
-        case 2: "Import from Raycast"
         default: "You're all set"
         }
     }
@@ -86,7 +84,6 @@ struct OnboardingView: View {
         switch step {
         case 0: "Set a shortcut to summon the launcher from anywhere."
         case 1: "Let Bettercast paste items back into the app you were using."
-        case 2: "Bring your shortcuts, favorites, and clipboard history along."
         default: readyMessage
         }
     }
@@ -94,17 +91,12 @@ struct OnboardingView: View {
     private var heroSymbol: String {
         switch step {
         case 1: "accessibility"
-        case 2: "wand.and.stars"
         default: "checkmark"
         }
     }
 
     private var heroTint: Color {
-        switch step {
-        case 1: .blue
-        case 2: .orange
-        default: .green
-        }
+        step == 1 ? .blue : .green
     }
 
     private var readyMessage: String {
@@ -121,23 +113,22 @@ struct OnboardingView: View {
         switch step {
         case 0: shortcutStep
         case 1: accessibilityStep
-        case 2: raycastStep
         default: doneStep
         }
     }
 
     private var shortcutStep: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            SettingsCard {
-                SettingsRow(
+            SettingsSection {
+                SettingsControlRow(
                     title: "App Launcher",
                     subtitle: "Press this shortcut to open Bettercast.",
                     systemImage: "magnifyingglass", tint: .blue
                 ) {
                     ShortcutRecorder(action: .togglePalette)
                 }
-                SettingsDivider()
-                SettingsRow(
+                SettingsRowDivider()
+                SettingsControlRow(
                     title: "Launch at login",
                     subtitle: "Start Bettercast automatically when you log in.",
                     systemImage: "power", tint: .green
@@ -152,8 +143,8 @@ struct OnboardingView: View {
 
     private var accessibilityStep: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            SettingsCard {
-                SettingsRow(
+            SettingsSection {
+                SettingsControlRow(
                     title: "Accessibility",
                     subtitle:
                         "Without it Bettercast can still copy, but it can't paste a clipboard or emoji item back into the app you were using.",
@@ -163,39 +154,6 @@ struct OnboardingView: View {
                 }
             }
             caption("Optional — you can enable this later in Settings › Permissions.")
-        }
-    }
-
-    private var raycastStep: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            SettingsCard {
-                SettingsRow(
-                    title: "Raycast Export",
-                    subtitle: model.file?.lastPathComponent
-                        ?? "Choose a .rayconfig file exported from Raycast.",
-                    systemImage: "doc.badge.gearshape", tint: .orange
-                ) {
-                    Button("Choose…") { model.chooseFile() }.controlSize(.small)
-                }
-                SettingsDivider()
-                SettingsRow(
-                    title: "Passphrase",
-                    subtitle: "The password you set when exporting from Raycast.",
-                    systemImage: "key", tint: .gray
-                ) {
-                    SecureField("Passphrase", text: $model.passphrase)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 150)
-                        .onSubmit { model.run() }
-                }
-            }
-            RaycastImportSelection(selection: $model.selection)
-                .padding(.horizontal, Theme.Spacing.xs)
-            if let status = model.status {
-                importStatus(status)
-            } else {
-                caption("Optional — you can import later in Settings › Backup.")
-            }
         }
     }
 
@@ -231,57 +189,30 @@ struct OnboardingView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                 }
-                if step == 2 && model.importing {
-                    Button(action: {}) {
-                        HStack(spacing: Theme.Spacing.sm) {
-                            ProgressView().controlSize(.small)
-                            Text("Importing…")
-                        }
-                    }
+                Button(primaryTitle, action: primaryAction)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .disabled(true)
-                } else {
-                    Button(primaryTitle, action: primaryAction)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(primaryDisabled)
-                        .keyboardShortcut(.defaultAction)
-                }
+                    .keyboardShortcut(.defaultAction)
             }
         }
     }
 
     private var showsSkip: Bool {
-        (step == 1 && !accessibilityTrusted) || (step == 2 && !model.didImport)
+        step == 1 && !accessibilityTrusted
     }
 
     private var primaryTitle: String {
         switch step {
         case 0: "Continue"
         case 1: accessibilityTrusted ? "Continue" : "Grant Access"
-        case 2:
-            if model.didImport {
-                "Continue"
-            } else if model.importing {
-                "Importing…"
-            } else {
-                "Import"
-            }
         default: "Get Started"
         }
-    }
-
-    private var primaryDisabled: Bool {
-        step == 2 && !model.didImport && !model.canImport
     }
 
     private func primaryAction() {
         switch step {
         case 1 where !accessibilityTrusted:
             Permissions.openAccessibilitySettings()
-        case 2 where !model.didImport:
-            model.run()
         case Self.lastStep:
             AppCore.shared.finishOnboarding()
         default:
@@ -300,25 +231,6 @@ struct OnboardingView: View {
             .font(.caption)
             .foregroundStyle(.tertiary)
             .padding(.horizontal, Theme.Spacing.xs)
-    }
-
-    @ViewBuilder
-    private func importStatus(_ status: OnboardingModel.ImportStatus) -> some View {
-        switch status {
-        case .success(let message):
-            statusLine(message, systemImage: "checkmark.circle.fill", tint: .green)
-        case .failure(let message):
-            statusLine(message, systemImage: "exclamationmark.triangle.fill", tint: .orange)
-        }
-    }
-
-    private func statusLine(_ message: String, systemImage: String, tint: Color) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
-            Image(systemName: systemImage).foregroundStyle(tint)
-            Text(message).font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, Theme.Spacing.xs)
     }
 
     private var statusBadge: some View {
@@ -346,55 +258,4 @@ struct OnboardingView: View {
         }
         return NSApp.applicationIconImage
     }()
-}
-
-/// Owns the Raycast import step's state and the async import call, kept off the view so lifetimes are explicit and the body stays declarative.
-@MainActor
-final class OnboardingModel: ObservableObject {
-    enum ImportStatus {
-        case success(String)
-        case failure(String)
-    }
-
-    @Published var file: URL?
-    @Published var passphrase = ""
-    @Published var importing = false
-    @Published var status: ImportStatus?
-    @Published var selection: RaycastImportOptions = .all
-
-    var canImport: Bool { file != nil && !passphrase.isEmpty && !selection.isEmpty && !importing }
-    var didImport: Bool {
-        if case .success = status { return true }
-        return false
-    }
-
-    func chooseFile() {
-        guard let url = BackupActions.pickRaycastFile() else { return }
-        file = url
-        status = nil
-    }
-
-    func run() {
-        guard canImport, let file else { return }
-        importing = true
-        status = nil
-        Task {
-            defer { importing = false }
-            do {
-                let outcome = try await BackupActions.importRaycast(
-                    file: file, passphrase: passphrase, options: selection)
-                var message = BackupActions.summaryText(outcome.summary)
-                if outcome.clipboardImported > 0 {
-                    message += " Imported \(outcome.clipboardImported) clipboard entries."
-                }
-                if outcome.missingImages > 0 {
-                    message += " \(outcome.missingImages) images were unavailable and skipped."
-                }
-                status = .success(message)
-                passphrase = ""
-            } catch {
-                status = .failure(error.localizedDescription)
-            }
-        }
-    }
 }

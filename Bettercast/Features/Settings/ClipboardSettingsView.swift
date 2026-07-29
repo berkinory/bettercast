@@ -1,5 +1,5 @@
+import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ClipboardSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
@@ -9,25 +9,29 @@ struct ClipboardSettingsView: View {
     var body: some View {
         SettingsPane(
             title: "Clipboard",
-            subtitle: "Control how much history Bettercast keeps and which apps are recorded."
+            subtitle: "Control retention and which apps are recorded.",
+            systemImage: "doc.on.clipboard",
+            tint: .orange
         ) {
-            SettingsCard(header: "Shortcut") {
-                SettingsRow(
+            SettingsSection(header: "Shortcut") {
+                SettingsControlRow(
                     title: "Clipboard History",
-                    subtitle: "Open the clipboard history browser.",
-                    systemImage: "doc.on.clipboard",
-                    tint: .orange
+                    subtitle: "Open saved text and images from anywhere.",
+                    systemImage: "keyboard",
+                    tint: .orange,
+                    destination: .clipboardShortcut
                 ) {
                     ShortcutRecorder(action: .toggleClipboard)
                 }
             }
 
-            SettingsCard(header: "History") {
-                SettingsRow(
+            SettingsSection(header: "History") {
+                SettingsControlRow(
                     title: "Keep history for",
-                    subtitle: "Entries older than this are deleted automatically.",
+                    subtitle: "Older entries are deleted automatically.",
                     systemImage: "clock.arrow.circlepath",
-                    tint: .orange
+                    tint: .orange,
+                    destination: .clipboardRetention
                 ) {
                     Picker("", selection: $settings.clipboardRetention) {
                         ForEach(ClipboardRetention.allCases) { retention in
@@ -44,24 +48,40 @@ struct ClipboardSettingsView: View {
                 }
             }
 
-            SettingsCard(header: "Disabled Applications") {
-                ForEach(settings.clipboardDisabledApps, id: \.self) { bundleID in
-                    DisabledAppRow(bundleID: bundleID) {
-                        settings.clipboardDisabledApps.removeAll { $0 == bundleID }
+            SettingsSection(
+                header: "Excluded Applications",
+                destination: .clipboardExcludedApps
+            ) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                    if settings.clipboardDisabledApps.isEmpty {
+                        Text("Clipboard changes from every app are recorded.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(
+                                    .adaptive(
+                                        minimum: Theme.Settings.Size.excludedAppChipMinimum
+                                    ),
+                                    spacing: Theme.Spacing.md
+                                )
+                            ],
+                            spacing: Theme.Spacing.md
+                        ) {
+                            ForEach(settings.clipboardDisabledApps, id: \.self) { bundleID in
+                                ExcludedAppChip(bundleID: bundleID) {
+                                    settings.clipboardDisabledApps.removeAll { $0 == bundleID }
+                                }
+                            }
+                        }
                     }
-                    SettingsDivider()
-                }
 
-                HStack(spacing: Theme.Spacing.lg) {
-                    Text("Clipboard changes from these apps won't be recorded.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: Theme.Spacing.xl)
                     Button {
                         showingAppPicker = true
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .medium))
+                        Label("Add Application…", systemImage: "plus")
+                            .font(.caption.weight(.semibold))
                     }
                     .buttonStyle(.borderless)
                     .popover(isPresented: $showingAppPicker, arrowEdge: .bottom) {
@@ -71,21 +91,19 @@ struct ClipboardSettingsView: View {
                         }
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.xl)
-                .padding(.vertical, Theme.Spacing.md)
+                .padding(Theme.Settings.Layout.rowHorizontal)
             }
 
-            SettingsCard(header: "Danger Zone") {
-                SettingsRow(
-                    title: "Clear history",
-                    subtitle: "Permanently remove every saved clip and image.",
-                    systemImage: "trash",
-                    tint: .red
-                ) {
-                    Button("Clear…", role: .destructive) { confirmingClear = true }
-                        .controlSize(.regular)
-                }
+            SettingsStatusCard(
+                title: "Clear clipboard history",
+                message: "Permanently remove every saved clip and image.",
+                systemImage: "trash",
+                tint: .red
+            ) {
+                Button("Clear…", role: .destructive) { confirmingClear = true }
+                    .controlSize(.small)
             }
+            .settingsDestination(.clipboardClearHistory)
         }
         .confirmationDialog(
             "Clear clipboard history?",
@@ -102,31 +120,57 @@ struct ClipboardSettingsView: View {
     }
 }
 
-/// One excluded app (icon + name + remove button); the stored value is just a bundle ID, so name/icon resolve on the fly via the app index, else LaunchServices, else a placeholder for uninstalled apps.
-private struct DisabledAppRow: View {
+private struct ExcludedAppChip: View {
     let bundleID: String
     let onRemove: () -> Void
 
     @EnvironmentObject private var appIndex: AppIndex
+    @State private var hovering = false
 
     var body: some View {
         let (name, icon) = resolve()
-        HStack(spacing: Theme.Spacing.lg) {
+        HStack(spacing: Theme.Spacing.md) {
             Image(nsImage: icon)
                 .resizable()
+                .interpolation(.high)
                 .frame(width: 22, height: 22)
             Text(name)
-                .font(.body)
+                .font(.caption.weight(.medium))
                 .lineLimit(1)
-            Spacer(minLength: Theme.Spacing.xl)
+            Spacer(minLength: 0)
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
+                    .frame(
+                        width: Theme.Settings.Size.visibilityButton,
+                        height: Theme.Settings.Size.visibilityButton
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
+            .opacity(hovering ? 1 : 0.55)
+            .help("Remove \(name)")
+            .accessibilityLabel("Remove \(name)")
         }
-        .padding(.horizontal, Theme.Spacing.xl)
-        .padding(.vertical, Theme.Spacing.lg)
+        .padding(.horizontal, Theme.Spacing.md)
+        .frame(height: Theme.Settings.Size.excludedAppChipHeight)
+        .background(
+            RoundedRectangle(
+                cornerRadius: Theme.Settings.Radius.controlIcon,
+                style: .continuous
+            )
+            .fill(Theme.Settings.Colors.searchFill)
+        )
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: Theme.Settings.Radius.controlIcon,
+                style: .continuous
+            )
+            .strokeBorder(Theme.Settings.Colors.searchStroke, lineWidth: 1)
+        )
+        .onHover { hovering = $0 }
     }
 
     private func resolve() -> (String, NSImage) {
@@ -134,20 +178,22 @@ private struct DisabledAppRow: View {
             return (app.name, app.icon)
         }
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            let name = url.deletingPathExtension().lastPathComponent
-            return (name, IconCache.icon(forFile: url.path))
+            return (
+                url.deletingPathExtension().lastPathComponent,
+                IconCache.icon(forFile: url.path)
+            )
         }
         return (bundleID, NSWorkspace.shared.icon(for: .applicationBundle))
     }
 }
 
-/// Searchable list of installed apps (from the launcher's index) used to add a disabled app.
 private struct AppPickerPopover: View {
     let excluded: Set<String>
     let onSelect: (String) -> Void
 
     @EnvironmentObject private var appIndex: AppIndex
     @State private var query = ""
+    @FocusState private var queryFocused: Bool
 
     private var candidates: [AppEntry] {
         (query.isEmpty ? appIndex.apps : appIndex.matches(query))
@@ -157,12 +203,21 @@ private struct AppPickerPopover: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField("Search apps…", text: $query)
-                .textFieldStyle(.roundedBorder)
-                .padding(Theme.Spacing.md)
-            Divider()
+            HStack(spacing: Theme.Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search applications", text: $query)
+                    .textFieldStyle(.plain)
+                    .focused($queryFocused)
+            }
+            .padding(Theme.Spacing.lg)
+
+            Rectangle()
+                .fill(Theme.Settings.Colors.rowDivider)
+                .frame(height: 1)
+
             ScrollView {
-                LazyVStack(spacing: 1) {
+                LazyVStack(spacing: Theme.Spacing.xxs) {
                     ForEach(candidates) { app in
                         Button {
                             if let id = app.bundleID { onSelect(id) }
@@ -170,7 +225,8 @@ private struct AppPickerPopover: View {
                             HStack(spacing: Theme.Spacing.lg) {
                                 Image(nsImage: app.icon)
                                     .resizable()
-                                    .frame(width: 20, height: 20)
+                                    .interpolation(.high)
+                                    .frame(width: 22, height: 22)
                                 Text(app.name)
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
@@ -180,11 +236,22 @@ private struct AppPickerPopover: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .settingsFocusRing(cornerRadius: Theme.Radius.row)
                     }
                 }
                 .padding(Theme.Spacing.sm)
+                .frame(maxWidth: .infinity)
             }
+            .overlay {
+                if candidates.isEmpty {
+                    Text(query.isEmpty ? "No applications available." : "No matching applications.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .overlayScroller()
         }
         .frame(width: 280, height: 320)
+        .onAppear { queryFocused = true }
     }
 }

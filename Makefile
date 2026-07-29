@@ -33,7 +33,9 @@ build: tools
 
 run: CONFIGURATION=Debug
 run: build
-	open "$(DERIVED_DATA)/Build/Products/Debug/Bettercast Dev.app"
+	@killall "Bettercast Dev" 2>/dev/null || true
+	@while pgrep -x "Bettercast Dev" >/dev/null; do sleep 0.1; done
+	open -n "$(DERIVED_DATA)/Build/Products/Debug/Bettercast Dev.app"
 
 release:
 	./build-dmg.sh
@@ -44,6 +46,8 @@ unsigned-dmg:
 test: tools
 	@mkdir -p $(TEST_BIN_DIR)
 	swift Tools/fuzz-test.swift
+	swiftc -swift-version 6 Bettercast/Core/SettingsSearchIndex.swift Tools/settings-search-test.swift -o $(TEST_BIN_DIR)/settings-search-test
+	$(TEST_BIN_DIR)/settings-search-test
 	swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test
 	$(TEST_BIN_DIR)/ranking-test
 	swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift -o $(TEST_BIN_DIR)/calc-test
