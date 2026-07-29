@@ -74,7 +74,7 @@ struct ShortcutsSettingsView: View {
             ScrollView {
                 HyperKeySettingsSection()
             }
-            .overlayScroller()
+            .overlayScroller(disablesElasticity: true)
             .task(id: destination?.anchorID) {
                 guard let destination, isHyperDestination(destination) else { return }
                 await Task.yield()
@@ -194,7 +194,7 @@ private struct ShortcutTable: View {
                     }
                     .padding(Theme.Spacing.sm)
                 }
-                .overlayScroller()
+                .overlayScroller(disablesElasticity: true)
                 .task(id: destination?.anchorID) {
                     guard case .shortcutEntry(let entryID, _)? = destination else { return }
                     await Task.yield()
@@ -238,7 +238,7 @@ private struct ShortcutTable: View {
             Spacer(minLength: 0)
             Text("Shortcut")
                 .frame(width: Theme.Settings.Size.shortcutColumn, alignment: .leading)
-            Image(systemName: "eye")
+            Text("Show")
                 .frame(width: Theme.Settings.Size.visibilityButton)
         }
         .font(.caption2.weight(.semibold))
@@ -291,7 +291,7 @@ private struct ShortcutTableRow: View {
             }
             .frame(width: Theme.Settings.Size.shortcutColumn, alignment: .leading)
 
-            VisibilityButton(label: entry.name, isVisible: itemBinding)
+            VisibilityToggle(label: entry.name, isVisible: itemBinding)
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
@@ -313,38 +313,19 @@ private struct ShortcutTableRow: View {
     }
 }
 
-private struct VisibilityButton: View {
+private struct VisibilityToggle: View {
     let label: String
     @Binding var isVisible: Bool
-    @State private var hovering = false
 
     var body: some View {
-        Button {
-            isVisible.toggle()
-        } label: {
-            Image(systemName: isVisible ? "eye" : "eye.slash")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isVisible ? Color.secondary : Color.orange)
-                .frame(
-                    width: Theme.Settings.Size.visibilityButton,
-                    height: Theme.Settings.Size.visibilityButton
-                )
-                .background(
-                    RoundedRectangle(
-                        cornerRadius: Theme.Settings.Radius.controlIcon,
-                        style: .continuous
-                    )
-                    .fill(hovering ? Theme.Colors.rowHover : .clear)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-        .onHover { hovering = $0 }
-        .help(isVisible ? "Hide from launcher" : "Show in launcher")
-        .accessibilityLabel(
-            isVisible ? "Hide \(label) from the launcher" : "Show \(label) in the launcher"
-        )
-        .accessibilityValue(isVisible ? "Visible" : "Hidden")
+        Toggle("", isOn: $isVisible)
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .tint(Theme.Colors.textSecondary)
+            .frame(width: Theme.Settings.Size.visibilityButton)
+            .help(isVisible ? "Hide from launcher" : "Show in launcher")
+            .accessibilityLabel("Show \(label) in the launcher")
+            .accessibilityValue(isVisible ? "On" : "Off")
     }
 }

@@ -25,20 +25,13 @@ struct EmojiSettingsView: View {
             SettingsSection(header: "Skin Tone") {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     HStack(spacing: Theme.Spacing.md) {
-                        RoundedRectangle(
-                            cornerRadius: Theme.Settings.Radius.controlIcon,
-                            style: .continuous
-                        )
-                        .fill(Color.orange.opacity(0.12))
-                        .frame(
-                            width: Theme.Settings.Size.controlIcon,
-                            height: Theme.Settings.Size.controlIcon
-                        )
-                        .overlay(
-                            Image(systemName: "hand.wave")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.orange)
-                        )
+                        Image(systemName: "hand.wave")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                            .frame(
+                                width: Theme.Settings.Size.controlIcon,
+                                height: Theme.Settings.Size.controlIcon
+                            )
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                             Text("Preferred tone")
@@ -78,7 +71,7 @@ private struct SkinToneSelector: View {
                             )
                             .fill(
                                 selection == tone
-                                    ? Color.orange.opacity(0.18)
+                                    ? Theme.Colors.selection
                                     : Theme.Settings.Colors.searchFill
                             )
                         )
@@ -89,7 +82,7 @@ private struct SkinToneSelector: View {
                             )
                             .strokeBorder(
                                 selection == tone
-                                    ? Color.orange.opacity(0.65)
+                                    ? Theme.Colors.border
                                     : Theme.Settings.Colors.searchStroke,
                                 lineWidth: 1
                             )

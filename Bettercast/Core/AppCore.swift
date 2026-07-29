@@ -214,7 +214,7 @@ final class AppCore: ObservableObject {
     func showSettings(route: SettingsRoute = .general) {
         let isNew = auxWindows.show(
             id: "settings", title: "Settings", size: Theme.Settings.Size.window,
-            seamlessTitleBar: true
+            seamlessTitleBar: true, transparentBackground: true
         ) {
             SettingsRootView(initialRoute: route)
                 .environmentObject(self.appIndex)

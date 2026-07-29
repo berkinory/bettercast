@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 enum SettingsDestination: Hashable, Sendable {
@@ -55,7 +54,6 @@ enum SettingsDestination: Hashable, Sendable {
 
 enum SettingsSearchIcon {
     case symbol(String)
-    case application(NSImage)
 }
 
 struct SettingsSearchItem: Identifiable {
@@ -203,33 +201,6 @@ enum SettingsSearchCatalog {
         ),
     ]
 
-    static func dynamicItems(from entries: [AppEntry]) -> [SettingsSearchItem] {
-        entries.map { entry in
-            let section: String
-            switch entry.kind {
-            case .application: section = "Applications"
-            case .systemSettings: section = "System Settings"
-            case .command: section = "Commands"
-            }
-            let destination = SettingsDestination.shortcutEntry(
-                entryID: entry.id,
-                kind: entry.kind.rawValue
-            )
-            return SettingsSearchItem(
-                record: SettingsSearchRecord(
-                    id: destination.anchorID,
-                    title: entry.name,
-                    detail: "Configure visibility and shortcut.",
-                    breadcrumb: section,
-                    keywords: [entry.bundleID, entry.kindLabel].compactMap { $0 }
-                ),
-                route: SettingsRoute(tab: .shortcuts, destination: destination),
-                icon: .application(entry.icon),
-                tint: .secondary
-            )
-        }
-    }
-
     private static func pane(_ tab: SettingsTab, detail: String) -> SettingsSearchItem {
         SettingsSearchItem(
             record: SettingsSearchRecord(
@@ -276,6 +247,7 @@ struct SettingsSearchView: View {
     let query: String
     let items: [SettingsSearchItem]
     let selectedID: String?
+    let scrollToken: UUID
     let onSelect: (String) -> Void
     let onActivate: (SettingsSearchItem) -> Void
 
@@ -307,11 +279,12 @@ struct SettingsSearchView: View {
                                 }
                             }
                         }
+                        .padding(.trailing, Theme.Spacing.md)
                     }
-                    .overlayScroller()
-                    .onChange(of: selectedID) { _, id in
-                        guard let id else { return }
-                        proxy.scrollTo(id, anchor: .center)
+                    .overlayScroller(disablesElasticity: true)
+                    .onChange(of: scrollToken) {
+                        guard let selectedID else { return }
+                        proxy.scrollTo(selectedID, anchor: .center)
                     }
                 }
             }
@@ -332,7 +305,7 @@ struct SettingsSearchView: View {
                 .font(.system(size: 26, weight: .medium))
             Text("No matches for “\(query)”")
                 .font(.headline)
-            Text("Try an app name, shortcut, feature, or permission.")
+            Text("Try a feature, setting, shortcut, or permission.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -358,7 +331,7 @@ private struct SettingsSearchResultRow: View {
                         .lineLimit(1)
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(item.record.breadcrumb)
-                            .foregroundStyle(item.tint)
+                            .foregroundStyle(Theme.Colors.textSecondary)
                         Text("·")
                         Text(item.record.detail)
                     }
@@ -377,13 +350,6 @@ private struct SettingsSearchResultRow: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
                     .fill(isSelected ? Theme.Settings.Colors.navigationSelection : .clear)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                    .strokeBorder(
-                        isSelected ? Theme.Settings.Colors.navigationSelectionStroke : .clear,
-                        lineWidth: 1
-                    )
-            )
             .contentShape(Rectangle())
         }
         .buttonStyle(SettingsSearchButtonStyle())
@@ -395,17 +361,13 @@ private struct SettingsSearchResultRow: View {
         switch item.icon {
         case .symbol(let name):
             RoundedRectangle(cornerRadius: Theme.Settings.Radius.iconTile, style: .continuous)
-                .fill(item.tint.opacity(0.15))
+                .fill(Theme.Colors.controlSurface)
                 .overlay(
                     Image(systemName: name)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(item.tint)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                 )
-        case .application(let image):
-            Image(nsImage: image)
-                .resizable()
-                .interpolation(.high)
         }
     }
 }

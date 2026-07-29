@@ -142,7 +142,7 @@ private struct LauncherModeTile: View {
                 )
                 .fill(
                     isSelected
-                        ? Theme.Colors.brand.opacity(0.13)
+                        ? Theme.Colors.selection
                         : Theme.Settings.Colors.searchFill
                 )
             )
@@ -153,7 +153,7 @@ private struct LauncherModeTile: View {
                 )
                 .strokeBorder(
                     isSelected
-                        ? Theme.Colors.brand.opacity(0.65)
+                        ? Theme.Colors.border
                         : Theme.Settings.Colors.searchStroke,
                     lineWidth: 1
                 )

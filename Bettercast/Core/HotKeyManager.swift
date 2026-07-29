@@ -82,7 +82,7 @@ final class HotKeyManager: ObservableObject {
         return nil
     }
 
-    private func displayName(of action: HotKeyAction) -> String {
+    func displayName(of action: HotKeyAction) -> String {
         switch action {
         case .togglePalette:
             return "App Launcher"

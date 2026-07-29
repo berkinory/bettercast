@@ -34,7 +34,7 @@ struct SettingsPane<Content: View>: View {
                 }
                 .padding(Theme.Settings.Layout.paneInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlayScroller()
+                .overlayScroller(disablesElasticity: true)
             }
             .task(id: destination?.anchorID) {
                 guard let destination else { return }
@@ -54,21 +54,14 @@ struct SettingsFeatureHeader: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.xl) {
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.headerIcon,
-                style: .continuous
-            )
-            .fill(tint.opacity(0.16))
-            .frame(
-                width: Theme.Settings.Size.headerIcon,
-                height: Theme.Settings.Size.headerIcon
-            )
-            .overlay(
-                Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(tint)
-            )
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(
+                    width: Theme.Settings.Size.controlIcon,
+                    height: Theme.Settings.Size.headerIcon
+                )
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                 Text(title)
@@ -140,21 +133,14 @@ struct SettingsControlRow<Trailing: View>: View {
     var body: some View {
         HStack(spacing: Theme.Settings.Layout.rowGap) {
             if let systemImage {
-                RoundedRectangle(
-                    cornerRadius: Theme.Settings.Radius.controlIcon,
-                    style: .continuous
-                )
-                .fill(tint.opacity(0.12))
-                .frame(
-                    width: Theme.Settings.Size.controlIcon,
-                    height: Theme.Settings.Size.controlIcon
-                )
-                .overlay(
-                    Image(systemName: systemImage)
-                        .font(.system(size: 13, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(tint)
-                )
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .frame(
+                        width: Theme.Settings.Size.controlIcon,
+                        height: Theme.Settings.Size.controlIcon
+                    )
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
@@ -199,7 +185,7 @@ struct SettingsStatusCard<Trailing: View>: View {
                 cornerRadius: Theme.Settings.Radius.controlIcon,
                 style: .continuous
             )
-            .fill(tint.opacity(0.14))
+            .fill(Theme.Colors.controlSurface)
             .frame(
                 width: Theme.Settings.Size.statusIcon,
                 height: Theme.Settings.Size.statusIcon
@@ -232,14 +218,14 @@ struct SettingsStatusCard<Trailing: View>: View {
                 cornerRadius: Theme.Settings.Radius.surface,
                 style: .continuous
             )
-            .fill(tint.opacity(0.09))
+            .fill(Theme.Settings.Colors.surfaceFill)
         )
         .overlay(
             RoundedRectangle(
                 cornerRadius: Theme.Settings.Radius.surface,
                 style: .continuous
             )
-            .strokeBorder(tint.opacity(0.20), lineWidth: 1)
+            .strokeBorder(Theme.Settings.Colors.surfaceStroke, lineWidth: 1)
         )
     }
 }
@@ -272,10 +258,10 @@ private struct SettingsDestinationModifier: ViewModifier {
             )
             content
                 .id(destination.anchorID)
-                .background(shape.fill(Theme.Colors.brand.opacity(highlighted ? 0.12 : 0)))
+                .background(shape.fill(Theme.Colors.selection.opacity(highlighted ? 1 : 0)))
                 .overlay(
                     shape.strokeBorder(
-                        Theme.Colors.brand.opacity(highlighted ? 0.42 : 0),
+                        Theme.Colors.border.opacity(highlighted ? 1 : 0),
                         lineWidth: 1
                     )
                 )
@@ -301,8 +287,8 @@ private struct SettingsFocusRingModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .focusEffectDisabled()
             .focusable()
+            .focusEffectDisabled()
             .focused($focused)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

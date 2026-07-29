@@ -2,76 +2,66 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
+private enum ShortcutCaptureState: Equatable {
+    case recording
+    case editing(KeyShortcut)
+    case conflict(owner: String, shortcut: KeyShortcut)
+    case success(KeyShortcut)
+
+    var isConflict: Bool {
+        if case .conflict = self { return true }
+        return false
+    }
+
+    var isSuccess: Bool {
+        if case .success = self { return true }
+        return false
+    }
+}
+
 /// Keeps focus in Settings while a local event monitor captures the binding.
 struct ShortcutRecorder: View {
+    private enum FocusedControl: Hashable {
+        case recorder
+        case clear
+    }
+
     let action: HotKeyAction
 
     @ObservedObject private var hotKeys: HotKeyManager = AppCore.shared.hotKeys
-    /// Observed so bound chips re-render when the Hyper Key display settings change how `keycaps` renders.
-    @ObservedObject private var settings = AppCore.shared.settings
     @StateObject private var session = CaptureSession()
-    @State private var hovered = false
-    @FocusState private var focused: Bool
+    @State private var clearHovered = false
+    @FocusState private var focusedControl: FocusedControl?
 
     private var isRecording: Bool { hotKeys.recordingAction == action }
     private var shortcut: KeyShortcut? { hotKeys.shortcut(for: action) }
-    private var accent: Color { isRecording ? .orange : .accentColor }
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            Button {
-                hotKeys.recordingAction = action
-            } label: {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Image(systemName: "keyboard")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(accent)
-                        .frame(width: Theme.Spacing.xl)
-                    content
-                        .frame(maxWidth: .infinity, alignment: .leading)
+            recorderButton
+            if shortcut != nil && !isRecording {
+                HStack(spacing: 0) {
+                    divider
+                    clearButton
                 }
-                .padding(.leading, Theme.Spacing.md)
-                .padding(.trailing, shortcut == nil ? Theme.Spacing.md : Theme.Spacing.xxl)
-                .frame(minWidth: 132, minHeight: Theme.Settings.Size.controlHeight)
-                .background(backgroundShape)
-                .overlay(borderShape)
-                .contentShape(
-                    RoundedRectangle(
-                        cornerRadius: Theme.Settings.Radius.controlIcon,
-                        style: .continuous
-                    )
-                )
-            }
-            .buttonStyle(.plain)
-            .focusEffectDisabled()
-            .focusable()
-            .focused($focused)
-            .onKeyPress(.return) {
-                hotKeys.recordingAction = action
-                return .handled
-            }
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint(accessibilityHint)
-
-            if shortcut != nil, !isRecording {
-                Button(action: clearShortcut) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
-                        .frame(
-                            width: Theme.Settings.Size.visibilityButton,
-                            height: Theme.Settings.Size.controlHeight
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-                .opacity(hovered || focused ? 1 : 0.4)
-                .help("Clear shortcut")
-                .accessibilityLabel("Clear shortcut")
             }
         }
-        .onHover { hovered = $0 }
+        .frame(width: Theme.Settings.Size.shortcutRecorderWidth)
+        .overlay(
+            containerShape.strokeBorder(Theme.Colors.border, lineWidth: 1)
+                .allowsHitTesting(false)
+        )
+        .clipShape(containerShape)
+        .contentShape(containerShape)
+        .background {
+            ShortcutCapturePopoverPresenter(isPresented: recordingBinding) {
+                ShortcutCapturePopover(
+                    session: session,
+                    targetName: hotKeys.displayName(of: action),
+                    targetIcon: targetIcon
+                )
+            }
+        }
         .onChange(of: isRecording) { _, recording in
             if recording {
                 session.start(action: action, hotKeys: hotKeys)
@@ -86,43 +76,107 @@ struct ShortcutRecorder: View {
         }
     }
 
-    private var backgroundShape: some View {
-        RoundedRectangle(
-            cornerRadius: Theme.Settings.Radius.controlIcon,
-            style: .continuous
-        )
-        .fill(
-            isRecording
-                ? Color.orange.opacity(0.12)
-                : hovered ? Theme.Colors.rowHover : Theme.Settings.Colors.searchFill
+    private var recorderButton: some View {
+        Button(action: startRecording) {
+            recorderContent
+                .padding(.leading, Theme.Spacing.md)
+                .padding(
+                    .trailing,
+                    shortcut == nil || isRecording
+                        ? Theme.Spacing.md : Theme.Settings.Size.shortcutRecorderClearWidth
+                )
+                .frame(
+                    width: Theme.Settings.Size.shortcutRecorderWidth,
+                    height: Theme.Settings.Size.shortcutRecorderHeight
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focusedControl, equals: .recorder)
+        .onKeyPress(.return) {
+            startRecording()
+            return .handled
+        }
+        .help(shortcut == nil ? "Record hotkey" : "Change hotkey")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Press Space or Return to record a hotkey")
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Theme.Settings.Colors.rowDivider)
+            .frame(width: 1, height: Theme.Size.keyCap)
+    }
+
+    private var clearButton: some View {
+        Button(action: clearShortcut) {
+            Image(systemName: "xmark")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(
+                    clearHovered ? Theme.Colors.textSecondary : Theme.Colors.textTertiary
+                )
+                .frame(
+                    width: Theme.Settings.Size.shortcutRecorderClearWidth,
+                    height: Theme.Settings.Size.shortcutRecorderHeight
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focusedControl, equals: .clear)
+        .onHover { clearHovered = $0 }
+        .help("Clear hotkey")
+        .accessibilityLabel("Clear hotkey")
+    }
+
+    private var containerShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Theme.Settings.Radius.controlIcon, style: .continuous)
+    }
+
+    private var recordingBinding: Binding<Bool> {
+        Binding(
+            get: { isRecording },
+            set: { presented in
+                if !presented, isRecording { hotKeys.recordingAction = nil }
+            }
         )
     }
 
-    private var borderShape: some View {
-        RoundedRectangle(
-            cornerRadius: Theme.Settings.Radius.controlIcon,
-            style: .continuous
-        )
-        .strokeBorder(
-            isRecording
-                ? Color.orange.opacity(0.55)
-                : focused
-                    ? Theme.Settings.Colors.searchFocus
-                    : hovered ? accent.opacity(0.30) : Theme.Settings.Colors.searchStroke,
-            lineWidth: focused ? 2 : 1
-        )
+    private var targetIcon: NSImage {
+        switch action {
+        case .app(let bundleID):
+            return AppCore.shared.appIndex.apps.first {
+                $0.kind == .application && $0.bundleID == bundleID
+            }?.icon ?? NSApp.applicationIconImage
+        case .settingsPane(let bundleID):
+            return AppCore.shared.appIndex.apps.first {
+                $0.kind == .systemSettings && $0.bundleID == bundleID
+            }?.icon ?? NSApp.applicationIconImage
+        case .togglePalette:
+            return featureIcon(named: "magnifyingglass", description: "App Launcher")
+        case .toggleClipboard:
+            return featureIcon(named: "doc.on.clipboard", description: "Clipboard History")
+        case .toggleEmoji:
+            return featureIcon(named: "face.smiling", description: "Emoji & Symbols")
+        }
+    }
+
+    private func featureIcon(named name: String, description: String) -> NSImage {
+        NSImage(systemSymbolName: name, accessibilityDescription: description)
+            ?? NSApp.applicationIconImage
     }
 
     private var accessibilityLabel: String {
-        if isRecording { return "Recording keyboard shortcut" }
-        guard let shortcut else { return "Record keyboard shortcut, not set" }
-        return "Change keyboard shortcut, currently \(shortcut.keycaps.joined())"
+        guard let shortcut else { return "Record hotkey" }
+        return "Change hotkey, currently \(shortcut.keycaps.joined())"
     }
 
-    private var accessibilityHint: String {
-        isRecording
-            ? "Press Escape to cancel or Delete to clear the shortcut"
-            : "Press Space or Return to record a new shortcut"
+    private func startRecording() {
+        guard !isRecording else { return }
+        hotKeys.recordingAction = action
     }
 
     private func clearShortcut() {
@@ -131,72 +185,260 @@ struct ShortcutRecorder: View {
     }
 
     @ViewBuilder
-    private var content: some View {
-        if isRecording {
-            recordingLabel
+    private var recorderContent: some View {
+        if isRecording, let captured = session.capturedShortcut {
+            HotkeyInlineValue(caps: captured.keycaps)
+        } else if isRecording {
+            let caps = KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers)
+            if caps.isEmpty {
+                Text("Press Keys")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            } else {
+                HotkeyInlineValue(caps: caps)
+            }
         } else if let shortcut {
-            boundLabel(shortcut)
+            HotkeyInlineValue(caps: shortcut.keycaps)
         } else {
-            Text("Record shortcut")
+            Text("Record Hotkey")
                 .font(.callout.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.Colors.textTertiary)
         }
     }
+}
 
-    private var recordingLabel: some View {
-        Group {
-            if let owner = session.conflictOwner {
-                Text("Used by \(owner)")
-                    .foregroundStyle(.orange)
-            } else if !session.heldModifiers.isEmpty {
-                Text(KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers).joined())
-                    .foregroundStyle(.primary)
-            } else {
-                Text("Press shortcut…")
-                    .foregroundStyle(.secondary)
+private struct HotkeyInlineValue: View {
+    let caps: [String]
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
+                Text(cap)
             }
         }
         .font(.callout.weight(.medium))
+        .foregroundStyle(.primary)
+    }
+}
+
+private struct ShortcutCapturePopoverPresenter<PopoverContent: View>: NSViewRepresentable {
+    @Binding var isPresented: Bool
+    @ViewBuilder let content: () -> PopoverContent
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isPresented: $isPresented, content: content())
     }
 
-    private func boundLabel(_ shortcut: KeyShortcut) -> some View {
-        HStack(spacing: Theme.Spacing.xxs) {
-            ForEach(Array(shortcut.keycaps.enumerated()), id: \.offset) { _, cap in
-                Text(cap)
-                    .font(Theme.Typography.keyCap)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, Theme.Spacing.xs)
-                    .frame(
-                        minWidth: Theme.Size.recorderKeyCap, minHeight: Theme.Size.recorderKeyCap
-                    )
-                    .background(
-                        RoundedRectangle(
-                            cornerRadius: Theme.Radius.recorderKeyCap, style: .continuous
-                        )
-                        .fill(Theme.Colors.controlSurface)
-                    )
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.isPresented = $isPresented
+        if !context.coordinator.popover.isShown {
+            context.coordinator.host.rootView = content()
+        }
+        if isPresented {
+            DispatchQueue.main.async { context.coordinator.present(from: nsView) }
+        } else if context.coordinator.popover.isShown {
+            context.coordinator.popover.close()
+        }
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.popover.delegate = nil
+        coordinator.popover.close()
+    }
+
+    @MainActor final class Coordinator: NSObject, NSPopoverDelegate {
+        var isPresented: Binding<Bool>
+        let popover: NSPopover
+        let host: NSHostingController<PopoverContent>
+
+        init(isPresented: Binding<Bool>, content: PopoverContent) {
+            self.isPresented = isPresented
+            self.host = NSHostingController(rootView: content)
+            self.popover = NSPopover()
+            super.init()
+            popover.animates = false
+            popover.behavior = .applicationDefined
+            popover.contentSize = NSSize(
+                width: Theme.Settings.Size.shortcutPopoverWidth,
+                height: Theme.Settings.Size.shortcutPopoverBodyHeight
+                    + Theme.Settings.Size.shortcutPopoverFooterHeight + 1
+            )
+            popover.contentViewController = host
+            popover.delegate = self
+        }
+
+        func present(from anchor: NSView) {
+            guard isPresented.wrappedValue, !popover.isShown, anchor.window != nil else { return }
+            popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
+        }
+
+        func popoverDidClose(_ notification: Notification) {
+            if isPresented.wrappedValue { isPresented.wrappedValue = false }
+        }
+    }
+}
+
+private struct ShortcutCapturePopover: View {
+    @ObservedObject var session: CaptureSession
+    let targetName: String
+    let targetIcon: NSImage
+
+    private var state: ShortcutCaptureState { session.state }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                feedbackBackground
+                captureBody
+                    .transaction { $0.disablesAnimations = true }
+            }
+            .frame(
+                width: Theme.Settings.Size.shortcutPopoverWidth,
+                height: Theme.Settings.Size.shortcutPopoverBodyHeight
+            )
+
+            Rectangle()
+                .fill(Theme.Settings.Colors.rowDivider)
+                .frame(height: 1)
+
+            footer
+                .frame(height: Theme.Settings.Size.shortcutPopoverFooterHeight)
+        }
+    }
+
+    @ViewBuilder
+    private var captureBody: some View {
+        switch state {
+        case .recording:
+            VStack(spacing: Theme.Spacing.xxl) {
+                if captureCaps.isEmpty {
+                    Text("Press a hotkey")
+                        .font(.headline)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                } else {
+                    CaptureKeycaps(caps: captureCaps)
+                }
+            }
+        case .editing(let shortcut), .success(let shortcut):
+            CaptureKeycaps(caps: shortcut.keycaps)
+        case .conflict(let owner, let shortcut):
+            VStack(spacing: Theme.Spacing.xl) {
+                Text("Already used by \(owner)")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Settings.Colors.captureConflict)
+                CaptureKeycaps(caps: shortcut.keycaps)
+                Text("Discard or record a new hotkey")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var feedbackBackground: some View {
+        ZStack {
+            Theme.Settings.Colors.captureConflictFill
+                .opacity(state.isConflict ? 1 : 0)
+                .animation(
+                    state.isConflict
+                        ? .easeOut(duration: 0.1) : .easeOut(duration: 0.25),
+                    value: state.isConflict
+                )
+            Theme.Settings.Colors.captureSuccessFill
+                .opacity(state.isSuccess ? 1 : 0)
+                .animation(
+                    state.isSuccess
+                        ? .easeOut(duration: 0.1) : .easeOut(duration: 0.25),
+                    value: state.isSuccess
+                )
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(nsImage: targetIcon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 18, height: 18)
+            Text(targetName)
+                .font(.callout.weight(.semibold))
+            Spacer()
+            Text("Close")
+                .font(.callout.weight(.medium))
+                .foregroundStyle(Theme.Colors.textSecondary)
+            CaptureKeycap(text: "Esc", compact: true)
+        }
+        .padding(.horizontal, Theme.Spacing.xl)
+    }
+
+    private var captureCaps: [String] {
+        KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers)
+    }
+}
+
+private struct CaptureKeycaps: View {
+    let caps: [String]
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
+                CaptureKeycap(text: cap)
             }
         }
     }
 }
 
-/// Owns the local event monitors for the one active recording, live only between `start()` and `stop()` and entirely on the main actor.
+private struct CaptureKeycap: View {
+    let text: String
+    var compact = false
+
+    var body: some View {
+        Text(text)
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, compact ? Theme.Spacing.sm : Theme.Spacing.lg)
+            .frame(
+                minWidth: compact
+                    ? Theme.Size.keyCap : Theme.Settings.Size.shortcutPopoverKeycap,
+                minHeight: compact
+                    ? Theme.Size.keyCap : Theme.Settings.Size.shortcutPopoverKeycap
+            )
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.keyCap, style: .continuous)
+                    .fill(Theme.Colors.controlSurface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.keyCap, style: .continuous)
+                    .strokeBorder(Theme.Settings.Colors.searchStroke, lineWidth: 1)
+            )
+    }
+}
+
 @MainActor
 private final class CaptureSession: ObservableObject {
-    /// Modifiers currently held, for the live "⌃⌥…" preview while recording.
     @Published var heldModifiers: NSEvent.ModifierFlags = []
-    /// Owner of a just-typed conflicting combo; shown for a moment, then recording resumes.
-    @Published var conflictOwner: String?
+    @Published var state: ShortcutCaptureState = .recording
+
+    var capturedShortcut: KeyShortcut? {
+        switch state {
+        case .editing(let shortcut), .success(let shortcut): shortcut
+        case .recording, .conflict: nil
+        }
+    }
 
     private var monitors: [Any] = []
     private var resignObserver: NSObjectProtocol?
-    private var conflictReset: Task<Void, Never>?
+    private var successResolutionTask: Task<Void, Never>?
 
     func start(action: HotKeyAction, hotKeys: HotKeyManager) {
         stop()
+        state = .recording
         heldModifiers = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
 
-        // The handlers run on the main thread but AppKit predates actor annotations, hence assumeIsolated; only Sendable event pieces (key code, flags) cross in.
         if let monitor = NSEvent.addLocalMonitorForEvents(
             matching: .keyDown,
             handler: {
@@ -208,7 +450,7 @@ private final class CaptureSession: ObservableObject {
                     self.handleKeyDown(
                         keyCode: keyCode, flags: flags, action: action, hotKeys: hotKeys)
                 }
-                return nil  // always consume: no beeps, no leaking keys to the window
+                return nil
             })
         {
             monitors.append(monitor)
@@ -219,14 +461,25 @@ private final class CaptureSession: ObservableObject {
             handler: {
                 [weak self] event in
                 let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
-                MainActor.assumeIsolated { self?.heldModifiers = flags }
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.heldModifiers = flags
+                    switch self.state {
+                    case .editing,
+                        .success where !flags.isEmpty:
+                        self.successResolutionTask?.cancel()
+                        self.successResolutionTask = nil
+                        self.state = .recording
+                    case .recording, .editing, .conflict, .success:
+                        break
+                    }
+                }
                 return event
             })
         {
             monitors.append(monitor)
         }
 
-        // A click anywhere ends the recording, then travels on — so a click on another recorder cancels this one and starts that one in a single click.
         if let monitor = NSEvent.addLocalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown],
             handler: { [weak hotKeys] event in
@@ -237,9 +490,8 @@ private final class CaptureSession: ObservableObject {
             monitors.append(monitor)
         }
 
-        // Local monitors go quiet when the settings window resigns key — treat it as a cancel so the paused global hotkeys come back.
         resignObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didResignKeyNotification, object: nil, queue: .main
+            forName: NSApplication.didResignActiveNotification, object: NSApp, queue: .main
         ) { [weak hotKeys] _ in
             MainActor.assumeIsolated { hotKeys?.recordingAction = nil }
         }
@@ -252,10 +504,10 @@ private final class CaptureSession: ObservableObject {
             NotificationCenter.default.removeObserver(resignObserver)
             self.resignObserver = nil
         }
-        conflictReset?.cancel()
-        conflictReset = nil
-        conflictOwner = nil
+        successResolutionTask?.cancel()
+        successResolutionTask = nil
         heldModifiers = []
+        state = .recording
     }
 
     private func handleKeyDown(
@@ -263,34 +515,41 @@ private final class CaptureSession: ObservableObject {
     ) {
         let bareKey = flags.intersection([.command, .option, .control, .shift]).isEmpty
 
+        successResolutionTask?.cancel()
+        successResolutionTask = nil
+
         if bareKey, keyCode == kVK_Escape {
             hotKeys.recordingAction = nil
             return
         }
-        // Plain Delete clears the existing binding.
         if bareKey, keyCode == kVK_Delete || keyCode == kVK_ForwardDelete {
             hotKeys.setShortcut(nil, for: action)
             hotKeys.recordingAction = nil
             return
         }
-        // Not a bindable combo (e.g. a bare letter): swallow it and keep recording.
+
+        switch state {
+        case .conflict, .editing, .success:
+            state = .recording
+        case .recording:
+            break
+        }
+
+        heldModifiers = flags.intersection([.command, .option, .control, .shift])
         guard let shortcut = KeyShortcut(keyCode: keyCode, modifierFlags: flags) else { return }
 
         if let owner = hotKeys.conflictOwner(of: shortcut, excluding: action) {
-            flashConflict(owner)
+            state = .conflict(owner: owner, shortcut: shortcut)
             return
         }
-        hotKeys.setShortcut(shortcut, for: action)
-        hotKeys.recordingAction = nil
-    }
 
-    private func flashConflict(_ owner: String) {
-        conflictOwner = owner
-        conflictReset?.cancel()
-        conflictReset = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1.5))
-            guard !Task.isCancelled else { return }
-            self?.conflictOwner = nil
+        hotKeys.setShortcut(shortcut, for: action)
+        state = .success(shortcut)
+        successResolutionTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1_050))
+            guard !Task.isCancelled, let self else { return }
+            self.state = .editing(shortcut)
+            self.successResolutionTask = nil
         }
     }
 }

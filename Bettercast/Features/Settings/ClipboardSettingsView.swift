@@ -249,7 +249,7 @@ private struct AppPickerPopover: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .overlayScroller()
+            .overlayScroller(disablesElasticity: true)
         }
         .frame(width: 280, height: 320)
         .onAppear { queryFocused = true }

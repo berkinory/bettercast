@@ -54,18 +54,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var tint: Color {
-        switch self {
-        case .general: return .gray
-        case .launcher: return .blue
-        case .clipboard: return .orange
-        case .emoji: return .yellow
-        case .calculator: return .green
-        case .shortcuts: return Theme.Colors.brand
-        case .permissions: return .green
-        case .about: return .pink
-        }
-    }
+    var tint: Color { Theme.Colors.textSecondary }
 }
 
 enum SettingsGroup: String, CaseIterable, Identifiable, Sendable {
@@ -92,6 +81,7 @@ private final class SettingsNavigationModel: ObservableObject {
     @Published var route: SettingsRoute
     @Published var searchQuery = ""
     @Published var selectedSearchResultID: String?
+    @Published var searchScrollToken = UUID()
 
     init(route: SettingsRoute) {
         self.route = route
@@ -109,17 +99,18 @@ private final class SettingsNavigationModel: ObservableObject {
 
     func reconcileSearchSelection(with ids: [String]) {
         selectedSearchResultID = ids.first
+        searchScrollToken = UUID()
     }
 
     func moveSearchSelection(by offset: Int, ids: [String]) {
         guard !ids.isEmpty else { return }
         let current = selectedSearchResultID.flatMap { ids.firstIndex(of: $0) } ?? 0
         selectedSearchResultID = ids[min(max(current + offset, 0), ids.count - 1)]
+        searchScrollToken = UUID()
     }
 }
 
 struct SettingsRootView: View {
-    @EnvironmentObject private var appIndex: AppIndex
     @StateObject private var navigation: SettingsNavigationModel
     @FocusState private var searchFocused: Bool
 
@@ -142,7 +133,7 @@ struct SettingsRootView: View {
     }
 
     private var searchItems: [SettingsSearchItem] {
-        SettingsSearchCatalog.staticItems + SettingsSearchCatalog.dynamicItems(from: appIndex.apps)
+        SettingsSearchCatalog.staticItems
     }
 
     private var searchResults: [SettingsSearchItem] {
@@ -162,6 +153,9 @@ struct SettingsRootView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(Theme.Colors.panelDimming).ignoresSafeArea())
+        .background(VisualEffectView().ignoresSafeArea())
+        .tint(Theme.Colors.textSecondary)
         .onReceive(NotificationCenter.default.publisher(for: .bettercastSelectSettingsRoute)) {
             note in
             guard let route = note.object as? SettingsRoute else { return }
@@ -184,6 +178,7 @@ struct SettingsRootView: View {
                     query: navigation.searchQuery,
                     items: searchResults,
                     selectedID: navigation.selectedSearchResultID,
+                    scrollToken: navigation.searchScrollToken,
                     onSelect: { navigation.selectedSearchResultID = $0 },
                     onActivate: activateSearchResult
                 )
@@ -194,10 +189,6 @@ struct SettingsRootView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            VisualEffectView(material: .contentBackground, blending: .behindWindow)
-                .ignoresSafeArea()
-        )
     }
 
     private func activateSearchResult(_ item: SettingsSearchItem) {
@@ -240,31 +231,31 @@ struct SettingsRootView: View {
             )
             .padding(.horizontal, Theme.Settings.Layout.sidebarInset)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Settings.Layout.groupSpacing) {
-                    ForEach(sidebarGroups) { section in
-                        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                            Text(section.group.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                                .padding(.horizontal, Theme.Spacing.lg)
+            VStack(alignment: .leading, spacing: Theme.Settings.Layout.groupSpacing) {
+                ForEach(sidebarGroups) { section in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Text(section.group.title)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, Theme.Spacing.lg)
 
-                            ForEach(section.tabs) { item in
-                                sidebarRow(item)
-                            }
+                        ForEach(section.tabs) { item in
+                            sidebarRow(item)
+                                .padding(.horizontal, Theme.Settings.Layout.sidebarInset)
                         }
                     }
                 }
-                .padding(.vertical, Theme.Spacing.xxl)
             }
-            .overlayScroller()
+            .padding(.vertical, Theme.Spacing.xxl)
+
+            Spacer(minLength: 0)
         }
         .padding(.top, Theme.Settings.Layout.sidebarTopInset)
         .frame(width: Theme.Settings.Size.sidebarWidth)
         .frame(maxHeight: .infinity)
         .background(
             ZStack(alignment: .trailing) {
-                VisualEffectView(material: .sidebar, blending: .behindWindow)
+                Theme.Settings.Colors.sidebarDimming
                 Rectangle()
                     .fill(Theme.Settings.Colors.sidebarSeparator)
                     .frame(width: 1)
@@ -277,7 +268,6 @@ struct SettingsRootView: View {
         SidebarRow(
             title: item.title,
             systemImage: item.systemImage,
-            tint: item.tint,
             isSelected: navigation.route.tab == item
         ) {
             searchFocused = false
@@ -302,7 +292,7 @@ private struct SidebarSearchField: View {
         HStack(spacing: Theme.Spacing.sm) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(isFocused.wrappedValue ? Theme.Colors.brand : .secondary)
+                .foregroundStyle(isFocused.wrappedValue ? .primary : .secondary)
             TextField("Search settings", text: $query, onCommit: onActivate)
                 .textFieldStyle(.plain)
                 .font(.callout)
@@ -340,86 +330,54 @@ private struct SidebarSearchField: View {
                 lineWidth: 1
             )
         )
-        .shadow(
-            color: isFocused.wrappedValue ? Theme.Colors.brand.opacity(0.14) : .clear,
-            radius: 8
-        )
     }
 }
 
 private struct SidebarRow: View {
     let title: String
     let systemImage: String
-    let tint: Color
     let isSelected: Bool
     let action: () -> Void
 
     @State private var hovering = false
+    @FocusState private var focused: Bool
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Theme.Spacing.md) {
-                RoundedRectangle(
-                    cornerRadius: Theme.Settings.Radius.iconTile,
-                    style: .continuous
-                )
-                .fill(tint.opacity(isSelected ? 0.22 : 0.12))
-                .frame(
-                    width: Theme.Settings.Size.sidebarIcon,
-                    height: Theme.Settings.Size.sidebarIcon
-                )
-                .overlay(
-                    Image(systemName: systemImage)
-                        .font(.system(size: 13, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(tint)
-                )
+            HStack(spacing: Theme.Spacing.lg) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .frame(width: Theme.Settings.Size.sidebarIcon)
 
                 Text(title)
-                    .font(.body.weight(isSelected ? .medium : .regular))
+                    .font(.callout.weight(isSelected ? .medium : .regular))
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.horizontal, Theme.Spacing.lg)
             .frame(height: Theme.Settings.Size.sidebarRowHeight)
-            .background(selectionBackground)
-            .overlay(selectionStroke)
+            .background(
+                RoundedRectangle(
+                    cornerRadius: Theme.Settings.Radius.navigation,
+                    style: .continuous
+                )
+                .fill(rowFill)
+            )
             .contentShape(Rectangle())
         }
-        .buttonStyle(SettingsNavigationButtonStyle())
-        .settingsFocusRing(cornerRadius: Theme.Settings.Radius.navigation)
+        .buttonStyle(.plain)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .opacity(focused ? 1 : 0.96)
         .onHover { hovering = $0 }
     }
 
-    @ViewBuilder
-    private var selectionBackground: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: Theme.Settings.Radius.navigation,
-            style: .continuous
-        )
-        if isSelected {
-            shape.fill(Theme.Settings.Colors.navigationSelection)
-        } else if hovering {
-            shape.fill(Theme.Settings.Colors.navigationHover)
-        }
-    }
-
-    private var selectionStroke: some View {
-        RoundedRectangle(
-            cornerRadius: Theme.Settings.Radius.navigation,
-            style: .continuous
-        )
-        .strokeBorder(
-            isSelected ? Theme.Settings.Colors.navigationSelectionStroke : .clear,
-            lineWidth: 1
-        )
-    }
-}
-
-private struct SettingsNavigationButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
+    private var rowFill: Color {
+        if isSelected { return Theme.Settings.Colors.navigationSelection }
+        if hovering || focused { return Theme.Settings.Colors.navigationHover }
+        return .clear
     }
 }

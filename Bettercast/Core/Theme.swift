@@ -78,10 +78,10 @@ enum Theme {
     enum Settings {
         enum Size {
             static let window = CGSize(width: 760, height: 560)
-            static let sidebarWidth: CGFloat = 200
-            static let sidebarIcon: CGFloat = 28
-            static let sidebarRowHeight: CGFloat = 38
-            static let searchHeight: CGFloat = 34
+            static let sidebarWidth: CGFloat = 190
+            static let sidebarIcon: CGFloat = 18
+            static let sidebarRowHeight: CGFloat = 34
+            static let searchHeight: CGFloat = 32
             static let controlHeight: CGFloat = 32
             static let headerIcon: CGFloat = 38
             static let controlIcon: CGFloat = 28
@@ -95,17 +95,24 @@ enum Theme {
             static let skinToneButton: CGFloat = 40
             static let hyperKeyCap: CGFloat = 26
             static let shortcutColumn: CGFloat = 132
-            static let visibilityButton: CGFloat = 28
+            static let visibilityButton: CGFloat = 36
+            static let shortcutRecorderHeight: CGFloat = 28
+            static let shortcutRecorderWidth: CGFloat = 102
+            static let shortcutRecorderClearWidth: CGFloat = 26
+            static let shortcutPopoverWidth: CGFloat = 280
+            static let shortcutPopoverBodyHeight: CGFloat = 113
+            static let shortcutPopoverFooterHeight: CGFloat = 36
+            static let shortcutPopoverKeycap: CGFloat = 28
             static let aboutIcon: CGFloat = 88
         }
 
         enum Radius {
-            static let navigation: CGFloat = 11
-            static let search: CGFloat = 12
+            static let navigation: CGFloat = Theme.Radius.row
+            static let search: CGFloat = Theme.Radius.row
             static let iconTile: CGFloat = 7
             static let headerIcon: CGFloat = 10
             static let controlIcon: CGFloat = 8
-            static let surface: CGFloat = 14
+            static let surface: CGFloat = Theme.Radius.card
             static let rowHighlight: CGFloat = 11
             static let modeTile: CGFloat = 12
             static let modePreview: CGFloat = 8
@@ -114,25 +121,28 @@ enum Theme {
         enum Layout {
             static let paneInset: CGFloat = 20
             static let sectionSpacing: CGFloat = 18
-            static let sidebarInset: CGFloat = 10
+            static let sidebarInset: CGFloat = 8
             static let sidebarTopInset: CGFloat = 20
-            static let groupSpacing: CGFloat = 22
+            static let groupSpacing: CGFloat = 18
             static let rowHorizontal: CGFloat = 12
             static let rowVertical: CGFloat = 9
             static let rowGap: CGFloat = 10
         }
 
         enum Colors {
-            static let navigationSelection = Color.white.opacity(0.09)
-            static let navigationSelectionStroke = Color.white.opacity(0.13)
-            static let navigationHover = Color.white.opacity(0.045)
-            static let searchFill = Color.white.opacity(0.065)
-            static let searchStroke = Color.white.opacity(0.11)
-            static let searchFocus = Theme.Colors.brand.opacity(0.72)
-            static let sidebarSeparator = Color.white.opacity(0.08)
-            static let surfaceFill = Color.white.opacity(0.045)
-            static let surfaceStroke = Color.white.opacity(0.085)
-            static let rowDivider = Color.white.opacity(0.075)
+            static let navigationSelection = Theme.Colors.selection
+            static let navigationHover = Theme.Colors.rowHover
+            static let searchFill = Theme.Colors.cardFill
+            static let searchStroke = Theme.Colors.cardStroke
+            static let searchFocus = Theme.Colors.border
+            static let captureConflict = Color(red: 1.0, green: 0.36, blue: 0.46)
+            static let captureConflictFill = captureConflict.opacity(0.08)
+            static let captureSuccessFill = Color.green.opacity(0.07)
+            static let sidebarSeparator = Theme.Colors.separator
+            static let sidebarDimming = Color.black.opacity(0.14)
+            static let surfaceFill = Theme.Colors.cardFill
+            static let surfaceStroke = Theme.Colors.cardStroke
+            static let rowDivider = Theme.Colors.separator
         }
 
         enum Motion {

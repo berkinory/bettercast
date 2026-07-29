@@ -2,22 +2,36 @@ import AppKit
 import SwiftUI
 
 extension View {
-    func overlayScroller() -> some View {
-        background(OverlayScrollerConfigurator().frame(width: 0, height: 0))
+    func overlayScroller(disablesElasticity: Bool = false) -> some View {
+        background(
+            OverlayScrollerConfigurator(disablesElasticity: disablesElasticity)
+                .frame(width: 0, height: 0)
+        )
     }
 }
 
 private struct OverlayScrollerConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { ProbeView() }
+    let disablesElasticity: Bool
+
+    func makeNSView(context: Context) -> NSView {
+        ProbeView(disablesElasticity: disablesElasticity)
+    }
+
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? ProbeView)?.applyOverlayStyle()
+        guard let probe = nsView as? ProbeView else { return }
+        probe.disablesElasticity = disablesElasticity
+        probe.applyOverlayStyle()
     }
 
     private final class ProbeView: NSView {
+        var disablesElasticity: Bool
         private var attemptsRemaining = 12
         private var styleObserver: NotificationToken?
 
-        override init(frame frameRect: NSRect) { super.init(frame: frameRect) }
+        init(disablesElasticity: Bool) {
+            self.disablesElasticity = disablesElasticity
+            super.init(frame: .zero)
+        }
 
         @available(*, unavailable)
         required init?(coder: NSCoder) { fatalError() }
@@ -52,6 +66,10 @@ private struct OverlayScrollerConfigurator: NSViewRepresentable {
                 attemptsRemaining -= 1
                 DispatchQueue.main.async { [weak self] in self?.applyOverlayStyle() }
                 return
+            }
+            if disablesElasticity {
+                scrollView.verticalScrollElasticity = .none
+                scrollView.horizontalScrollElasticity = .none
             }
             guard scrollView.scrollerStyle != .overlay || !scrollView.autohidesScrollers else {
                 return  // already in the target state — don't churn layout on re-runs

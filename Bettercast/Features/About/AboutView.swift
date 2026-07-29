@@ -33,7 +33,7 @@ struct AboutView: View {
                 // Ignore the transparent-titlebar safe area and use one fixed `xxl` inset every side, matching `SettingsPane`.
                 .padding(Theme.Spacing.xxl)
                 .frame(maxWidth: .infinity)
-                .overlayScroller()
+                .overlayScroller(disablesElasticity: true)
             }
             // Outside the scroll view so the copyright stays pinned to the pane's bottom edge, the way a real About window reads.
             footer
@@ -202,6 +202,7 @@ final class AuxWindowController: NSObject, NSWindowDelegate {
     @discardableResult
     func show<Content: View>(
         id: String, title: String, size: CGSize, seamlessTitleBar: Bool = false,
+        transparentBackground: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> Bool {
         let window: NSWindow
@@ -225,6 +226,11 @@ final class AuxWindowController: NSObject, NSWindowDelegate {
                 window.titlebarAppearsTransparent = true
                 window.titleVisibility = .hidden
                 window.isMovableByWindowBackground = true
+            }
+            if transparentBackground {
+                window.isOpaque = false
+                window.backgroundColor = .clear
+                window.titlebarSeparatorStyle = .none
             }
             window.isReleasedWhenClosed = false
             let hosting = NSHostingView(rootView: content())
