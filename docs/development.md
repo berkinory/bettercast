@@ -25,6 +25,7 @@ make check                                # lint + tests + Debug build
 make format                               # format Bettercast/ and Tools/
 make lint
 make build                                # local unsigned Debug build
+make run                                  # build and launch Bettercast Dev
 make generate                             # regenerate Bettercast.xcodeproj from project.yml
 ```
 
@@ -41,8 +42,7 @@ open Bettercast.xcodeproj
 For a local run without an Apple account:
 
 ```sh
-make build
-open "build/DerivedData/Build/Products/Debug/Bettercast Dev.app"
+make run
 ```
 
 `xcodebuild` uses whatever `xcode-select` points at; if that's the Command Line Tools rather than
