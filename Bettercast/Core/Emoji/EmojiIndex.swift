@@ -43,7 +43,8 @@ final class EmojiIndex: ObservableObject {
             }
             if let best { scored.append((entry, best, order)) }
         }
-        let result = scored
+        let result =
+            scored
             .sorted { $0.score != $1.score ? $0.score > $1.score : $0.order < $1.order }
             .prefix(limit)
             .map(\.entry)

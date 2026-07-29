@@ -128,8 +128,7 @@ struct BackupSettingsView: View {
                 EmptyView()
             }
         case .failure(let message):
-            SettingsRow(title: message, systemImage: "exclamationmark.triangle.fill", tint: .orange)
-            {
+            SettingsRow(title: message, systemImage: "exclamationmark.triangle.fill", tint: .orange) {
                 EmptyView()
             }
         }

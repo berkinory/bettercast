@@ -54,13 +54,16 @@ final class FrequentEmojiStore: ObservableObject {
 
     /// Most-used glyphs (recency breaks ties), newest habits first.
     func top(_ n: Int = 16) -> [String] {
-        let sorted = sortedGlyphs ?? {
-            let ranked = records
-                .sorted { $0.count != $1.count ? $0.count > $1.count : $0.lastUsed > $1.lastUsed }
-                .map(\.glyph)
-            sortedGlyphs = ranked
-            return ranked
-        }()
+        let sorted =
+            sortedGlyphs
+            ?? {
+                let ranked =
+                    records
+                    .sorted { $0.count != $1.count ? $0.count > $1.count : $0.lastUsed > $1.lastUsed }
+                    .map(\.glyph)
+                sortedGlyphs = ranked
+                return ranked
+            }()
         return Array(sorted.prefix(n))
     }
 

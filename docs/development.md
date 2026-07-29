@@ -13,6 +13,21 @@ Create the `Tinycast Self-Signed` code-signing identity once — builds sign wit
 macOS Accessibility grant from being forgotten every rebuild. Follow **[signing.md](signing.md) §1**
 (a few `openssl`/`security` commands).
 
+## Make targets
+
+The repository uses Apple's `swift-format` for formatting and strict style checks. The compiler remains
+the semantic checker; `make` runs formatting checks, standalone tests, and a build.
+
+```sh
+make                                      # lint + tests + Debug build
+make format                               # format Bettercast/ and Tools/
+make lint
+make build CODE_SIGNING_ALLOWED=NO       # local unsigned build
+make generate                             # regenerate Bettercast.xcodeproj from project.yml
+```
+
+Install the local tools once with `brew install swift-format xcodegen`.
+
 ## Build & run
 
 Open the project in Xcode and run it:
@@ -156,13 +171,3 @@ or `bettercast@beta`) in the
 [`homebrew-bettercast`](https://github.com/abue-ammar/homebrew-bettercast) tap and pushes. It needs a
 `HOMEBREW_TAP_TOKEN` repo secret — a fine-grained PAT with **Contents: read/write** on the tap
 repo. Without the secret the step logs a warning and skips (the release still publishes).
-
-## Website
-
-`.github/workflows/website.yml` builds `website/` (Vite + React + TS) and deploys it to GitHub
-Pages at `https://abue-ammar.github.io/bettercast/` on every push to `main` that touches
-`website/`. Enable it once via **Settings → Pages → Source = GitHub Actions**.
-
-```sh
-cd website && npm install && npm run dev     # local preview
-```

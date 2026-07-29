@@ -297,8 +297,7 @@ enum RaycastImport {
 
     // MARK: - Clipboard
 
-    private static func mapClipboard(_ json: [String: Any]) -> (items: [ClipboardItem], missing: Int)
-    {
+    private static func mapClipboard(_ json: [String: Any]) -> (items: [ClipboardItem], missing: Int) {
         guard
             let entries = (json["clipboardHistory"] as? [String: Any])?["clipboardEntries"]
                 as? [[String: Any]]
