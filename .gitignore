@@ -27,6 +27,13 @@ buildServer.json
 build/
 dist/
 
+# Apple signing secrets
+*.p8
+*.cer
+*.p12
+*.mobileprovision
+*.provisionprofile
+
 # Fastlane
 fastlane/report.xml
 fastlane/Preview.html

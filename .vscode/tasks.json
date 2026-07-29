@@ -11,7 +11,7 @@
       // xcodebuild exit code so a failed build still blocks F5 / the run step.
       "label": "Build Bettercast.app (debug)",
       "type": "shell",
-      "command": "bash -c 'set -o pipefail; xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug -derivedDataPath build/DerivedData build 2>&1 | tee \"${TMPDIR:-/tmp}/bettercast-build.log\"; ec=$?; /opt/homebrew/bin/xcode-build-server parse -a -o .compile < \"${TMPDIR:-/tmp}/bettercast-build.log\" >/dev/null 2>&1 || true; exit $ec'",
+      "command": "bash -c 'set -o pipefail; xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build 2>&1 | tee \"${TMPDIR:-/tmp}/bettercast-build.log\"; ec=$?; /opt/homebrew/bin/xcode-build-server parse -a -o .compile < \"${TMPDIR:-/tmp}/bettercast-build.log\" >/dev/null 2>&1 || true; exit $ec'",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": { "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer" }

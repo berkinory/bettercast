@@ -4,14 +4,14 @@
 
 Report privately through GitHub: **Security** tab → **Report a vulnerability**.
 
-Include your macOS version, the Bettercast version and channel, reproduction steps, and the impact.
+Include your macOS version, the Bettercast version, reproduction steps, and the impact.
 Please don't disclose publicly until it's fixed.
 
 We'll respond as quickly as we can and keep you posted.
 
 ## Supported Versions
 
-Current stable and beta only. Update (`brew upgrade --cask bettercast`) before reporting.
+Current release only. Update (`brew upgrade --cask bettercast`) before reporting.
 
 ## Scope
 
@@ -24,6 +24,5 @@ Of particular interest:
 - **Hotkeys** — the in-house hotkey stack and the Input Monitoring grant.
 - **Signing and distribution** — the DMG and Homebrew cask chain.
 
-Out of scope: builds being self-signed rather than notarized (known, see
-[`docs/signing.md`](docs/signing.md)), and anything needing existing code execution or admin rights on
-the machine.
+Out of scope: local unsigned/development builds, and anything needing existing code execution or admin
+rights on the machine.

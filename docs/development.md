@@ -1,6 +1,6 @@
 # Development
 
-How to build, test, package, and release Bettercast.
+How to build and test Bettercast.
 
 ## Requirements
 
@@ -9,9 +9,11 @@ How to build, test, package, and release Bettercast.
 
 ## First-time setup
 
-Create the `Bettercast Self-Signed` code-signing identity once — builds sign with it, which keeps the
-macOS Accessibility grant from being forgotten every rebuild. Follow **[signing.md](signing.md) §1**
-(a few `openssl`/`security` commands).
+For local development, no Apple account is required:
+
+```sh
+make build
+```
 
 ## Make targets
 
@@ -19,10 +21,10 @@ The repository uses Apple's `swift-format` for formatting and strict style check
 the semantic checker; `make` runs formatting checks, standalone tests, and a build.
 
 ```sh
-make                                      # lint + tests + Debug build
+make check                                # lint + tests + Debug build
 make format                               # format Bettercast/ and Tools/
 make lint
-make build CODE_SIGNING_ALLOWED=NO       # local unsigned build
+make build                                # local unsigned Debug build
 make generate                             # regenerate Bettercast.xcodeproj from project.yml
 ```
 
@@ -30,16 +32,17 @@ Install the local tools once with `brew install swift-format xcodegen`.
 
 ## Build & run
 
-Open the project in Xcode and run it:
+Open the project in Xcode for editing:
 
 ```sh
-open Bettercast.xcodeproj    # then press ⌘R
+open Bettercast.xcodeproj
 ```
 
-Or from the command line:
+For a local run without an Apple account:
 
 ```sh
-xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug build
+make build
+open "build/DerivedData/Build/Products/Debug/Bettercast Dev.app"
 ```
 
 `xcodebuild` uses whatever `xcode-select` points at; if that's the Command Line Tools rather than
@@ -50,9 +53,9 @@ Xcode, prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (t
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) — after changing project settings in `project.yml`,
 run `xcodegen generate` and commit the result.
 
-### The dev channel
+### The dev build
 
-Debug builds are a separate channel: **`Bettercast Dev.app`**, bundle id `com.bettercast.app.dev`. Since
+Debug builds are isolated from the release: **`Bettercast Dev.app`**, bundle id `com.bettercast.app.dev`. Since
 every persisted thing is keyed by bundle
 id — `~/Library/Preferences/<id>.plist` (settings + hotkey bindings),
 `~/Library/Caches/<id>/` (clipboard history, calculator history, exchange rates, frequent emoji),
@@ -63,8 +66,8 @@ installed app's state, and both can run side-by-side.
 Consequences worth knowing:
 
 - The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
-  and onboarding unseen. Grant + bind once; it persists across rebuilds (the fixed build path and the
-  `Bettercast Self-Signed` identity keep the TCC grant alive).
+  and onboarding unseen. Grant + bind once; the fixed build path and bundle id keep local state stable.
+  `make build` is unsigned by default; Xcode can use Apple Development signing if an account is available.
 - Don't bind the same global hotkey in both — whichever registered first wins.
 - The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**:
   quitting one build clears the remap for the other, which then needs a rebind (or relaunch) to
@@ -128,46 +131,12 @@ left out and decided by hand in `CalcCurrency.contested`, the one currency table
 hand. Re-run the script when a currency is added or retired; nothing breaks in the meantime, since
 an unquoted code just reports "no exchange rate".
 
-## Packaging a DMG
+## Local packaging
 
-For a local signed DMG:
+A contributor can create an unsigned local DMG without Apple credentials:
 
 ```sh
-./build-dmg.sh            # -> build/Bettercast-<version>.dmg (version from project.yml)
-./build-dmg.sh 0.5.7      # -> build/Bettercast-0.5.7.dmg
+make unsigned-dmg
 ```
 
-It builds a Release `Bettercast.app` signed with `Bettercast Self-Signed` and packs it (with an
-`/Applications` symlink). Official per-channel releases (beta/stable) are built by CI — see
-below and [`.github/workflows/release.yml`](../.github/workflows/release.yml).
-
-## Signing & Gatekeeper
-
-Both local builds and CI releases sign with the same stable `Bettercast Self-Signed` identity (not an
-Apple Developer ID), so macOS quarantines a directly-downloaded DMG — the Homebrew cask strips that
-automatically, and direct downloaders run `xattr -dr com.apple.quarantine "…/Bettercast.app"` once.
-Full details in [signing.md](signing.md).
-
-## CI releases
-
-`.github/workflows/release.yml` builds and publishes a DMG from GitHub Actions — no local machine
-needed. Run it from the **Actions** tab (`Release` → **Run workflow**) and pick:
-
-- **channel** — `beta` or `stable`. Each builds a distinct app
-  (`Bettercast Beta.app` / `Bettercast.app`) with its own bundle id, alongside the local
-  `Bettercast Dev.app` (above).
-  Beta gets an auto-incrementing `-beta.N` suffix (`N` = the Actions run number)
-  so re-running never collides; stable ships the version as-is.
-- **version** — base semver, e.g. `0.2.0`.
-
-It builds on a `macos-26` runner with Xcode 26 and publishes a GitHub Release tagged
-`v<full-version>` with a versioned DMG asset (`Bettercast-<full-version>.dmg`), marked prerelease
-for beta. On success it also bumps the matching cask in the tap (below).
-
-### Homebrew tap automation
-
-The release job's final step rewrites the `version` + `sha256` of the channel's cask (`bettercast`
-or `bettercast@beta`) in the
-[`homebrew-bettercast`](https://github.com/abue-ammar/homebrew-bettercast) tap and pushes. It needs a
-`HOMEBREW_TAP_TOKEN` repo secret — a fine-grained PAT with **Contents: read/write** on the tap
-repo. Without the secret the step logs a warning and skips (the release still publishes).
+Do not distribute that artifact.

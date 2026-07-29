@@ -6,7 +6,7 @@ struct BettercastApp: App {
     // `@AppStorage` republishes only when the value changes, avoiding a scene ⇄ binding feedback loop.
     @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
 
-    // Channel-aware: "Bettercast", "Bettercast Dev", or "Bettercast Beta".
+    // The display name comes from the bundle so Debug can identify itself clearly.
     private let appName = Bundle.main.appDisplayName
 
     var body: some Scene {

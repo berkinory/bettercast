@@ -4,5 +4,5 @@ contact_links:
     url: https://discord.gg/v2Eeb4QQy3
     about: Questions, ideas, and general chat.
   - name: Report a security vulnerability
-    url: https://github.com/abue-ammar/bettercast/security/advisories/new
+    url: https://github.com/berkinory/bettercast/security/advisories/new
     about: Security issues go here privately, not in the tracker.

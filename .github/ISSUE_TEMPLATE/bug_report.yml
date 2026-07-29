@@ -15,8 +15,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Bettercast version + channel
-      placeholder: 0.1.0 · stable
+      label: Bettercast version
+      placeholder: 0.1.0
     validations:
       required: true
   - type: input

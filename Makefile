@@ -8,11 +8,11 @@ CONFIGURATION ?= Debug
 DERIVED_DATA ?= build/DerivedData
 TEST_BIN_DIR := build/tests
 SWIFT_FORMAT ?= swift-format
-CODE_SIGNING_ALLOWED ?= YES
+CODE_SIGNING_ALLOWED ?= NO
 
 SWIFT_FILES := $(shell find Bettercast Tools -type f -name '*.swift' ! -name '*generated.swift' -print)
 
-.PHONY: check tools format lint build test generate clean
+.PHONY: check tools format lint build release unsigned-dmg test generate clean
 
 check: lint test build
 
@@ -30,6 +30,12 @@ lint: tools
 
 build: tools
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) -derivedDataPath $(DERIVED_DATA) CODE_SIGNING_ALLOWED=$(CODE_SIGNING_ALLOWED) build
+
+release:
+	./build-dmg.sh
+
+unsigned-dmg:
+	SKIP_SIGNING=1 ./build-dmg.sh
 
 test: tools
 	@mkdir -p $(TEST_BIN_DIR)

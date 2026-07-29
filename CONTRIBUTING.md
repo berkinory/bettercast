@@ -1,7 +1,7 @@
 # Contributing to Bettercast
 
-Check existing [issues](https://github.com/abue-ammar/bettercast/issues) and
-[pull requests](https://github.com/abue-ammar/bettercast/pulls) first.
+Check existing [issues](https://github.com/berkinory/bettercast/issues) and
+[pull requests](https://github.com/berkinory/bettercast/pulls) first.
 
 > **Don't hurry your code. Make sure it works well and is well designed. Don't worry about timing.**
 
@@ -18,8 +18,8 @@ Check existing [issues](https://github.com/abue-ammar/bettercast/issues) and
 
 ## Setup
 
-- macOS 26+, Xcode 26. Do the one-time signing setup ([`docs/signing.md`](docs/signing.md) §1).
-- `open Bettercast.xcodeproj` → ⌘R. Debug builds are their own channel (`Bettercast Dev.app`).
+- macOS 26+, Xcode 26. Local builds need no Apple account.
+- `open Bettercast.xcodeproj` → ⌘R. Debug builds use a separate bundle (`Bettercast Dev.app`).
 - After editing `project.yml`: `xcodegen generate`, commit the result. No SwiftPM.
 - Details: [`docs/development.md`](docs/development.md). Architecture:
   [`docs/architecture.md`](docs/architecture.md).
@@ -62,7 +62,7 @@ Match the surrounding code.
 
 ## Bugs
 
-macOS version, Bettercast version + channel, steps, expected vs actual. A recording beats a paragraph.
+macOS version, Bettercast version, steps, expected vs actual. A recording beats a paragraph.
 
 ## Security
 

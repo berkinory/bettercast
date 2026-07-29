@@ -140,7 +140,7 @@ final class ClipboardStore: ObservableObject {
     private var staleImagesStmt: OpaquePointer?
     private var deleteStaleStmt: OpaquePointer?
 
-    /// `directory` defaults to the per-channel cache; `Tools/clipboard-test.swift` passes a throwaway one so a harness run can never reach a real history.
+    /// `directory` defaults to the per-bundle cache; `Tools/clipboard-test.swift` passes a throwaway one so a harness run can never reach a real history.
     init(directory: URL? = nil) {
         let base = directory ?? Self.defaultDirectory
         imagesDir = base.appendingPathComponent("images", isDirectory: true)
