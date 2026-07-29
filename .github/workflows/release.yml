@@ -1,16 +1,57 @@
 name: Release
 
-# Manually triggered from the Actions list. The version is read from project.yml.
+# The release is automatic only for a version change pushed to main by berkinory.
 run-name: "Bettercast release #${{ github.run_number }}"
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [project.yml]
 
 permissions:
   contents: write
 
 jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check owner version change
+        id: check
+        env:
+          BEFORE: ${{ github.event.before }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          if [ "$ACTOR" != "berkinory" ]; then
+            echo "Skipping release: version changes are owner-only."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          old_version="$(git show "$BEFORE:project.yml" 2>/dev/null | sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
+          new_version="$(sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' project.yml | head -n1)"
+          if [ "$old_version" = "$new_version" ]; then
+            echo "Skipping release: MARKETING_VERSION did not change."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! [[ "$new_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::project.yml MARKETING_VERSION must be x.y.z; got '$new_version'"
+            exit 1
+          fi
+
+          echo "Releasing $old_version → $new_version"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: release-gate
+    if: needs.release-gate.outputs.release == 'true'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
