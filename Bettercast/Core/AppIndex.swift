@@ -49,12 +49,12 @@ enum IconCache {
     /// `NSCache` is thread-safe but not `Sendable`, so a detached decode populating what the main actor reads needs the guarantee asserted once here.
     private final class Cache: NSCache<NSString, NSImage>, @unchecked Sendable {}
 
-    // 48pt (2× Retina) is plenty for the ≤24pt draw size, and keeping each icon small caps launcher memory since a scrolled `LazyVStack` pins every row's icon.
-    private static let displayPixel: CGFloat = 48
+    // Rendered at 24pt, so a 48px bitmap provides a sharp 2× Retina asset without retaining oversized icons.
+    private static let displayPoint: CGFloat = 24
 
     private static let cache: Cache = {
         let cache = Cache()
-        cache.totalCostLimit = 32 * 1024 * 1024
+        cache.totalCostLimit = 12 * 1024 * 1024
         return cache
     }()
 
@@ -95,7 +95,7 @@ enum IconCache {
         let key = "symbol:" + name as NSString
         if let cached = cache.object(forKey: key) { return cached }
 
-        let side = displayPixel
+        let side = displayPoint
         let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
             // Tile inset mirrors the margin macOS app icons carry inside their canvas.
             let tile = NSRect(x: 0, y: 0, width: side, height: side).insetBy(dx: 4, dy: 4)
@@ -120,18 +120,18 @@ enum IconCache {
         return icon
     }
 
-    /// Rasterize the multi-rep workspace icon into one `displayPixel`-square bitmap, returning it and its decoded byte cost.
+    /// Rasterize the multi-rep workspace icon into one 24pt bitmap, returning it and its decoded byte cost.
     private static func downsampled(_ source: NSImage) -> (NSImage, Int) {
-        // Fixed 2× (not `NSScreen.main`, which is main-thread-only) so this can rasterize on a detached decode; 96px covers the ≤24pt draw on any display.
-        let pixels = Int(displayPixel * 2)
-        let fallbackCost = Int(displayPixel * displayPixel * 4)
+        // Fixed 2× (not `NSScreen.main`, which is main-thread-only) so this can rasterize on a detached decode.
+        let pixels = Int(displayPoint * 2)
+        let fallbackCost = Int(displayPoint * displayPoint * 4)
         guard
             let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8,
                 samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
                 bytesPerRow: 0, bitsPerPixel: 0)
         else { return (source, fallbackCost) }
-        rep.size = NSSize(width: displayPixel, height: displayPixel)
+        rep.size = NSSize(width: displayPoint, height: displayPoint)
         guard let ctx = NSGraphicsContext(bitmapImageRep: rep) else {
             return (source, fallbackCost)
         }
