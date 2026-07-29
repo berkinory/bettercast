@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
-IDENTITY="Tinycast Self-Signed"
+IDENTITY="Bettercast Self-Signed"
 DERIVED="build/DerivedData"
 
 if ! security find-identity -p codesigning | grep -q "$IDENTITY"; then

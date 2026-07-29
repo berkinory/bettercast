@@ -9,7 +9,7 @@ How to build, test, package, and release Bettercast.
 
 ## First-time setup
 
-Create the `Tinycast Self-Signed` code-signing identity once — builds sign with it, which keeps the
+Create the `Bettercast Self-Signed` code-signing identity once — builds sign with it, which keeps the
 macOS Accessibility grant from being forgotten every rebuild. Follow **[signing.md](signing.md) §1**
 (a few `openssl`/`security` commands).
 
@@ -64,7 +64,7 @@ Consequences worth knowing:
 
 - The dev build asks for Accessibility on its own the first time, and starts with **no** hotkeys bound
   and onboarding unseen. Grant + bind once; it persists across rebuilds (the fixed build path and the
-  `Tinycast Self-Signed` identity keep the TCC grant alive).
+  `Bettercast Self-Signed` identity keep the TCC grant alive).
 - Don't bind the same global hotkey in both — whichever registered first wins.
 - The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**:
   quitting one build clears the remap for the other, which then needs a rebind (or relaunch) to
@@ -137,13 +137,13 @@ For a local signed DMG:
 ./build-dmg.sh 0.5.7      # -> build/Bettercast-0.5.7.dmg
 ```
 
-It builds a Release `Bettercast.app` signed with `Tinycast Self-Signed` and packs it (with an
+It builds a Release `Bettercast.app` signed with `Bettercast Self-Signed` and packs it (with an
 `/Applications` symlink). Official per-channel releases (beta/stable) are built by CI — see
 below and [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 ## Signing & Gatekeeper
 
-Both local builds and CI releases sign with the same stable `Tinycast Self-Signed` identity (not an
+Both local builds and CI releases sign with the same stable `Bettercast Self-Signed` identity (not an
 Apple Developer ID), so macOS quarantines a directly-downloaded DMG — the Homebrew cask strips that
 automatically, and direct downloaders run `xattr -dr com.apple.quarantine "…/Bettercast.app"` once.
 Full details in [signing.md](signing.md).

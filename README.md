@@ -41,8 +41,8 @@ xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-The project started from [Tinycast](https://github.com/abue-ammar/tinycast). Its AGPL-3.0 license and
-upstream attribution remain in this repository.
+The project started from an upstream AGPL-3.0 project; its license and
+attribution remain in this repository.
 
 ## Permissions
 
@@ -72,7 +72,7 @@ Questions, ideas, or just want to follow along? **[Join the Discord](https://dis
 
 ## Contributors
 
-Bettercast builds on the work of the [Tinycast contributors](https://github.com/abue-ammar/tinycast/graphs/contributors).
+Bettercast builds on the work of the [upstream contributors](https://github.com/abue-ammar/tinycast/graphs/contributors).
 
 ## License
 

@@ -1,6 +1,6 @@
 # Signing
 
-Bettercast is signed with a **stable self-signed identity** called `Tinycast Self-Signed`. It's not an
+Bettercast is signed with a **stable self-signed identity** called `Bettercast Self-Signed`. It's not an
 Apple Developer ID (there's no paid Apple account), but keeping the *same* identity on every build is
 what makes macOS remember the Accessibility permission across rebuilds and updates — ad-hoc signing
 changes every build and macOS forgets the grant.
@@ -10,7 +10,7 @@ You create this identity **once**. The same identity is used for:
 - **local dev builds** — so Accessibility persists while you develop (the Xcode project signs with it), and
 - **CI releases** — exported into two GitHub secrets the release workflow imports.
 
-## 1. Create the `Tinycast Self-Signed` identity (once)
+## 1. Create the `Bettercast Self-Signed` identity (once)
 
 Run these in a terminal. They generate a self-signed code-signing certificate and import it into your
 login keychain:
@@ -18,27 +18,27 @@ login keychain:
 ```sh
 # Generate a self-signed code-signing cert (10-year, codeSigning use).
 openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
-  -keyout /tmp/tc-key.pem -out /tmp/tc-cert.pem \
-  -subj "/CN=Tinycast Self-Signed" \
+  -keyout /tmp/bettercast-key.pem -out /tmp/bettercast-cert.pem \
+  -subj "/CN=Bettercast Self-Signed" \
   -addext "basicConstraints=critical,CA:false" \
   -addext "keyUsage=critical,digitalSignature" \
   -addext "extendedKeyUsage=critical,codeSigning"
 
 # Bundle it as a .p12 (the non-empty password keeps `security import` happy).
-openssl pkcs12 -export -inkey /tmp/tc-key.pem -in /tmp/tc-cert.pem \
-  -name "Tinycast Self-Signed" -out /tmp/tc.p12 -passout pass:bettercast
+openssl pkcs12 -export -inkey /tmp/bettercast-key.pem -in /tmp/bettercast-cert.pem \
+  -name "Bettercast Self-Signed" -out /tmp/bettercast.p12 -passout pass:bettercast
 
 # Import into the login keychain so codesign can use it without prompting.
-security import /tmp/tc.p12 -k ~/Library/Keychains/login.keychain-db \
+security import /tmp/bettercast.p12 -k ~/Library/Keychains/login.keychain-db \
   -P bettercast -A -T /usr/bin/codesign
 
-rm -f /tmp/tc-key.pem /tmp/tc-cert.pem /tmp/tc.p12
+rm -f /tmp/bettercast-key.pem /tmp/bettercast-cert.pem /tmp/bettercast.p12
 ```
 
 Verify it's there:
 
 ```sh
-security find-identity -p codesigning | grep "Tinycast Self-Signed"
+security find-identity -p codesigning | grep "Bettercast Self-Signed"
 ```
 
 Now local builds (Xcode, VS Code F5, `xcodebuild`) sign with it, and you grant Accessibility once.
@@ -69,7 +69,7 @@ gh secret set SIGNING_P12_PASSWORD --repo abue-ammar/bettercast --body "$P12_PAS
 rm -f /tmp/signing.p12.base64   # holds your private key — delete it
 ```
 
-If you ever lose the secrets, just re-run this section — as long as the `Tinycast Self-Signed`
+If you ever lose the secrets, just re-run this section — as long as the `Bettercast Self-Signed`
 identity is still in your keychain, the exported identity is the same, so users are unaffected. If you
 lose the identity entirely, recreate it (step 1) and re-do this; existing users will re-grant
 Accessibility once on their next update, then it's stable again.
