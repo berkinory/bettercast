@@ -50,6 +50,8 @@ enum Theme {
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 16
         static let menuButton: CGFloat = 36
+        /// Minimum height for each value column so badges sit near the card's lower edge.
+        static let calcCardColumnHeight: CGFloat = 88
         static let clipboardListWidth: CGFloat = 290
         static let emojiCell: CGFloat = 56
         static let menuWidth: CGFloat = 276
@@ -67,7 +69,9 @@ enum Theme {
         static let rowTrailing = Font.callout
         static let sectionHeader = Font.subheadline.weight(.medium)
         /// The big value line on the calculator answer card (both source and target sides).
-        static let calcResult = Font.title
+        static let calcResult = Font.largeTitle
+        static let calcBadge = Font.footnote.weight(.semibold)
+        static let calcArrow = Font.callout.weight(.semibold)
         static let keyCap = Font.caption
         static let bar = Font.callout.weight(.medium)
         static let menuRow = Font.body

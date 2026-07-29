@@ -54,6 +54,10 @@ struct CalcTests {
 
         // Unit conversion — length / weight / temperature / time / area / volume / storage
         expectDisplay("10km to mi", "6.213711922 mi")
+        expectDisplay("20 days in wk", "2.857142857 week")
+        expectDisplay("20 days in weeks", "2.857142857 week")
+        expectExpression("20 day in wk", "20 day in wk")
+        expectExpression("20 days in weeks", "20 days in weeks")
         expectDisplay("10 km in miles", "6.213711922 mi")
         expectDisplay("5ft in cm", "152.4 cm")
         expectDisplay("1 m to ft", "3.280839895 ft")
@@ -115,7 +119,7 @@ struct CalcTests {
 
         // Card expression echo
         expectExpression("3*3", "3×3")
-        expectExpression("10km to mi", "10 km")
+        expectExpression("10km to mi", "10km to mi")
 
         // Badges on explicit conversions
         expectBadges("10km to mi", source: "Kilometers", target: "Miles")
@@ -143,6 +147,11 @@ struct CalcTests {
         expectDisplayAt("hrs till july", "8,207.7 hours")
         expectBadgesAt("hrs till july", source: "12:18 AM", target: "12:00 AM")
         expectDisplayAt("days till 9april", "259 days")
+        expectDisplayAt("days until 27 feb", "218 days")
+        expectDisplayAt("day until february 27", "218 days")
+        expectDisplayAt("years since feb 17 2005", "21 years")
+        expectDisplayAt("years since february 17, 2005", "21 years")
+        expectDisplayAt("months until feb 27", "7 months")
         expectBadgesAt(
             "days till 9april", source: "Friday, 24 July", target: "Friday, 9 April, 2027")
         expectDisplayAt("days till july", "342 days")
@@ -151,7 +160,12 @@ struct CalcTests {
         expectDisplayAt("days until tomorrow", "1 day")
         expectDisplayAt("weeks till 9april", "37 weeks")  // 259 / 7
         expectDisplayAt("today + 3 weeks", "Friday, 14 August")
+        expectDisplayAt("august 5 + 5", "Monday, 10 August")
         expectDisplayAt("now + 90 min", "Friday, 24 July at 1:48 AM")
+        expectDisplayAt("35 days ago", "Friday, 19 June")
+        expectDisplayAt("in 5 months", "Thursday, 24 December")
+        expectDisplayAt("3 days from now", "Monday, 27 July")
+        expectDisplayAt("monday in 3 weeks", "Monday, 17 August")
         expectDisplayAt("jul 4 - today", "345 days")
         expectBadgesAt("jul 4 - today", source: "Sunday, 4 July, 2027", target: "Friday, 24 July")
         // Arithmetic with spaced operators must still be plain math, not date math
@@ -216,29 +230,34 @@ struct CalcTests {
         expectBadgesAt("today + 3 weeks", source: "Friday, 24 July", target: "Result")
 
         // Currency — against the fixed `fx` table below (1 USD = 0.92 EUR = 0.79 GBP = 157 JPY)
-        expectDisplay("1 euro to dollars", "1.09 USD")
-        expectExpression("1 euro to dollars", "1 EUR")
+        expectDisplay("1 euro to dollars", "$1.09")
+        expectDisplay("20 usd", "$20.00")
+        expectDisplay("20 euro", "$21.74")
+        expectDisplay("€20", "$21.74")
+        expectExpression("20 usd", "20 usd")
+        expectExpression("1 euro to dollars", "1 euro to dollars")
         expectBadges("1 euro to dollars", source: "Euro", target: "US Dollar")
-        expectDisplay("50 GBP in euros", "58.23 EUR")
-        expectDisplay("100 dollars to yen", "15,700.00 JPY")
-        expectDisplay("100 usd -> eur", "92.00 EUR")
-        expectDisplay("2*50 usd to eur", "92.00 EUR")  // expression on the value side
-        expectDisplay("eur to usd", "1.09 USD")  // implied amount of 1
+        expectDisplay("50 GBP in euros", "€58.23")
+        expectDisplay("2 US dollars to British pounds", "£1.58")
+        expectDisplay("100 dollars to yen", "¥15,700.00")
+        expectDisplay("100 usd -> eur", "€92.00")
+        expectDisplay("2*50 usd to eur", "€92.00")  // expression on the value side
+        expectDisplay("eur to usd", "$1.09")  // implied amount of 1
         expectCopy("100 dollars to yen", "15700.00 JPY")
         // Currency signs, prefixed and suffixed
-        expectDisplay("€20 to GBP", "17.17 GBP")
-        expectDisplay("20€ to GBP", "17.17 GBP")
-        expectDisplay("£50 in dollars", "63.29 USD")
-        expectDisplay("$100 to yen", "15,700.00 JPY")
+        expectDisplay("€20 to GBP", "£17.17")
+        expectDisplay("20€ to GBP", "£17.17")
+        expectDisplay("£50 in dollars", "$63.29")
+        expectDisplay("$100 to yen", "¥15,700.00")
         // Sub-cent cross-rates widen instead of collapsing to 0.00
-        expectDisplay("1 jpy to usd", "0.006369 USD")
+        expectDisplay("1 jpy to usd", "$0.006369")
         // …and stay in plain notation past 1e-5, where "%g" would flip to "5.539e-05"
-        expectDisplay("1 idr to usd", "0.00005539 USD")
+        expectDisplay("1 idr to usd", "$0.00005539")
         expectCopy("1 idr to usd", "0.00005539 USD")
         // Currency never steals a query the unit table can answer
         expectDisplay("10 pounds to kilograms", "4.5359237 kg")
         expectDisplay("10 pounds", "4.5359237 kg")
-        expectDisplay("10 pounds to euros", "11.65 EUR")
+        expectDisplay("10 pounds to euros", "€11.65")
         expectBadges("10 pounds to euros", source: "British Pound", target: "Euro")
         // Currency ↔ unit is a friendly category error, like Weight ↔ Time
         expectError("10 usd to kg", "Cannot convert Currency to Weight.")
@@ -267,14 +286,14 @@ struct CalcTests {
         expectError("1 forint to usd", "No exchange rate for HUF.")
         expectError("1 taka to usd", "No exchange rate for BDT.")
         expectError("1 rand to usd", "No exchange rate for ZAR.")
-        expectDisplay("1 euro to dollars", "1.09 USD")
+        expectDisplay("1 euro to dollars", "$1.09")
         // Accented nouns resolve with or without the accent
         expectError("1 krónur to usd", "No exchange rate for ISK.")
         expectError("1 kronur to usd", "No exchange rate for ISK.")
         // Nouns several currencies share are the hand-written part, and they must still win
-        expectDisplay("100 dollars to yen", "15,700.00 JPY")
-        expectDisplay("10 pounds to euros", "11.65 EUR")
-        expectDisplay("1 franc to usd", "1.23 USD")
+        expectDisplay("100 dollars to yen", "¥15,700.00")
+        expectDisplay("10 pounds to euros", "€11.65")
+        expectDisplay("1 franc to usd", "$1.23")
         expectError("1 peso to usd", "No exchange rate for MXN.")
         // `krona` is contested (SEK vs ISK) and deliberately assigned to neither
         expectNil("1 krona to usd")
@@ -284,9 +303,9 @@ struct CalcTests {
         // The last word of a name isn't always its noun — "Special Drawing Rights" is not a "rights"
         expectNil("1 rights to usd")
         // A result too small to show at all reads as a clean zero, never "-0.00"
-        expectDisplay("-0.0000000000001 usd to eur", "0.00 EUR")
-        expectDisplay("0 usd to eur", "0.00 EUR")
-        expectDisplay("-5 usd to eur", "-4.60 EUR")
+        expectDisplay("-0.0000000000001 usd to eur", "€0.00")
+        expectDisplay("0 usd to eur", "€0.00")
+        expectDisplay("-5 usd to eur", "-€4.60")
         // CUP (Cuban peso) is a generated code that collides with a unit; volume still wins
         expectDisplay("1 cup to ml", "236.5882365 mL")
         expectDisplay("1 cup to tbsp", "16 tbsp")
@@ -294,6 +313,7 @@ struct CalcTests {
         // Consent gate: without it the currency path doesn't exist. Not an error card explaining a
         // feature the user never enabled — no card at all, so the query falls through to app search.
         expectNilWithoutConsent("1 euro to dollars")
+        expectNilWithoutConsent("20 usd")
         expectNilWithoutConsent("100 dollars to yen")
         expectNilWithoutConsent("50 GBP in euros")
         expectNilWithoutConsent("eur to usd")

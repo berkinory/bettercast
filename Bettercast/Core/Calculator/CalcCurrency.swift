@@ -51,28 +51,21 @@ enum CalcCurrency {
     /// The category label used in the mismatch message, mirroring `UnitCategory.displayName`.
     static let categoryName = "Currency"
 
-    /// Detects `expr currency (to|in|->) currency`, mirroring `CalcUnits.parseConversion`'s shape so both read the same. Runs *after* the unit path, so a query both sides of which are compatible units (`10 pounds to kg`) never reaches here. A missing amount defaults to 1, so `eur to usd` reads as `1 eur to usd`.
+    /// Detects a currency conversion with a connector between two currency or unit phrases. Currency names may be multi-word, so `2 US dollars to Turkish lira` is resolved from the phrase boundaries rather than fixed token positions.
     static func parseConversion(_ tokens: [CalcToken], source: CurrencySource) -> ConversionParse? {
-        // The consent gate, before any parsing: without it the feature does not exist.
         guard case .on(let rates) = source else { return nil }
         let tokens = amountFirst(tokens)
-        guard tokens.count >= 3, CalcUnits.isConnector(tokens[tokens.count - 2]),
-            case .ident(let toName) = tokens[tokens.count - 1],
-            case .ident(let fromName) = tokens[tokens.count - 3]
+        guard let connector = tokens.lastIndex(where: { CalcUnits.isConnector($0) }),
+            connector > 0, connector + 1 < tokens.count
         else { return nil }
 
-        // A side that is only a currency is what engages this path; a side that is neither currency nor unit is just a typo, and gets no card.
-        switch (byName[fromName], byName[toName]) {
-        case (nil, nil):
-            return nil
-        case (.some, nil):
-            guard let to = CalcUnits.byName[toName] else { return nil }
-            return .mismatch(from: categoryName, to: to.category.displayName)
-        case (nil, .some):
-            guard let from = CalcUnits.byName[fromName] else { return nil }
-            return .mismatch(from: from.category.displayName, to: categoryName)
-        case (let from?, let to?):
-            let valueTokens = Array(tokens[0..<(tokens.count - 3)])
+        let left = Array(tokens[..<connector])
+        let right = Array(tokens[(connector + 1)...])
+        let fromMatch = currencySuffix(in: left)
+        let to = currencyPhrase(right)
+
+        if let fromMatch, let to {
+            let valueTokens = Array(left[..<fromMatch.start])
             let input: Double
             if valueTokens.isEmpty {
                 input = 1
@@ -81,15 +74,79 @@ enum CalcCurrency {
             } else {
                 return nil
             }
-
-            guard let rates else { return .unavailable }
-            guard rates.rate(for: from.code) != nil else { return .noRate(code: from.code) }
-            guard rates.rate(for: to.code) != nil else { return .noRate(code: to.code) }
-            guard let output = rates.convert(input, from: from.code, to: to.code) else {
-                return .noRate(code: to.code)
-            }
-            return .value(input: input, from: from, to: to, output: output)
+            return converted(input: input, from: fromMatch.currency, to: to, rates: rates)
         }
+
+        if fromMatch != nil, let unit = unitPhrase(right) {
+            return .mismatch(from: categoryName, to: unit.category.displayName)
+        }
+        if let unit = unitSuffix(in: left), to != nil {
+            return .mismatch(from: unit.category.displayName, to: categoryName)
+        }
+        return nil
+    }
+
+    /// Resolves a currency amount with no connector against the user's locale currency: `20$`, `20 usd`, `20€`.
+    static func parseDefaultConversion(
+        _ tokens: [CalcToken], source: CurrencySource, targetCode: String
+    ) -> ConversionParse? {
+        guard case .on(let rates) = source,
+            let target = byName[targetCode.lowercased()],
+            let fromMatch = currencySuffix(in: amountFirst(tokens)),
+            fromMatch.start > 0
+        else { return nil }
+
+        let normalized = amountFirst(tokens)
+        guard let input = CalcParser.evaluate(Array(normalized[..<fromMatch.start])) else {
+            return nil
+        }
+        return converted(input: input, from: fromMatch.currency, to: target, rates: rates)
+    }
+
+    private static func converted(
+        input: Double, from: CurrencyDef, to: CurrencyDef, rates: CurrencyRates?
+    ) -> ConversionParse {
+        guard let rates else { return .unavailable }
+        guard rates.rate(for: from.code) != nil else { return .noRate(code: from.code) }
+        guard rates.rate(for: to.code) != nil else { return .noRate(code: to.code) }
+        guard let output = rates.convert(input, from: from.code, to: to.code) else {
+            return .noRate(code: to.code)
+        }
+        return .value(input: input, from: from, to: to, output: output)
+    }
+
+    private static func phrase<C: Collection>(_ tokens: C) -> String?
+    where C.Element == CalcToken {
+        let names = tokens.map { token -> String? in
+            guard case .ident(let name) = token else { return nil }
+            return name
+        }
+        guard names.allSatisfy({ $0 != nil }) else { return nil }
+        return names.compactMap { $0 }.joined(separator: " ")
+    }
+
+    private static func currencyPhrase(_ tokens: [CalcToken]) -> CurrencyDef? {
+        guard let name = phrase(tokens) else { return nil }
+        return byPhrase[name]
+    }
+
+    private static func currencySuffix(in tokens: [CalcToken]) -> (start: Int, currency: CurrencyDef)? {
+        guard !tokens.isEmpty else { return nil }
+        for start in 0..<tokens.count {
+            guard let name = phrase(tokens[start...]), let currency = byPhrase[name] else { continue }
+            return (start, currency)
+        }
+        return nil
+    }
+
+    private static func unitPhrase(_ tokens: [CalcToken]) -> UnitDef? {
+        guard let name = phrase(tokens) else { return nil }
+        return CalcUnits.byName[name]
+    }
+
+    private static func unitSuffix(in tokens: [CalcToken]) -> UnitDef? {
+        guard let token = tokens.last, case .ident(let name) = token else { return nil }
+        return CalcUnits.byName[name]
     }
 
     /// Money is written sign-first (`€20`), so a leading currency ident followed by its amount is swapped back into the `amount currency …` order every parser here expects.
@@ -137,6 +194,33 @@ enum CalcCurrency {
         for (code, words) in contested {
             guard let def = defs[code] else { continue }
             for word in words { table[word] = def }
+        }
+        return table
+    }()
+
+    static func definition(for code: String) -> CurrencyDef? {
+        byName[code.lowercased()]
+    }
+
+    /// Includes generated full names and their regular English plural for multi-word queries.
+    private static let byPhrase: [String: CurrencyDef] = {
+        var table = byName
+        for entry in CurrencyData.all {
+            let def = CurrencyDef(code: entry.code, name: entry.name)
+            let name = entry.name.lowercased()
+            table[name] = def
+            let words = name.split(separator: " ").map(String.init)
+            if let last = words.last {
+                let pluralLast: String
+                if last.hasSuffix("y") {
+                    pluralLast = String(last.dropLast()) + "ies"
+                } else if last.hasSuffix("s") {
+                    pluralLast = last
+                } else {
+                    pluralLast = last + "s"
+                }
+                table[(Array(words.dropLast()) + [pluralLast]).joined(separator: " ")] = def
+            }
         }
         return table
     }()

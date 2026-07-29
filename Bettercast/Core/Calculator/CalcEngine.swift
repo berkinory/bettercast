@@ -35,7 +35,9 @@ enum CalcEngine {
     /// Public entry: evaluates against the live clock. `currency` defaults to `.off` so any caller that
     /// hasn't been handed a consented source gets the feature disabled rather than silently enabled.
     static func evaluate(_ raw: String, currency: CurrencySource = .off) -> CalcResult? {
-        evaluate(raw, now: Date(), calendar: .current, currency: currency)
+        var calendar = Calendar.current
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        return evaluate(raw, now: Date(), calendar: calendar, currency: currency)
     }
 
     /// `now`/`calendar` are injected so the date/time paths are deterministic under `Tools/calc-test.swift`.
@@ -44,6 +46,7 @@ enum CalcEngine {
     ) -> CalcResult? {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, query.count <= 256 else { return nil }
+        let locale = calendar.locale ?? Locale.current
 
         // Date/time first: `hrs till july` carries no digit, so it must run before the numeric reject below.
         if let dateTime = CalcDateTime.evaluate(query, now: now, calendar: calendar) { return dateTime }
@@ -53,7 +56,7 @@ enum CalcEngine {
         // A lone literal or constant is more likely an app search than a calculation, so no card — except a radix literal ("0xff"), where echoing the decimal is useful.
         if tokens.count == 1 {
             if case .intLiteral(let value, let radix) = tokens[0], radix != 10 {
-                let display = CalcFormatter.grouped(String(value))
+                let display = CalcFormatter.grouped(String(value), locale: locale)
                 return CalcResult(
                     expression: query,
                     sourceBadge: "Hexadecimal", targetBadge: "Decimal",
@@ -62,18 +65,18 @@ enum CalcEngine {
             return nil
         }
 
-        if let base = baseConversion(tokens, query: query) { return base }
+        if let base = baseConversion(tokens, query: query, locale: locale) { return base }
 
         // Conversions run before the numeric reject below: `m to ft`, `day s` carry no digit.
         if let conversion = CalcUnits.parseConversion(tokens) ?? CalcUnits.parseUnitPairConversion(tokens) {
             switch conversion {
-            case .value(let input, let from, let to, let output):
+            case .value(_, let from, let to, let output):
                 return CalcResult(
-                    expression: "\(CalcFormatter.display(input)) \(from.symbol)",
+                    expression: query,
                     sourceBadge: from.name,
                     targetBadge: to.name,
                     payload: .value(
-                        display: "\(CalcFormatter.display(output)) \(to.symbol)",
+                        display: "\(CalcFormatter.display(output, locale: locale)) \(to.symbol)",
                         copyText: "\(CalcFormatter.copyText(output)) \(to.symbol)"))
             case .mismatch(let from, let to):
                 return CalcResult(
@@ -89,15 +92,19 @@ enum CalcEngine {
         // `10 pounds to euros` is money. Returns nil outright when the user hasn't consented.
         if let conversion = CalcCurrency.parseConversion(tokens, source: currency) {
             switch conversion {
-            case .value(let input, let from, let to, let output):
-                let amount = CalcFormatter.currency(output)
+            case .value(_, let from, let to, let output):
+                let amount = CalcFormatter.currency(output, locale: locale)
+                let display = CalcFormatter.currencyDisplay(
+                    amount: CalcFormatter.groupedLocalized(amount, locale: locale),
+                    code: to.code, locale: locale)
+                let copyAmount = CalcFormatter.currencyCopyText(output)
                 return CalcResult(
-                    expression: "\(CalcFormatter.display(input)) \(from.code)",
+                    expression: query,
                     sourceBadge: from.name,
                     targetBadge: to.name,
                     payload: .value(
-                        display: "\(CalcFormatter.grouped(amount)) \(to.code)",
-                        copyText: "\(amount) \(to.code)"))
+                        display: display,
+                        copyText: "\(copyAmount) \(to.code)"))
             case .mismatch(let from, let to):
                 return CalcResult(
                     expression: query,
@@ -117,20 +124,52 @@ enum CalcEngine {
         if let bare = CalcUnits.parseBareConversion(tokens) {
             let display =
                 bare.compound
-                ? CalcFormatter.compoundFeetInches(bare.output)
-                : "\(CalcFormatter.display(bare.output)) \(bare.to.symbol)"
+                ? CalcFormatter.compoundFeetInches(bare.output, locale: locale)
+                : "\(CalcFormatter.display(bare.output, locale: locale)) \(bare.to.symbol)"
             let copyText =
                 bare.compound
                 ? display : "\(CalcFormatter.copyText(bare.output)) \(bare.to.symbol)"
             return CalcResult(
-                expression: "\(CalcFormatter.display(bare.input)) \(bare.from.symbol)",
+                expression: "\(CalcFormatter.display(bare.input, locale: locale)) \(bare.from.symbol)",
                 sourceBadge: bare.from.name,
                 targetBadge: bare.to.name,
                 payload: .value(display: display, copyText: copyText))
         }
 
+        // A bare currency amount targets the user's locale currency: `20$`, `20 usd`, `20€`.
+        if let targetCode = locale.currency?.identifier,
+            let conversion = CalcCurrency.parseDefaultConversion(
+                tokens, source: currency, targetCode: targetCode)
+        {
+            switch conversion {
+            case .value(_, let from, let to, let output):
+                let amount = CalcFormatter.currency(output, locale: locale)
+                let display = CalcFormatter.currencyDisplay(
+                    amount: CalcFormatter.groupedLocalized(amount, locale: locale),
+                    code: to.code, locale: locale)
+                let copyAmount = CalcFormatter.currencyCopyText(output)
+                return CalcResult(
+                    expression: query,
+                    sourceBadge: from.name,
+                    targetBadge: to.name,
+                    payload: .value(
+                        display: display,
+                        copyText: "\(copyAmount) \(to.code)"))
+            case .noRate(let code):
+                return CalcResult(
+                    expression: query,
+                    payload: .error(message: "No exchange rate for \(code)."))
+            case .unavailable:
+                return CalcResult(
+                    expression: query,
+                    payload: .error(message: "Exchange rates unavailable — check your connection."))
+            case .mismatch:
+                return nil
+            }
+        }
+
         // Natural-language percent: `20% off 500`, `50 as % of 200`.
-        if let percent = CalcPercent.evaluate(tokens, query: query) { return percent }
+        if let percent = CalcPercent.evaluate(tokens, query: query, locale: locale) { return percent }
 
         // Cheap reject for the arithmetic fallback: plain math always carries a digit or a constant, keeping the common app-search case a no-card.
         guard
@@ -144,14 +183,16 @@ enum CalcEngine {
             sourceBadge: "Expression",
             targetBadge: "Result",
             payload: .value(
-                display: CalcFormatter.display(value),
+                display: CalcFormatter.display(value, locale: locale),
                 copyText: CalcFormatter.copyText(value)))
     }
 
     // MARK: - Number bases
 
     /// `255 to hex`, `0xff to decimal`, `0b1010 to binary` — exactly source → connector → target.
-    private static func baseConversion(_ tokens: [CalcToken], query: String) -> CalcResult? {
+    private static func baseConversion(
+        _ tokens: [CalcToken], query: String, locale: Locale
+    ) -> CalcResult? {
         guard tokens.count == 3, CalcUnits.isConnector(tokens[1]),
             case .ident(let target) = tokens[2]
         else { return nil }
@@ -183,7 +224,7 @@ enum CalcEngine {
             output = "0o" + String(source, radix: 8)
             targetBadge = "Octal"
         case "decimal", "dec":
-            output = CalcFormatter.grouped(String(source))
+            output = CalcFormatter.grouped(String(source), locale: locale)
             targetBadge = "Decimal"
         default:
             return nil

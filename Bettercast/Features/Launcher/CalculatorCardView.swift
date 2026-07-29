@@ -22,7 +22,9 @@ enum CalcMemo {
         if let cache, cache.query == query, cache.enabled == enabled, cache.stamp == stamp {
             return cache.result
         }
-        let result = CalcEngine.evaluate(query, currency: currency)
+        var calendar = Calendar.current
+        calendar.locale = Locale.current
+        let result = CalcEngine.evaluate(query, now: Date(), calendar: calendar, currency: currency)
         cache = (query, enabled, stamp, result)
         return result
     }
@@ -45,11 +47,14 @@ struct CalculatorCard: View {
             switch result.payload {
             case .value(let display, _):
                 HStack(spacing: 0) {
-                    CalcColumn(text: result.expression, badge: result.sourceBadge, weight: .medium)
-                    Image(systemName: "arrow.right")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                    CalcColumn(text: display, badge: result.targetBadge, weight: .semibold)
+                    CalcColumn(badge: result.sourceBadge, weight: .semibold) {
+                        CalcExpression(text: result.expression)
+                    }
+                    Color.clear
+                        .frame(width: Theme.Spacing.xxl)
+                    CalcColumn(badge: result.targetBadge, weight: .bold) {
+                        Text(display)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
             case .error(let message):
@@ -65,7 +70,7 @@ struct CalculatorCard: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.xl)
-        .padding(.vertical, Theme.Spacing.xxxl)
+        .padding(.vertical, Theme.Spacing.xl)
         .background(
             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                 .fill(Theme.Colors.cardFill)
@@ -75,27 +80,42 @@ struct CalculatorCard: View {
                 .fill(fill)
         )
         .armedHover($hovered)
+        .overlay {
+            if case .value = result.payload {
+                CalcArrowDivider()
+            }
+        }
     }
 }
 
-/// One side of the two-column answer card: the value line with an optional word-name badge pill beneath ("Meters", "9:00 AM").
-private struct CalcColumn: View {
-    let text: String
+/// One side of the two-column answer card: the value line with an optional word-name badge near the card's lower edge.
+private struct CalcColumn<Content: View>: View {
     let badge: String?
     let weight: Font.Weight
+    let content: Content
+
+    init(badge: String?, weight: Font.Weight, @ViewBuilder content: () -> Content) {
+        self.badge = badge
+        self.weight = weight
+        self.content = content()
+    }
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.md) {
-            Text(text)
-                .font(Theme.Typography.calcResult.weight(weight))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            if let badge {
-                Text(badge)
-                    .font(Theme.Typography.keyCap)
+        VStack(spacing: 0) {
+            ZStack {
+                content
+                    .font(Theme.Typography.calcResult.weight(weight))
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                    .foregroundStyle(.secondary)
+            }
+            .frame(maxHeight: .infinity)
+            if let badge {
+                Text(badge)
+                    .font(Theme.Typography.calcBadge)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, Theme.Spacing.sm)
                     .padding(.vertical, Theme.Spacing.xxs)
                     .background(
@@ -104,8 +124,55 @@ private struct CalcColumn: View {
                     )
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: Theme.Size.calcCardColumnHeight)
         .padding(.horizontal, Theme.Spacing.md)
+    }
+}
+
+private struct CalcArrowDivider: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.Colors.separator)
+                .frame(width: 1)
+            Spacer(minLength: 0)
+            Image(systemName: "arrow.right")
+                .font(Theme.Typography.calcArrow)
+                .foregroundStyle(.primary)
+                .padding(.vertical, Theme.Spacing.xs)
+            Spacer(minLength: 0)
+            Rectangle()
+                .fill(Theme.Colors.separator)
+                .frame(width: 1)
+        }
+        .frame(width: Theme.Spacing.xxl)
+        .frame(maxHeight: .infinity)
+    }
+}
+
+private struct CalcExpression: View {
+    let text: String
+
+    var body: some View {
+        styledText
+    }
+
+    private var styledText: Text {
+        let pattern = #"\b(to|in|until|till|til|since)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return Text(text)
+        }
+
+        var output = Text("")
+        var cursor = text.startIndex
+        let range = NSRange(location: 0, length: text.utf16.count)
+        for match in regex.matches(in: text, range: range) {
+            guard let matchRange = Range(match.range, in: text) else { continue }
+            output = Text("\(output)\(Text(text[cursor..<matchRange.lowerBound]))")
+            output = Text("\(output)\(Text(text[matchRange]).foregroundStyle(Theme.Colors.textTertiary))")
+            cursor = matchRange.upperBound
+        }
+        return Text("\(output)\(Text(text[cursor...]))")
     }
 }
 

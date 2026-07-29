@@ -9,8 +9,8 @@ also **pure**: the one input it can't compute, the FX rate table, is passed in (
 
 `CalcEngine.evaluate` runs:
 
-1. Natural-language date/time (`CalcDateTime`, e.g. `hrs till 9am`, `days till 9april`,
-   `today + 3 weeks`)
+1. Natural-language date/time (`CalcDateTime`, e.g. `hrs till 9am`, `days until 27 feb`,
+   `years since feb 17 2005`, `35 days ago`, `monday in 3 weeks`, `today + 3 weeks`)
 2. Numeric reject
 3. Tokenize
 4. Base conversion
@@ -28,7 +28,8 @@ against a fixed clock.
 
 `CalcCurrency` mirrors `CalcUnits`' shape: a lookup table plus a `parseConversion` over the same
 `expr from (to|in|->) to` token shape, so `eur to usd` implies an amount of 1 exactly like `m to ft`.
-A leading sign is swapped back into amount-first order, so `€20 to GBP` and `20€ to GBP` parse alike.
+It also resolves generated full names and plurals, so `2 US dollars to British pounds` works. A leading
+sign is swapped back into amount-first order, so `€20 to GBP` and `20€ to GBP` parse alike.
 
 The table is **generated except for the judgement calls**. `node Tools/gen-currencies.js` joins two
 sources on the ISO code and emits `CurrencyData.generated.swift`:
