@@ -57,7 +57,7 @@ if [[ "$SKIP_NOTARIZATION" != "1" ]]; then
     echo "▸ Submitting app for notarization…"
     ZIP="$STAGE/Bettercast-${VERSION}.zip"
     ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
-    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --timeout 30m
+    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --timeout 1h
     xcrun stapler staple "$APP"
     xcrun stapler validate "$APP"
 else

@@ -132,7 +132,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
           xcrun notarytool submit "$ZIP" \
             --key "$KEY_PATH" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
-            --wait --timeout 30m --output-format json
+            --wait --timeout 1h --output-format json
           xcrun stapler staple "$APP"
           xcrun stapler validate "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"

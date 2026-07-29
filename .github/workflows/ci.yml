@@ -3,7 +3,23 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - "Bettercast/**"
+      - "Tools/**"
+      - "Bettercast.xcodeproj/**"
+      - "project.yml"
+      - "Makefile"
+      - ".swift-format.json"
+      - ".github/workflows/ci.yml"
   pull_request:
+    paths:
+      - "Bettercast/**"
+      - "Tools/**"
+      - "Bettercast.xcodeproj/**"
+      - "project.yml"
+      - "Makefile"
+      - ".swift-format.json"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
