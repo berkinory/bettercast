@@ -33,6 +33,7 @@
 		4C13F8B2D09273FEC910C8B3 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02E15723E7A4230A6314D447 /* FavoritesStore.swift */; };
 		4E86B6CE006858D187EDDA21 /* AppIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFFD20F5ADAC4FA10AF765C5 /* AppIndex.swift */; };
 		540A8DB556BA384F67CA55B3 /* CalcPercent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EE73345F2143BA3A3FF8247 /* CalcPercent.swift */; };
+		54375480000C30BF076157C3 /* NativeConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34AC9115FB0C14111124A93 /* NativeConfirmation.swift */; };
 		56260949EB7B12582FF87672 /* CommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031A1FF2068559E3C45253A5 /* CommandRegistry.swift */; };
 		572B8FF9DDD48DE02D96F2D1 /* EmojiGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE6486377890F8088F39B8C /* EmojiGridView.swift */; };
 		64AEF278B0BB2F6EADC0D270 /* CurrencyData.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB9E8CB9928E96E71378FA4 /* CurrencyData.generated.swift */; };
@@ -151,6 +152,7 @@
 		EC44B7DB01BAA4B55129CBC5 /* Bundle+AppName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+AppName.swift"; sourceTree = "<group>"; };
 		EDB9E8CB9928E96E71378FA4 /* CurrencyData.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyData.generated.swift; sourceTree = "<group>"; };
 		F2693267F9F03712FC1896C8 /* RootPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPaletteView.swift; sourceTree = "<group>"; };
+		F34AC9115FB0C14111124A93 /* NativeConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeConfirmation.swift; sourceTree = "<group>"; };
 		F51996F28EC8A0B1DB1F37D4 /* AppCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCore.swift; sourceTree = "<group>"; };
 		FFFD20F5ADAC4FA10AF765C5 /* AppIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIndex.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -195,6 +197,7 @@
 				BE2E023A17E374A164C698D9 /* ImageThumbnail.swift */,
 				265BAF7566BAD9205D7DA372 /* LaunchAtLogin.swift */,
 				D6B10EFBFC2FC71096F6F398 /* LauncherRankingStore.swift */,
+				F34AC9115FB0C14111124A93 /* NativeConfirmation.swift */,
 				3A52AB60AC0DA311543DA8A1 /* NotificationToken.swift */,
 				4F154F147CA4AFCA0939DF64 /* OnboardingState.swift */,
 				68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */,
@@ -462,6 +465,7 @@
 				952D6A1245CB49FAB75E79E8 /* LauncherRankingStore.swift in Sources */,
 				66F7CAC07467B8F0D2DFA9E3 /* LauncherSettingsView.swift in Sources */,
 				2B3F00C89359013136BE3A7A /* LauncherView.swift in Sources */,
+				54375480000C30BF076157C3 /* NativeConfirmation.swift in Sources */,
 				0FC618A5BD62270AD1DBA589 /* NotificationToken.swift in Sources */,
 				0A3708F1D210874864AFD448 /* OnboardingState.swift in Sources */,
 				B1BEB7B2984F1501112ED966 /* OnboardingView.swift in Sources */,
@@ -563,7 +567,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.2;
+				MARKETING_VERSION = 0.0.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";
@@ -652,7 +656,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.2;
+				MARKETING_VERSION = 0.0.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

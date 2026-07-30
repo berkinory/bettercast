@@ -28,7 +28,6 @@ struct RootPaletteView: View {
     @FocusState private var searchFocused: Bool
     @State private var showActions = false
     @State private var showAppMenu = false
-    @State private var feedback: PaletteFeedback?
     /// The selection's running state, sampled once by `openActions` — an app launching or quitting elsewhere must not add or drop the Quit row while the menu is up. `RunningAppsMonitor` is deliberately not observed here: only `LauncherList` needs live running state, and observing it would re-render the whole palette on every workspace launch/terminate.
     @State private var selectionIsRunning = false
     /// Highlighted row of whichever popover menu is open; reset to the first row on open, moved by ↑/↓ and hover, activated by ↵/click.
@@ -138,7 +137,8 @@ struct RootPaletteView: View {
         case .clipboard:
             if let clip = selectedClipItem {
                 return ClipboardActionsMenu.content(
-                    item: clip, core: core, store: store, target: vm.pasteTarget)
+                    item: clip, core: core, target: vm.pasteTarget,
+                    onFeedback: showFeedback(_:))
             }
             return nil
         case .emoji:
@@ -248,7 +248,7 @@ struct RootPaletteView: View {
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
             searchFocused = true
-            feedback = nil
+            vm.feedback = nil
             showActions = false
             showAppMenu = false
         }
@@ -259,7 +259,7 @@ struct RootPaletteView: View {
         }
         .onChange(of: vm.mode) {
             vm.selection = 0
-            feedback = nil
+            vm.feedback = nil
             showActions = false
             listScroll = ListScrollIntent(kind: .top)
             emojiScroll = EmojiScrollIntent(kind: .top)
@@ -296,11 +296,11 @@ struct RootPaletteView: View {
             listScroll = ListScrollIntent(kind: .follow)
         }
         .onAppear { searchFocused = true }
-        .task(id: feedback?.id) {
-            guard feedback != nil else { return }
+        .task(id: vm.feedback?.id) {
+            guard vm.feedback != nil else { return }
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
-            withAnimation(Self.feedbackAnimation) { feedback = nil }
+            withAnimation(Self.feedbackAnimation) { vm.feedback = nil }
         }
         // Resize first, then reassert the top after compact mode adopts the full frame.
         .onChange(of: core.paletteIsCollapsed) { oldCollapsed, collapsed in
@@ -354,13 +354,15 @@ struct RootPaletteView: View {
         // Horizontal arrows step the emoji grid; everywhere else they stay with the field editor's caret. An open menu swallows them so the list behind never moves.
         .onKeyPress(.leftArrow) {
             if menuOpen { return .handled }
-            guard vm.mode == .emoji else { return .ignored }
+            let isEmojiMode = vm.mode == .emoji
+            guard isEmojiMode else { return .ignored }
             move(-1)
             return .handled
         }
         .onKeyPress(.rightArrow) {
             if menuOpen { return .handled }
-            guard vm.mode == .emoji else { return .ignored }
+            let isEmojiMode = vm.mode == .emoji
+            guard isEmojiMode else { return .ignored }
             move(1)
             return .handled
         }
@@ -376,13 +378,15 @@ struct RootPaletteView: View {
             switch vm.mode {
             case .emoji:
                 guard emojiResults.indices.contains(selection) else { return .ignored }
+                let emoji = emojiResults[selection]
                 if command {
-                    core.copyEmoji(emojiResults[selection])
+                    core.copyEmoji(emoji)
                 } else {
-                    core.pasteEmojiKeepingWindowOpen(emojiResults[selection])
+                    core.pasteEmojiKeepingWindowOpen(emoji)
                 }
             case .clipboard:
-                guard command, clipResults.indices.contains(selection) else { return .ignored }
+                guard command else { return .ignored }
+                guard clipResults.indices.contains(selection) else { return .ignored }
                 core.copyToClipboard(clipResults[selection])
             case .launcher:
                 // ⌘↵ reveals applications and settings in Finder, matching the Actions menu.
@@ -395,12 +399,11 @@ struct RootPaletteView: View {
         }
         // ⌘F toggles the selected app's favorite state while its Actions menu is open.
         .onKeyPress(keys: ["f"], phases: .down) { press in
-            guard showActions,
-                vm.mode == .launcher,
-                press.modifiers.contains(.command),
-                press.modifiers.intersection([.shift, .option, .control]).isEmpty,
-                let app = selectedAppEntry
+            guard showActions, vm.mode == .launcher else { return .ignored }
+            guard press.modifiers.contains(.command),
+                press.modifiers.intersection([.shift, .option, .control]).isEmpty
             else { return .ignored }
+            guard let app = selectedAppEntry else { return .ignored }
             toggleFavorite(app)
             closeMenus()
             return .handled
@@ -617,12 +620,12 @@ struct RootPaletteView: View {
         .padding(.horizontal, Theme.Spacing.md)
         .frame(height: Theme.Size.bottomBarHeight)
         .frame(maxWidth: .infinity)
-        .animation(Self.feedbackAnimation, value: feedback?.id)
+        .animation(Self.feedbackAnimation, value: vm.feedback?.id)
     }
 
     @ViewBuilder
     private var footerMenuButton: some View {
-        if let feedback {
+        if let feedback = vm.feedback {
             PaletteFeedbackButton(message: feedback.message)
         } else if vm.mode == .launcher {
             MenuCircleButton {
@@ -680,8 +683,12 @@ struct RootPaletteView: View {
     private func toggleFavorite(_ app: AppEntry) {
         let added = !favorites.isFavorite(app)
         favorites.toggle(app)
+        showFeedback(added ? "Added to favorites" : "Removed from favorites")
+    }
+
+    private func showFeedback(_ message: String) {
         withAnimation(Self.feedbackAnimation) {
-            feedback = PaletteFeedback(message: added ? "Added to favorites" : "Removed from favorites")
+            vm.postFeedback(message)
         }
     }
 
@@ -722,7 +729,8 @@ struct RootPaletteView: View {
 
     private func deleteSelectedClip() {
         guard clipResults.indices.contains(selection) else { return }
-        store.remove(clipResults[selection])
+        core.deleteClipboardEntry(clipResults[selection])
+        showFeedback("Deleted entry")
     }
 
     // MARK: - Actions
@@ -789,11 +797,6 @@ struct RootPaletteView: View {
             core.pasteEmoji(emojiResults[selection])
         }
     }
-}
-
-private struct PaletteFeedback: Equatable, Identifiable {
-    let id = UUID()
-    let message: String
 }
 
 private struct PaletteFeedbackButton: View {

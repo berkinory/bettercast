@@ -31,6 +31,11 @@ enum PaletteMode: String, CaseIterable, Identifiable {
 }
 
 /// The app a paste will land in, resolved once per palette show so the footer pill and menu rows can name it without re-reading `NSWorkspace` on every render.
+struct PaletteFeedback: Equatable, Identifiable {
+    let id = UUID()
+    let message: String
+}
+
 struct PasteTarget: Equatable {
     let name: String
     /// Bundle path for `IconCache` — nil for a target with no on-disk bundle.
@@ -55,6 +60,7 @@ final class PaletteViewModel: ObservableObject {
     @Published var focusToken = UUID()
     /// Changes only when `prepare` resets the palette, so the lists snap their scroll to the top even when query/mode were already at their defaults (`focusToken` can't serve: it bumps on every reopen, which must preserve a within-timeout scroll).
     @Published var resetToken = UUID()
+    @Published var feedback: PaletteFeedback?
     /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
     @Published var followToken = UUID()
     /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
@@ -77,6 +83,10 @@ final class PaletteViewModel: ObservableObject {
         menuOpen = false
         focusToken = UUID()
         resetToken = UUID()
+    }
+
+    func postFeedback(_ message: String) {
+        feedback = PaletteFeedback(message: message)
     }
 }
 
@@ -286,7 +296,6 @@ final class AppCore: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let plan = await appUninstaller.plan(for: app)
-            hidePalette(restoreFocus: false)
             guard confirmUninstall(plan) else { return }
 
             if runningApps.isRunning(app) {
@@ -310,6 +319,7 @@ final class AppCore: ObservableObject {
             launcherRanking.reset(itemKey: app.preferenceKey)
             visibility.setItemVisible(true, for: app)
             if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
+            palette.postFeedback("Moved \(app.name) to Trash")
             Task { await appIndex.refresh() }
             if !result.failedPaths.isEmpty {
                 let count = result.failedPaths.count
@@ -321,9 +331,6 @@ final class AppCore: ObservableObject {
     }
 
     private func confirmUninstall(_ plan: AppUninstallPlan) -> Bool {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Move \(plan.app.name) to Trash?"
         let userCount = plan.userCandidates.count
         let systemCount = plan.systemCandidates.count
         var details =
@@ -344,13 +351,11 @@ final class AppCore: ObservableObject {
         if totalBytes > 0 {
             details += "\n\nTotal size: \(uninstallSizeText(totalBytes))"
         }
-        alert.informativeText = details
-        alert.alertStyle = .warning
-        let uninstallButton = alert.addButton(withTitle: "Move to Trash")
-        uninstallButton.hasDestructiveAction = true
-        uninstallButton.keyEquivalent = ""
-        alert.addButton(withTitle: "Cancel").keyEquivalent = "\r"
-        return alert.runModal() == .alertFirstButtonReturn
+        return windowController.presentConfirmation(
+            message: "Move \(plan.app.name) to Trash?",
+            informativeText: details,
+            confirmTitle: "Move to Trash"
+        )
     }
 
     private func uninstallSizeText(_ bytes: Int64) -> String {
@@ -383,23 +388,16 @@ final class AppCore: ObservableObject {
     /// Quit All: the one action whose blast radius reaches outside Bettercast, so it confirms first. The target list is resolved once and both counted and terminated, so the set the user approves is the set that quits.
     private func quitAllApps() {
         let targets = AppLauncher.quitAllTargets()
-        guard !targets.isEmpty, Self.confirmQuitAll(count: targets.count) else { return }
+        guard !targets.isEmpty, confirmQuitAll(count: targets.count) else { return }
         for app in targets { app.terminate() }
     }
 
-    private static func confirmQuitAll(count: Int) -> Bool {
-        // An accessory app's alert opens behind the frontmost app unless it activates first.
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = count == 1 ? "Quit 1 application?" : "Quit \(count) applications?"
-        alert.informativeText = "Applications with unsaved changes will ask you to save."
-        alert.alertStyle = .warning
-        let quitButton = alert.addButton(withTitle: "Quit All")
-        quitButton.hasDestructiveAction = true
-        // `hasDestructiveAction` only tints the button — it stays the ↵ default. Hand ↵ to Cancel instead: this command is one ↵ away in the palette, and a second reflexive ↵ must not quit the desktop.
-        quitButton.keyEquivalent = ""
-        alert.addButton(withTitle: "Cancel").keyEquivalent = "\r"
-        return alert.runModal() == .alertFirstButtonReturn
+    private func confirmQuitAll(count: Int) -> Bool {
+        return windowController.presentConfirmation(
+            message: count == 1 ? "Quit 1 application?" : "Quit \(count) applications?",
+            informativeText: "Applications with unsaved changes will ask you to save.",
+            confirmTitle: "Quit All"
+        )
     }
 
     private func runCommand(_ entry: AppEntry) {
@@ -412,8 +410,6 @@ final class AppCore: ObservableObject {
             hidePalette(restoreFocus: false)
             showSettings()
         case .quitAllApps:
-            // Hide before confirming: the palette is a floating panel and would sit above the alert.
-            hidePalette(restoreFocus: false)
             quitAllApps()
         case .quit:
             NSApp.terminate(nil)
@@ -472,6 +468,20 @@ final class AppCore: ObservableObject {
         clipboardStore.togglePinned(item)
         selectClip(item)
         palette.followToken = UUID()
+    }
+
+    func deleteClipboardEntry(_ item: ClipboardItem) {
+        clipboardStore.remove(item)
+    }
+
+    func confirmAndDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            windowController.confirmDeleteAllClipboardEntries { [weak self] in
+                self?.clipboardStore.clearAll()
+                onConfirmed()
+            }
+        }
     }
 
     /// Put the selection on `item`'s row in the list as currently filtered — pinned rows hold the top, so a row that moved isn't always index 0.

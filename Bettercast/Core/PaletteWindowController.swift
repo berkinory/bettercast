@@ -7,6 +7,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private var panel: PalettePanel?
     private(set) var previousApp: NSRunningApplication?
     private var popToRootTimer: Timer?
+    private var isPresentingConfirmation = false
     /// Left/top edge of the panel, resolved once per show and reused across compact↔expanded resizes so both states share an exact top edge (only the height changes). Cleared on hide so the next summon re-resolves for the current screen.
     private var anchor: (x: CGFloat, topEdgeY: CGFloat)?
 
@@ -78,6 +79,25 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         return true
     }
 
+    /// Present a native confirmation dialog while keeping the floating palette visible.
+    func confirmDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
+        guard presentConfirmation(
+            message: "Delete all clipboard entries?",
+            informativeText: "This can't be undone.",
+            confirmTitle: "Delete All Entries"
+        ) else { return }
+        onConfirmed()
+    }
+
+    func presentConfirmation(
+        message: String, informativeText: String, confirmTitle: String
+    ) -> Bool {
+        isPresentingConfirmation = true
+        defer { isPresentingConfirmation = false }
+        return NativeConfirmation.present(
+            message: message, informativeText: informativeText, confirmTitle: confirmTitle)
+    }
+
     /// Paste into the previously focused app while leaving the palette frontmost (keystroke delivered straight to that app's process).
     @discardableResult
     func pasteKeepingWindowOpen(_ item: ClipboardItem, store: ClipboardStore) -> Bool {
@@ -93,7 +113,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     /// Dismiss when the palette loses key status (click-away, ⌘-Tab, app switch).
     func windowDidResignKey(_ notification: Notification) {
-        guard isVisible else { return }
+        guard isVisible, !isPresentingConfirmation else { return }
         hide(restoreFocus: false)
     }
 
