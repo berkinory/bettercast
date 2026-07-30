@@ -36,7 +36,7 @@ struct PermissionsSettingsView: View {
                     tint: .blue
                 ) {
                     Image(systemName: accessibilityTrusted ? "checkmark.circle.fill" : "xmark.circle")
-                        .foregroundStyle(accessibilityTrusted ? Color.green : Color.secondary)
+                        .foregroundStyle(accessibilityTrusted ? Theme.Colors.success : Theme.Colors.textSecondary)
                 }
             }
         }

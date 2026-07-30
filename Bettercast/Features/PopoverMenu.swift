@@ -102,14 +102,14 @@ private struct PopoverMenuRow: View {
                     Image(systemName: name)
                         .font(Theme.Typography.menuIcon)
                         .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(item.isDestructive ? Color.red : Color.secondary)
+                        .foregroundStyle(item.isDestructive ? Theme.Colors.destructive : Theme.Colors.textPrimary)
                         .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
                 case .file(let path):
                     MenuFileIcon(path: path)
                 }
                 Text(item.title)
                     .font(Theme.Typography.menuRow)
-                    .foregroundStyle(item.isDestructive ? Color.red : Color.primary)
+                    .foregroundStyle(item.isDestructive ? Theme.Colors.destructive : Theme.Colors.textPrimary)
                 Spacer(minLength: Theme.Spacing.sm)
                 if let shortcut = item.shortcut {
                     HStack(spacing: Theme.Spacing.xxs) {

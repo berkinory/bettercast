@@ -26,7 +26,7 @@ struct EmojiSettingsView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     HStack(spacing: Theme.Spacing.md) {
                         Image(systemName: "hand.wave")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(Theme.Typography.iconMedium)
                             .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(
                                 width: Theme.Settings.Size.controlIcon,
@@ -35,9 +35,9 @@ struct EmojiSettingsView: View {
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                             Text("Preferred tone")
-                                .font(.callout.weight(.medium))
+                                .font(Theme.Typography.calloutMedium)
                             Text("Used for supported emoji in results and pasted text.")
-                                .font(.caption)
+                                .font(Theme.Typography.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -61,7 +61,7 @@ private struct SkinToneSelector: View {
                     selection = tone
                 } label: {
                     Text(tone.sample)
-                        .font(.title3)
+                        .font(Theme.Typography.title3)
                         .frame(maxWidth: .infinity)
                         .frame(height: Theme.Settings.Size.skinToneButton)
                         .background(

@@ -55,9 +55,9 @@ struct AboutView: View {
 
             VStack(spacing: Theme.Spacing.sm) {
                 Text(Bundle.main.appDisplayName)
-                    .font(.title.weight(.bold))
+                    .font(Theme.Typography.titleBold)
                 Text(Self.version)
-                    .font(.caption.monospacedDigit())
+                    .font(Theme.Typography.captionMonospacedDigit)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, Theme.Spacing.md)
                     .padding(.vertical, Theme.Spacing.xs / 2)
@@ -70,7 +70,7 @@ struct AboutView: View {
             }
 
             Text("A focused, native launcher for macOS.")
-                .font(.callout)
+                .font(Theme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
     }
@@ -105,7 +105,7 @@ struct AboutView: View {
 
     private var footer: some View {
         Text("Tinycast © 2026 Abue Ammar · AGPL-3.0")
-            .font(.caption2)
+            .font(Theme.Typography.caption2)
             .foregroundStyle(.tertiary)
     }
 }
@@ -155,14 +155,14 @@ private struct AboutLinkRow: View {
                     .frame(width: Theme.Settings.Size.controlIcon)
                     .foregroundStyle(.secondary)
                 Text(link.title)
-                    .font(.body)
+                    .font(Theme.Typography.body)
                 Spacer(minLength: Theme.Spacing.xl)
                 Text(link.detail)
-                    .font(.caption)
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                 Image(systemName: "arrow.up.right")
-                    .font(.caption.weight(.semibold))
+                    .font(Theme.Typography.captionSemibold)
                     .foregroundStyle(hovered ? .secondary : .tertiary)
             }
             .padding(.horizontal, Theme.Spacing.xl)
@@ -181,7 +181,7 @@ private struct AboutLinkRow: View {
         switch link.glyph {
         case .symbol(let name):
             Image(systemName: name)
-                .font(.system(size: 13, weight: .medium))
+                .font(Theme.Typography.iconMedium)
         case .brand(let name):
             // Brand marks paint edge to edge, so they sit a point under the SF Symbol box to read the same weight.
             Image(name)

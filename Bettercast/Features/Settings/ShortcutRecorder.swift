@@ -113,7 +113,7 @@ struct ShortcutRecorder: View {
     private var clearButton: some View {
         Button(action: clearShortcut) {
             Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .semibold))
+                .font(Theme.Typography.iconClose)
                 .foregroundStyle(
                     clearHovered ? Theme.Colors.textSecondary : Theme.Colors.textTertiary
                 )
@@ -193,7 +193,7 @@ struct ShortcutRecorder: View {
             let caps = KeyShortcut.modifierSymbols(from: session.heldModifiers)
             if caps.isEmpty {
                 Text("Press Keys")
-                    .font(.callout.weight(.medium))
+                    .font(Theme.Typography.calloutMedium)
                     .foregroundStyle(Theme.Colors.textSecondary)
             } else {
                 HotkeyInlineValue(caps: caps)
@@ -202,7 +202,7 @@ struct ShortcutRecorder: View {
             HotkeyInlineValue(caps: shortcut.keycaps)
         } else {
             Text("Record Hotkey")
-                .font(.callout.weight(.medium))
+                .font(Theme.Typography.calloutMedium)
                 .foregroundStyle(Theme.Colors.textTertiary)
         }
     }
@@ -217,8 +217,8 @@ private struct HotkeyInlineValue: View {
                 Text(cap)
             }
         }
-        .font(.callout.weight(.medium))
-        .foregroundStyle(.primary)
+        .font(Theme.Typography.calloutMedium)
+        .foregroundStyle(Theme.Colors.textPrimary)
     }
 }
 
@@ -318,7 +318,7 @@ private struct ShortcutCapturePopover: View {
             VStack(spacing: Theme.Spacing.xxl) {
                 if captureCaps.isEmpty {
                     Text("Press a hotkey")
-                        .font(.headline)
+                        .font(Theme.Typography.headline)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 } else {
                     CaptureKeycaps(caps: captureCaps)
@@ -329,11 +329,11 @@ private struct ShortcutCapturePopover: View {
         case .conflict(let owner, let shortcut):
             VStack(spacing: Theme.Spacing.xl) {
                 Text("Already used by \(owner)")
-                    .font(.headline)
+                    .font(Theme.Typography.headline)
                     .foregroundStyle(Theme.Settings.Colors.captureConflict)
                 CaptureKeycaps(caps: shortcut.keycaps)
                 Text("Discard or record a new hotkey")
-                    .font(.callout.weight(.medium))
+                    .font(Theme.Typography.calloutMedium)
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -366,10 +366,10 @@ private struct ShortcutCapturePopover: View {
                 .interpolation(.high)
                 .frame(width: 18, height: 18)
             Text(targetName)
-                .font(.callout.weight(.semibold))
+                .font(Theme.Typography.calloutSemibold)
             Spacer()
             Text("Close")
-                .font(.callout.weight(.medium))
+                .font(Theme.Typography.calloutMedium)
                 .foregroundStyle(Theme.Colors.textSecondary)
             CaptureKeycap(text: "Esc", compact: true)
         }
@@ -399,8 +399,8 @@ private struct CaptureKeycap: View {
 
     var body: some View {
         Text(text)
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(.primary)
+            .font(Theme.Typography.calloutSemibold)
+            .foregroundStyle(Theme.Colors.textPrimary)
             .padding(.horizontal, compact ? Theme.Spacing.sm : Theme.Spacing.lg)
             .frame(
                 minWidth: compact

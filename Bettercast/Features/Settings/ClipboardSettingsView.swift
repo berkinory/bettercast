@@ -55,7 +55,7 @@ struct ClipboardSettingsView: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     if settings.clipboardDisabledApps.isEmpty {
                         Text("Clipboard changes from every app are recorded.")
-                            .font(.caption)
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         LazyVGrid(
@@ -81,7 +81,7 @@ struct ClipboardSettingsView: View {
                         showingAppPicker = true
                     } label: {
                         Label("Add Application…", systemImage: "plus")
-                            .font(.caption.weight(.semibold))
+                            .font(Theme.Typography.captionSemibold)
                     }
                     .buttonStyle(.borderless)
                     .popover(isPresented: $showingAppPicker, arrowEdge: .bottom) {
@@ -135,12 +135,12 @@ private struct ExcludedAppChip: View {
                 .interpolation(.high)
                 .frame(width: 22, height: 22)
             Text(name)
-                .font(.caption.weight(.medium))
+                .font(Theme.Typography.captionMedium)
                 .lineLimit(1)
             Spacer(minLength: 0)
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 12))
+                    .font(Theme.Typography.iconSmall)
                     .foregroundStyle(.tertiary)
                     .frame(
                         width: Theme.Settings.Size.visibilityButton,
@@ -245,7 +245,7 @@ private struct AppPickerPopover: View {
             .overlay {
                 if candidates.isEmpty {
                     Text(query.isEmpty ? "No applications available." : "No matching applications.")
-                        .font(.callout)
+                        .font(Theme.Typography.callout)
                         .foregroundStyle(.secondary)
                 }
             }

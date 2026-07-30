@@ -87,7 +87,7 @@ struct ShortcutsSettingsView: View {
                 .accessibilityLabel("Clear search")
             }
         }
-        .font(.callout)
+        .font(Theme.Typography.callout)
         .padding(.horizontal, Theme.Spacing.lg)
         .frame(height: Theme.Settings.Size.searchHeight)
         .background(
@@ -125,8 +125,8 @@ private struct ShortcutTable: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack {
                 Label("Show category", systemImage: kindVisible ? "eye" : "eye.slash")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typography.captionMedium)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
                 Toggle("", isOn: kindBinding)
                     .labelsHidden()
@@ -176,8 +176,8 @@ private struct ShortcutTable: View {
             .overlay {
                 if entries.isEmpty {
                     Text(query.isEmpty ? "Nothing here yet." : "No matches for “\(query)”.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .font(Theme.Typography.callout)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
             .opacity(kindVisible ? 1 : 0.45)
@@ -193,7 +193,7 @@ private struct ShortcutTable: View {
             Text("Show")
                 .frame(width: Theme.Settings.Size.visibilityButton)
         }
-        .font(.caption2.weight(.semibold))
+        .font(Theme.Typography.caption2Semibold)
         .foregroundStyle(.tertiary)
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.xs)
@@ -228,7 +228,7 @@ private struct ShortcutTableRow: View {
                 .interpolation(.high)
                 .frame(width: 22, height: 22)
             Text(entry.name)
-                .font(.callout.weight(.medium))
+                .font(Theme.Typography.calloutMedium)
                 .lineLimit(1)
             Spacer(minLength: Theme.Spacing.md)
 

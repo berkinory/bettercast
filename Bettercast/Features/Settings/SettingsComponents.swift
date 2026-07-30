@@ -55,7 +55,7 @@ struct SettingsFeatureHeader: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.xl) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .medium))
+                .font(Theme.Typography.iconLarge)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .frame(
@@ -65,10 +65,10 @@ struct SettingsFeatureHeader: View {
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(Theme.Typography.title3Semibold)
                 Text(subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typography.callout)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .lineLimit(1)
             }
         }
@@ -84,8 +84,8 @@ struct SettingsSection<Content: View>: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             if let header {
                 Text(header)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typography.sectionHeader)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .padding(.leading, Theme.Spacing.xs)
             }
             VStack(spacing: 0) { content }
@@ -134,7 +134,7 @@ struct SettingsControlRow<Trailing: View>: View {
         HStack(spacing: Theme.Settings.Layout.rowGap) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.iconMedium)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(
@@ -146,7 +146,7 @@ struct SettingsControlRow<Trailing: View>: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                 HStack(spacing: Theme.Spacing.sm) {
                     Text(title)
-                        .font(.callout.weight(.medium))
+                        .font(Theme.Typography.calloutMedium)
                     if let statusDot {
                         Circle()
                             .fill(statusDot)
@@ -155,7 +155,7 @@ struct SettingsControlRow<Trailing: View>: View {
                 }
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(Theme.Typography.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -192,17 +192,17 @@ struct SettingsStatusCard<Trailing: View>: View {
             )
             .overlay(
                 Image(systemName: systemImage)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(Theme.Typography.iconLargeSemibold)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(tint)
             )
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                 Text(title)
-                    .font(.callout.weight(.semibold))
+                    .font(Theme.Typography.calloutSemibold)
                 if let message {
                     Text(message)
-                        .font(.caption)
+                        .font(Theme.Typography.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

@@ -153,7 +153,7 @@ struct SettingsRootView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(Theme.Colors.panelDimming).ignoresSafeArea())
+        .background(Theme.Colors.panelSurface.ignoresSafeArea())
         .background(VisualEffectView().ignoresSafeArea())
         .tint(Theme.Colors.textSecondary)
         .onReceive(NotificationCenter.default.publisher(for: .bettercastSelectSettingsRoute)) {
@@ -235,7 +235,7 @@ struct SettingsRootView: View {
                 ForEach(sidebarGroups) { section in
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                         Text(section.group.title)
-                            .font(.caption2.weight(.medium))
+                            .font(Theme.Typography.caption2Medium)
                             .foregroundStyle(.tertiary)
                             .padding(.horizontal, Theme.Spacing.lg)
 
@@ -291,11 +291,11 @@ private struct SidebarSearchField: View {
 
         HStack(spacing: Theme.Spacing.sm) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .medium))
+                .font(Theme.Typography.iconMedium)
                 .foregroundStyle(isFocused.wrappedValue ? .primary : .secondary)
             TextField("Search settings", text: $query, onCommit: onActivate)
                 .textFieldStyle(.plain)
-                .font(.callout)
+                .font(Theme.Typography.callout)
                 .focused(isFocused)
                 .onCommand(#selector(NSResponder.moveDown(_:))) { onMove(1) }
                 .onCommand(#selector(NSResponder.moveUp(_:))) { onMove(-1) }
@@ -311,7 +311,7 @@ private struct SidebarSearchField: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
+                        .font(Theme.Typography.iconSmall)
                         .foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
@@ -346,13 +346,13 @@ private struct SidebarRow: View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.lg) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(Theme.Typography.iconMedium)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .frame(width: Theme.Settings.Size.sidebarIcon)
 
                 Text(title)
-                    .font(.callout.weight(isSelected ? .medium : .regular))
+                    .font(Theme.Typography.callout.weight(isSelected ? .medium : .regular))
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }

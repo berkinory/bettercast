@@ -130,7 +130,7 @@ private struct LauncherModeTile: View {
             VStack(spacing: Theme.Spacing.md) {
                 preview
                 Label(title, systemImage: systemImage)
-                    .font(.caption.weight(.semibold))
+                    .font(Theme.Typography.captionSemibold)
                     .foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity)
@@ -171,7 +171,7 @@ private struct LauncherModeTile: View {
             cornerRadius: Theme.Settings.Radius.modePreview,
             style: .continuous
         )
-        .fill(Color.black.opacity(0.38))
+        .fill(Theme.Colors.previewDimming)
         .frame(
             width: Theme.Settings.Size.modePreviewWidth,
             height: isCompact
@@ -181,12 +181,12 @@ private struct LauncherModeTile: View {
         .overlay(alignment: .leading) {
             HStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 7, weight: .semibold))
+                    .font(Theme.Typography.iconMicro)
                 if !isCompact {
                     VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                         ForEach(0..<3, id: \.self) { index in
                             Capsule()
-                                .fill(Color.white.opacity(index == 0 ? 0.45 : 0.22))
+                                .fill(index == 0 ? Theme.Colors.previewSelected : Theme.Colors.previewUnselected)
                                 .frame(width: 38, height: 3)
                         }
                     }

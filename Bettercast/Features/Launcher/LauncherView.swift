@@ -208,7 +208,7 @@ struct AppIconView: View {
                 Image(nsImage: image).resizable()
             } else {
                 RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(Theme.Colors.imagePlaceholder)
             }
         }
         .task(id: app.id) {

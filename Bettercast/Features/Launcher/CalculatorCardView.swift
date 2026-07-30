@@ -65,8 +65,8 @@ struct CalculatorCard: View {
                     Text(message)
                         .lineLimit(1)
                 }
-                .font(.body)
-                .foregroundStyle(.secondary)
+                .font(Theme.Typography.body)
+                .foregroundStyle(Theme.Colors.textSecondary)
                 .frame(maxWidth: .infinity)
             }
         }
@@ -106,7 +106,7 @@ private struct CalcColumn<Content: View>: View {
             ZStack {
                 content
                     .font(Theme.Typography.calcResult.weight(weight))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -116,7 +116,7 @@ private struct CalcColumn<Content: View>: View {
                     .font(Theme.Typography.calcBadge)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .padding(.horizontal, Theme.Spacing.md)
                     .padding(.vertical, Theme.Spacing.xs)
                     .background(
@@ -139,7 +139,7 @@ private struct CalcArrowDivider: View {
             Spacer(minLength: 0)
             Image(systemName: "arrow.right")
                 .font(Theme.Typography.calcArrow)
-                .foregroundStyle(.primary)
+                .foregroundStyle(Theme.Colors.textPrimary)
                 .padding(.vertical, Theme.Spacing.lg)
             Spacer(minLength: 0)
             Rectangle()

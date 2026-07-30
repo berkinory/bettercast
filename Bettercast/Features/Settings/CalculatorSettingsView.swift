@@ -152,14 +152,14 @@ private struct CurrencyConsentSheet: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HStack(spacing: Theme.Spacing.lg) {
                 Image(systemName: "network")
-                    .font(.system(size: 22, weight: .medium))
+                    .font(Theme.Typography.iconXL)
                     .foregroundStyle(.green)
                 Text("Enable exchange rates?")
-                    .font(.headline)
+                    .font(Theme.Typography.headline)
             }
 
             Text(consentText)
-                .font(.callout)
+                .font(Theme.Typography.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -169,7 +169,7 @@ private struct CurrencyConsentSheet: View {
                         Text(CurrencyRateStore.providerURL.host() ?? "Provider")
                         Image(systemName: "arrow.up.right.square")
                     }
-                    .font(.callout)
+                    .font(Theme.Typography.callout)
                 }
                 Spacer()
                 Button("Not Now", action: onCancel)

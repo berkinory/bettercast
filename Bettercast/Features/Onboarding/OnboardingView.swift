@@ -27,7 +27,7 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             LinearGradient(
-                colors: [Color.white.opacity(0.04), Color.clear],
+                colors: [Theme.Colors.onboardingGradientStart, Color.clear],
                 startPoint: .top, endPoint: .center)
         )
         // Extend under the transparent titlebar (top padding clears the traffic lights) so the window height equals the fixed content height.
@@ -47,9 +47,9 @@ struct OnboardingView: View {
             heroMark
             VStack(spacing: Theme.Spacing.xs) {
                 Text(title)
-                    .font(.title2.weight(.bold))
+                    .font(Theme.Typography.title2Bold)
                 Text(subtitle)
-                    .font(.callout)
+                    .font(Theme.Typography.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -65,7 +65,7 @@ struct OnboardingView: View {
                 .frame(width: 60, height: 60)
         } else {
             Image(systemName: heroSymbol)
-                .font(.system(size: 30, weight: .semibold))
+                .font(Theme.Typography.iconHero)
                 .foregroundStyle(heroTint)
                 .frame(width: 60, height: 60)
                 .background(Circle().fill(heroTint.opacity(0.14)))
@@ -228,7 +228,7 @@ struct OnboardingView: View {
 
     private func caption(_ text: String) -> some View {
         Text(text)
-            .font(.caption)
+            .font(Theme.Typography.caption)
             .foregroundStyle(.tertiary)
             .padding(.horizontal, Theme.Spacing.xs)
     }
@@ -240,12 +240,12 @@ struct OnboardingView: View {
                     ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
             Text(accessibilityTrusted ? "Granted" : "Not granted")
         }
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(accessibilityTrusted ? Color.green : Color.orange)
+        .font(Theme.Typography.captionSemibold)
+        .foregroundStyle(accessibilityTrusted ? Theme.Colors.success : Theme.Colors.warning)
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.xs)
         .background(
-            Capsule().fill((accessibilityTrusted ? Color.green : Color.orange).opacity(0.14)))
+            Capsule().fill((accessibilityTrusted ? Theme.Colors.success : Theme.Colors.warning).opacity(0.14)))
     }
 
     // Read the bundled .icns directly: `NSApp.applicationIconImage` is the generic placeholder until LaunchServices registers the app (it hasn't when run from `build/`).

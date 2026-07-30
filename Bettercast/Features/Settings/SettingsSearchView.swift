@@ -273,11 +273,11 @@ struct SettingsSearchView: View {
     private var emptyState: some View {
         VStack(spacing: Theme.Spacing.lg) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 26, weight: .medium))
+                .font(Theme.Typography.emptyStateIcon)
             Text("No matches for “\(query)”")
-                .font(.headline)
+                .font(Theme.Typography.headline)
             Text("Try a feature, setting, shortcut, or permission.")
-                .font(.callout)
+                .font(Theme.Typography.callout)
                 .foregroundStyle(.secondary)
         }
         .foregroundStyle(.secondary)
@@ -297,7 +297,7 @@ private struct SettingsSearchResultRow: View {
                     .frame(width: 30, height: 30)
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                     Text(item.record.title)
-                        .font(.body.weight(.medium))
+                        .font(Theme.Typography.bodyMedium)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     HStack(spacing: Theme.Spacing.xs) {
@@ -306,13 +306,13 @@ private struct SettingsSearchResultRow: View {
                         Text("·")
                         Text(item.record.detail)
                     }
-                    .font(.caption)
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 }
                 Spacer(minLength: Theme.Spacing.md)
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(Theme.Typography.captionSemibold)
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, Theme.Spacing.md)
@@ -335,7 +335,7 @@ private struct SettingsSearchResultRow: View {
                 .fill(Theme.Colors.controlSurface)
                 .overlay(
                     Image(systemName: name)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(Theme.Typography.iconMediumSmall)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(Theme.Colors.textSecondary)
                 )
