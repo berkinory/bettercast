@@ -372,11 +372,11 @@ struct RootPaletteView: View {
                 guard command, histResults.indices.contains(index) else { return .ignored }
                 core.copyHistoryExpression(histResults[index])
             case .launcher:
-                // ⌘↵ quits the selected app when it's running (the Actions menu advertises it); nothing else in the launcher takes a modified ↵. The condition mirrors the menu row's exactly, so the key never swallows a press it won't act on.
-                guard command, let app = selectedAppEntry, app.kind == .application,
-                    core.runningApps.isRunning(app)
-                else { return .ignored }
-                core.quit(app)
+                // ⌘↵ reveals applications and settings in Finder, matching the Actions menu.
+                guard command, let app = selectedAppEntry, app.kind != .command else {
+                    return .ignored
+                }
+                core.showInFinder(app)
             }
             return .handled
         }

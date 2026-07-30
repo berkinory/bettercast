@@ -256,6 +256,10 @@ struct CalcTests {
         expectDisplay("100 dollars to yen", "¥15,700.00")
         expectDisplay("100 usd -> eur", "€92.00")
         expectDisplay("2*50 usd to eur", "€92.00")  // expression on the value side
+        expectDisplay("$10 + 5€", "€14.20")
+        expectExpression("$10 + 5€", "$10 + 5€")
+        expectDisplay("10 kg + 500g in pound", "23.14853753 lb")
+        expectExpression("10 kg + 500g in pound", "10 kg + 500g in pound")
         expectDisplay("eur to usd", "$1.09")  // implied amount of 1
         expectCopy("100 dollars to yen", "15700.00 JPY")
         // Currency signs, prefixed and suffixed

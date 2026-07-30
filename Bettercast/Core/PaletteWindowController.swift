@@ -151,10 +151,15 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         panel.setFrame(frame, display: true)
     }
 
-    /// The current session's anchor, resolved from the active screen on first use and cached until hide — so compact and expanded placements can never read a different `visibleFrame`.
+    private func targetScreen() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+    }
+
+    /// The current session's anchor, resolved from the target screen on first use and cached until hide — so compact and expanded placements can never read a different `visibleFrame`.
     private func resolveAnchor() -> (x: CGFloat, topEdgeY: CGFloat)? {
         if let anchor { return anchor }
-        guard let screen = NSScreen.main else { return nil }
+        guard let screen = targetScreen() else { return nil }
         let visible = screen.visibleFrame
         let resolved = (
             x: visible.midX - Theme.Size.panelWidth / 2,

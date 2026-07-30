@@ -14,17 +14,24 @@ also **pure**: the one input it can't compute, the FX rate table, is passed in (
 2. Natural-language math (`square root of 625`, `2 power 10`)
 3. Numeric reject
 4. Tokenize
-5. Base conversion
-6. Timespan conversion (`145 mins to timespan`)
-7. Explicit unit conversion (`10km to mi`, `1 nautical mile to km`)
-8. **Currency and crypto conversion** (`1 euro to dollars`, `€20 to GBP`, `0.1 btc to usd`)
-9. **Bare-unit auto-conversion** (`1m` → feet + inches, `1hr` → 60 min, via
+5. Typed quantity expressions (`$10 + 5€`, `10 kg + 500g in pound`)
+6. Base conversion
+7. Timespan conversion (`145 mins to timespan`)
+8. Explicit unit conversion (`10km to mi`, `1 nautical mile to km`)
+9. **Currency and crypto conversion** (`1 euro to dollars`, `€20 to GBP`, `0.1 btc to usd`)
+10. **Bare-unit auto-conversion** (`1m` → feet + inches, `1hr` → 60 min, via
    `CalcUnits.parseBareConversion` + the `autoTargets` map)
-10. Plain arithmetic
+11. Plain arithmetic
 
 Date/time depends on the clock, so it takes an injected `now` / `calendar` — the public `evaluate(_:)`
 uses the live clock, and `evaluate(_:now:calendar:)` lets `calc-test.swift` assert exact strings
 against a fixed clock.
+
+`CalcQuantity` handles arithmetic where operands carry compatible units or currencies. The last typed
+unit becomes the result unit: `10 kg + 500g` answers in grams, while `10 kg + 500g in pound` converts
+the complete expression to pounds. Currency arithmetic is consent-gated and follows the same rule, so
+`$10 + 5€` answers in euros. Simple conversions and bare-unit auto-conversions remain on their existing
+paths, preserving their current output behavior.
 
 ## Currency
 

@@ -20,6 +20,12 @@ The flat `selection` index is the single source of truth for highlight / activat
 match the visible row order**, including the inline calculator card at index 0 when present (see
 [calculator.md](calculator.md)).
 
+## Window placement
+
+The palette resolves `NSEvent.mouseLocation` against `NSScreen.screens` when it is summoned, so it
+always opens on the display under the pointer. The resolved anchor is cached for the session so
+compact and expanded resizing keeps the same top edge, then cleared on hide.
+
 ## Menu-open input freeze
 
 While a footer popover menu (⌘K Actions / app menu) is open the search field reads as inert but

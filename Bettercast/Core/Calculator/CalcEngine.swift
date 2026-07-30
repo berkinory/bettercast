@@ -55,6 +55,11 @@ enum CalcEngine {
 
         if let natural = naturalMath(tokens, query: query, locale: locale) { return natural }
         if let timespan = timespanConversion(tokens, query: query, locale: locale) { return timespan }
+        if let quantity = CalcQuantity.evaluate(
+            tokens, query: query, currency: currency, locale: locale
+        ) {
+            return quantity
+        }
 
         // A lone literal or constant is more likely an app search than a calculation, so no card — except a radix literal ("0xff"), where echoing the decimal is useful.
         if tokens.count == 1 {

@@ -58,6 +58,7 @@
 		952D6A1245CB49FAB75E79E8 /* LauncherRankingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B10EFBFC2FC71096F6F398 /* LauncherRankingStore.swift */; };
 		9745871BDB1CB45E7E0FE048 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3714BB0D0102E507DF9174D4 /* AppSettings.swift */; };
 		9A054D4C37BBC0265DCB078C /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BF88E110DF5BD2FA23F26A3 /* SettingsComponents.swift */; };
+		9AE0BB4BF45A38788A31B75F /* CalcQuantity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF780EA1D8E67BA1928A56F /* CalcQuantity.swift */; };
 		9C356D7E4B34C5A8C8ADADA0 /* Paster.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC412B7CA8EFDF7022B116B /* Paster.swift */; };
 		9CAFED143C26E767BB40D05F /* CalcUnits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 293306F130F44F0A817BD906 /* CalcUnits.swift */; };
 		A22D75BF837F381F396910C1 /* Gunzip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148B5AE64177256582903127 /* Gunzip.swift */; };
@@ -117,6 +118,7 @@
 		372C0DF3B0644E73CE7E03D4 /* EmojiGridGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridGeometry.swift; sourceTree = "<group>"; };
 		3A113CAEC53AF1C6AF86382A /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		3A52AB60AC0DA311543DA8A1 /* NotificationToken.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationToken.swift; sourceTree = "<group>"; };
+		3CF780EA1D8E67BA1928A56F /* CalcQuantity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcQuantity.swift; sourceTree = "<group>"; };
 		414EEC6C3328BEF5B7853844 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
 		4532B611E46FC4B03AF92D1A /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		473C36FEFBABF4F4D571A220 /* CalcCurrency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcCurrency.swift; sourceTree = "<group>"; };
@@ -288,6 +290,7 @@
 				50D59FE8F4ACB2CEBAF069E2 /* CalcFormatter.swift */,
 				238C67714B196D0C97CD9F81 /* CalcParser.swift */,
 				8EE73345F2143BA3A3FF8247 /* CalcPercent.swift */,
+				3CF780EA1D8E67BA1928A56F /* CalcQuantity.swift */,
 				293306F130F44F0A817BD906 /* CalcUnits.swift */,
 				EDB9E8CB9928E96E71378FA4 /* CurrencyData.generated.swift */,
 			);
@@ -473,6 +476,7 @@
 				2346CE4545350475720868A4 /* CalcFormatter.swift in Sources */,
 				13F6BFCF3B015F734318A1C8 /* CalcParser.swift in Sources */,
 				540A8DB556BA384F67CA55B3 /* CalcPercent.swift in Sources */,
+				9AE0BB4BF45A38788A31B75F /* CalcQuantity.swift in Sources */,
 				9CAFED143C26E767BB40D05F /* CalcUnits.swift in Sources */,
 				FC8C987D89609CB4FAC716D4 /* CalculatorCardView.swift in Sources */,
 				038288E0BB17581DBD649BC5 /* CalculatorHistoryStore.swift in Sources */,
