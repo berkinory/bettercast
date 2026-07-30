@@ -30,10 +30,6 @@ final class AppSettings: ObservableObject {
     private enum Key {
         static let clipboardRetention = "clipboardRetentionDays"
         static let clipboardDisabledApps = "clipboardDisabledApps"
-        static let hyperKey = "hyperKeyPhysicalKey"
-        static let hyperKeyIncludesShift = "hyperKeyIncludesShift"
-        static let hyperKeyQuickPress = "hyperKeyQuickPress"
-        static let hyperKeyReplacesGlyph = "hyperKeyReplacesGlyph"
         static let emojiSkinTone = "emojiSkinTone"
         static let popToRootTimeout = "popToRootTimeout"
         static let compactMode = "compactMode"
@@ -51,25 +47,6 @@ final class AppSettings: ObservableObject {
 
     @Published var launchAtLogin: Bool {
         didSet { LaunchAtLogin.set(launchAtLogin) }
-    }
-
-    /// The physical key remapped to the Hyper chord; `HyperKeyTap` reacts via its publisher.
-    @Published var hyperKey: HyperKeyPhysicalKey {
-        didSet { defaults.set(hyperKey.rawValue, forKey: Key.hyperKey) }
-    }
-
-    /// Whether Hyper is ⌃⌥⇧⌘ (on) or ⌃⌥⌘ (off).
-    @Published var hyperKeyIncludesShift: Bool {
-        didSet { defaults.set(hyperKeyIncludesShift, forKey: Key.hyperKeyIncludesShift) }
-    }
-
-    @Published var hyperKeyQuickPress: HyperKeyQuickPress {
-        didSet { defaults.set(hyperKeyQuickPress.rawValue, forKey: Key.hyperKeyQuickPress) }
-    }
-
-    /// Collapse the Hyper modifier set to "✦" wherever shortcut keycaps render.
-    @Published var hyperKeyReplacesGlyph: Bool {
-        didSet { defaults.set(hyperKeyReplacesGlyph, forKey: Key.hyperKeyReplacesGlyph) }
     }
 
     /// Preferred skin tone applied to modifier-capable emoji at render and copy time.
@@ -102,18 +79,6 @@ final class AppSettings: ObservableObject {
             defaults.stringArray(forKey: Key.clipboardDisabledApps)
             ?? ["com.apple.keychainaccess", "com.apple.Passwords"]
         launchAtLogin = LaunchAtLogin.isEnabled
-        hyperKey =
-            defaults.string(forKey: Key.hyperKey).flatMap(HyperKeyPhysicalKey.init) ?? .none
-        // The two Bools default to true, so absence must be distinguished from stored `false`.
-        hyperKeyIncludesShift =
-            defaults.object(forKey: Key.hyperKeyIncludesShift) == nil
-            || defaults.bool(forKey: Key.hyperKeyIncludesShift)
-        hyperKeyQuickPress =
-            defaults.string(forKey: Key.hyperKeyQuickPress).flatMap(HyperKeyQuickPress.init)
-            ?? .none
-        hyperKeyReplacesGlyph =
-            defaults.object(forKey: Key.hyperKeyReplacesGlyph) == nil
-            || defaults.bool(forKey: Key.hyperKeyReplacesGlyph)
         emojiSkinTone =
             defaults.string(forKey: Key.emojiSkinTone).flatMap(EmojiSkinTone.init) ?? .none
         popToRootTimeout =

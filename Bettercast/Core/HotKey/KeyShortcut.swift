@@ -22,7 +22,7 @@ struct KeyShortcut: Hashable, Sendable {
 
     /// One string per keycap in canonical macOS order (⌃⌥⇧⌘) with the key glyph last, feeding the launcher rows and settings recorder.
     @MainActor var keycaps: [String] {
-        Self.collapsedModifierSymbols(from: modifierFlags) + [keyGlyph]
+        Self.modifierSymbols(from: modifierFlags) + [keyGlyph]
     }
 
     var modifierFlags: NSEvent.ModifierFlags {
@@ -41,21 +41,6 @@ struct KeyShortcut: Hashable, Sendable {
         if flags.contains(.shift) { carbon |= shiftKey }
         if flags.contains(.command) { carbon |= cmdKey }
         return carbon
-    }
-
-    /// `modifierSymbols` with the configured Hyper set collapsed into a single "✦"; keyed on configuration (not tap health) so glyphs never flicker, leftover modifiers keep canonical order after the ✦.
-    @MainActor
-    static func collapsedModifierSymbols(from flags: NSEvent.ModifierFlags) -> [String] {
-        let settings = AppCore.shared.settings
-        guard settings.hyperKey != .none, settings.hyperKeyReplacesGlyph else {
-            return modifierSymbols(from: flags)
-        }
-        let hyperSet: NSEvent.ModifierFlags =
-            settings.hyperKeyIncludesShift
-            ? [.control, .option, .shift, .command]
-            : [.control, .option, .command]
-        guard flags.isSuperset(of: hyperSet) else { return modifierSymbols(from: flags) }
-        return [HyperKeyPhysicalKey.hyperGlyph] + modifierSymbols(from: flags.subtracting(hyperSet))
     }
 
     /// Modifier symbols in the fixed ⌃⌥⇧⌘ order every macOS surface uses.

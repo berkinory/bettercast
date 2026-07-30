@@ -1,17 +1,8 @@
 import SwiftUI
 
 struct ShortcutsSettingsView: View {
-    private enum Mode: String, CaseIterable, Identifiable {
-        case items
-        case hyper
-
-        var id: String { rawValue }
-        var title: String { self == .items ? "Apps & Commands" : "Hyper Key" }
-    }
-
     @EnvironmentObject private var appIndex: AppIndex
     @Environment(\.settingsDestination) private var destination
-    @State private var mode: Mode = .items
     @State private var tab: AppEntry.Kind = .application
     @State private var query = ""
     @FocusState private var itemSearchFocused: Bool
@@ -25,25 +16,12 @@ struct ShortcutsSettingsView: View {
         VStack(alignment: .leading, spacing: Theme.Settings.Layout.sectionSpacing) {
             SettingsFeatureHeader(
                 title: "Shortcuts",
-                subtitle: "Configure Hyper Key and launcher items.",
+                subtitle: "Configure launcher items and shortcuts.",
                 systemImage: "keyboard",
                 tint: Theme.Colors.brand
             )
 
-            Picker("Shortcut type", selection: $mode) {
-                ForEach(Mode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            switch mode {
-            case .items:
-                itemSettings
-            case .hyper:
-                hyperKeySettings
-            }
+            itemSettings
         }
         .padding(Theme.Settings.Layout.paneInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -67,20 +45,6 @@ struct ShortcutsSettingsView: View {
                 .id(tab.rawValue)
         }
         .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private var hyperKeySettings: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                HyperKeySettingsSection()
-            }
-            .overlayScroller(disablesElasticity: true)
-            .task(id: destination?.anchorID) {
-                guard let destination, isHyperDestination(destination) else { return }
-                await Task.yield()
-                proxy.scrollTo(destination.anchorID, anchor: .center)
-            }
-        }
     }
 
     private var searchPrompt: String {
@@ -141,22 +105,9 @@ struct ShortcutsSettingsView: View {
     }
 
     private func applyDestination() {
-        guard let destination else { return }
-        if isHyperDestination(destination) {
-            mode = .hyper
-            return
-        }
         guard case .shortcutEntry(_, let kind) = destination else { return }
-        mode = .items
         query = ""
         if let targetKind = AppEntry.Kind(rawValue: kind) { tab = targetKind }
-    }
-
-    private func isHyperDestination(_ destination: SettingsDestination) -> Bool {
-        switch destination {
-        case .hyperKey, .hyperQuickPress, .hyperIncludeShift, .hyperReplaceGlyph: return true
-        default: return false
-        }
     }
 }
 

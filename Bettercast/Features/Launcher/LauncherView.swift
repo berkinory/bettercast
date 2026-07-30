@@ -135,8 +135,6 @@ private struct AppRow: View {
     let running: Bool
     /// Observed so a hotkey set/cleared in Settings re-renders the row's keycaps immediately.
     @EnvironmentObject private var hotKeys: HotKeyManager
-    /// Observed for the same reason: the Hyper Key display settings (✦ collapse, Include Shift) change how `keycaps` renders.
-    @ObservedObject private var settings = AppCore.shared.settings
     @State private var hovered = false
 
     /// Selection wins over hover when a row is both; otherwise hover shows its fainter layer.
@@ -256,6 +254,14 @@ enum AppActionsMenu {
             items.append(
                 PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {
                     core.showInFinder(app)
+                })
+        }
+        if AppUninstaller.isEligible(app) {
+            items.append(
+                PopoverMenuItem(
+                    title: "Uninstall Application", systemImage: "trash", isDestructive: true
+                ) {
+                    core.uninstall(app)
                 })
         }
         if running, app.kind == .application {
