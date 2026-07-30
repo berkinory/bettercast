@@ -298,9 +298,9 @@ private struct SettingsSearchResultRow: View {
             HStack(spacing: Theme.Spacing.lg) {
                 icon
                     .frame(
-                    width: Theme.Settings.Size.searchResultIcon,
-                    height: Theme.Settings.Size.searchResultIcon
-                )
+                        width: Theme.Settings.Size.searchResultIcon,
+                        height: Theme.Settings.Size.searchResultIcon
+                    )
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                     Text(item.record.title)
                         .font(Theme.Typography.bodyMedium)

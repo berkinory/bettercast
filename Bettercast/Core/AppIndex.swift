@@ -83,7 +83,9 @@ enum IconCache {
     static func symbolIcon(named name: String) -> NSImage {
         let key = "symbol:" + name as NSString
         if let cached = cache.object(forKey: key) { return cached }
-        let icon = NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage(size: NSSize(width: displayPoint, height: displayPoint))
+        let icon =
+            NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            ?? NSImage(size: NSSize(width: displayPoint, height: displayPoint))
         cache.setObject(icon, forKey: key, cost: Int(displayPoint * displayPoint * 4))
         return icon
     }
