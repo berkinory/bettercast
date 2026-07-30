@@ -107,7 +107,7 @@ final class PalettePanel: NSPanel {
         animationBehavior = .none
         isReleasedWhenClosed = false
 
-        let hosting = NSHostingView(rootView: rootView)
+        let hosting = PaletteHostingView(rootView: rootView)
         hosting.wantsLayer = true
         // The controller owns the frame: without this the hosting view resizes the panel to fit the SwiftUI content, dropping the top edge on the first compact→expanded mount.
         hosting.sizingOptions = []
@@ -116,4 +116,11 @@ final class PalettePanel: NSPanel {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+}
+
+private final class PaletteHostingView<Content: View>: NSHostingView<Content> {
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .arrow)
+        super.resetCursorRects()
+    }
 }

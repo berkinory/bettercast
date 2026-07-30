@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ListScrollIntent: Equatable {
@@ -966,5 +967,8 @@ private struct CompactFavoriteButton<Content: View>: View {
         }
         .buttonStyle(.plain)
         .help(help)
+        .onHover { hovering in
+            if hovering { NSCursor.arrow.set() }
+        }
     }
 }
