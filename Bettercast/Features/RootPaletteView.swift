@@ -398,6 +398,30 @@ struct RootPaletteView: View {
             }
             return .handled
         }
+        // ⌘F toggles the selected app's favorite state while its Actions menu is open.
+        .onKeyPress(keys: ["f"], phases: .down) { press in
+            guard showActions,
+                vm.mode == .launcher,
+                press.modifiers.contains(.command),
+                press.modifiers.intersection([.shift, .option, .control]).isEmpty,
+                let app = selectedAppEntry
+            else { return .ignored }
+            favorites.toggle(app)
+            closeMenus()
+            return .handled
+        }
+        .onKeyPress(keys: ["c"], phases: .down) { press in
+            guard showActions,
+                vm.mode == .launcher,
+                press.modifiers.contains([.command, .shift]),
+                press.modifiers.intersection([.option, .control]).isEmpty,
+                let app = selectedAppEntry,
+                app.kind == .application
+            else { return .ignored }
+            core.copyPath(app)
+            closeMenus()
+            return .handled
+        }
         .onKeyPress(.escape) {
             if showActions || showAppMenu {
                 closeMenus()

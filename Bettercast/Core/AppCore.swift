@@ -447,6 +447,11 @@ final class AppCore: ObservableObject {
         AppLauncher.showInFinder(app.url)
     }
 
+    func copyPath(_ app: AppEntry) {
+        hidePalette(restoreFocus: false)
+        Paster.copyPlainText(app.url.path)
+    }
+
     func paste(_ item: ClipboardItem) {
         let previous = windowController.previousApp
         hidePalette(restoreFocus: false)

@@ -235,12 +235,14 @@ enum AppActionsMenu {
         ]
         if favorites.isFavorite(app) {
             items.append(
-                PopoverMenuItem(title: "Remove from Favorites", systemImage: "star.slash") {
+                PopoverMenuItem(
+                    title: "Remove from Favorites", systemImage: "star.slash", shortcut: "⌘F"
+                ) {
                     favorites.toggle(app)
                 })
         } else {
             items.append(
-                PopoverMenuItem(title: "Add to Favorites", systemImage: "star") {
+                PopoverMenuItem(title: "Add to Favorites", systemImage: "star", shortcut: "⌘F") {
                     favorites.toggle(app)
                 })
         }
@@ -248,6 +250,12 @@ enum AppActionsMenu {
             items.append(
                 PopoverMenuItem(title: "Reset Ranking", systemImage: "arrow.counterclockwise") {
                     onResetRanking()
+                })
+        }
+        if app.kind == .application {
+            items.append(
+                PopoverMenuItem(title: "Copy Path", systemImage: "doc.on.doc", shortcut: "⌘⇧C") {
+                    core.copyPath(app)
                 })
         }
         if app.kind != .command {
