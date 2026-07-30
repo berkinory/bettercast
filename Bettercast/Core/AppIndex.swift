@@ -197,21 +197,46 @@ final class AppIndex: ObservableObject {
                 // Dedup by bundle id; first directory (/Applications) wins.
                 if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
 
-                let name =
-                    (bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
-                    ?? (bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String)
-                    ?? url.deletingPathExtension().lastPathComponent
+                let name = appName(bundle: bundle, url: url)
                 result.append(
                     AppEntry(
                         id: url.path, name: name, url: url, bundleID: bundleID,
                         kind: .application))
             }
         }
+
+        let finderURL = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
+        if let bundle = Bundle(url: finderURL),
+            let bundleID = bundle.bundleIdentifier,
+            seenBundleIDs.insert(bundleID).inserted
+        {
+            result.append(
+                AppEntry(
+                    id: finderURL.path,
+                    name: appName(bundle: bundle, url: finderURL),
+                    url: finderURL,
+                    bundleID: bundleID,
+                    kind: .application))
+        }
+
         // Apps, then Settings panes, then Commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
         let apps = result.sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
         return apps + SettingsPaneScanner.scan() + CommandRegistry.all
+    }
+
+    private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {
+        let candidates: [String?] = [
+            bundle?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+            bundle?.object(forInfoDictionaryKey: "CFBundleName") as? String,
+            url.deletingPathExtension().lastPathComponent,
+        ]
+        return candidates.compactMap { candidate -> String? in
+            guard let candidate else { return nil }
+            let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }.first ?? url.deletingPathExtension().lastPathComponent
     }
 
     /// Ranked matches. Empty query returns the full alphabetical list.
