@@ -2,6 +2,8 @@ import Foundation
 
 /// Hand-rolled number formatting with an injected locale for display; copy text remains plain POSIX notation so answers can be pasted into another calculation.
 enum CalcFormatter {
+    private static let maxExactInteger = 9_007_199_254_740_992.0
+
     /// Human-facing: ≤10 significant digits, trailing zeros trimmed, thousands separators.
     static func display(_ value: Double, locale: Locale = Locale(identifier: "en_US_POSIX")) -> String {
         grouped(copyText(value), locale: locale)
@@ -10,8 +12,8 @@ enum CalcFormatter {
     /// Same rounding, no grouping — what lands on the pasteboard.
     static func copyText(_ value: Double) -> String {
         let v = value == 0 ? 0 : value  // normalize -0
-        // Integers print in full (not exponent form) while they're exactly representable.
-        if v.rounded() == v && abs(v) < 1e15 {
+        // Past 2^53 the precision is genuinely gone, so exponent form is the honest answer there.
+        if v.rounded() == v && abs(v) <= maxExactInteger {
             return String(format: "%.0f", locale: Locale(identifier: "en_US_POSIX"), v)
         }
         return String(format: "%.10g", locale: Locale(identifier: "en_US_POSIX"), v)

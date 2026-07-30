@@ -33,6 +33,15 @@ final class PalettePanel: NSPanel {
         case .keyDown: paletteViewModel?.hoverHighlightArmed = false
         default: break
         }
+        if event.type == .keyDown,
+            event.modifierFlags.contains(.control),
+            event.modifierFlags.intersection([.command, .option, .shift]).isEmpty,
+            let arrow = Self.arrowAlias(for: event.charactersIgnoringModifiers),
+            let rewritten = arrowKeyDown(arrow, from: event)
+        {
+            super.sendEvent(rewritten)
+            return
+        }
         // A footer menu owns the keyboard: the search field stays first responder (no focus swap, so nothing reflows) with only its caret hidden; swallow text-editing keystrokes before the field editor consumes them, but let shortcut chords (⌘K, ⌘⌫) and menu-nav keys reach SwiftUI's onKeyPress.
         if event.type == .keyDown,
             paletteViewModel?.menuOpen == true,
@@ -50,6 +59,33 @@ final class PalettePanel: NSPanel {
         }
         super.sendEvent(event)
     }
+
+    private static func arrowAlias(for characters: String?) -> (keyCode: Int, character: Int)? {
+        switch characters {
+        case "n": (kVK_DownArrow, NSDownArrowFunctionKey)
+        case "p": (kVK_UpArrow, NSUpArrowFunctionKey)
+        default: nil
+        }
+    }
+
+    private func arrowKeyDown(
+        _ arrow: (keyCode: Int, character: Int), from event: NSEvent
+    ) -> NSEvent? {
+        guard let scalar = UnicodeScalar(UInt32(arrow.character)) else { return nil }
+        let character = String(scalar)
+        return NSEvent.keyEvent(
+            with: .keyDown,
+            location: event.locationInWindow,
+            modifierFlags: [.function, .numericPad],
+            timestamp: event.timestamp,
+            windowNumber: event.windowNumber,
+            context: nil,
+            characters: character,
+            charactersIgnoringModifiers: character,
+            isARepeat: event.isARepeat,
+            keyCode: UInt16(arrow.keyCode))
+    }
+
     init<Content: View>(rootView: Content) {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 750, height: 475),

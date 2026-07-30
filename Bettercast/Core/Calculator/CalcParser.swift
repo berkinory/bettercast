@@ -57,6 +57,18 @@ enum CalcTokenizer {
                     }
                     i += 1
                 }
+                if i < chars.count, chars[i] == "e" || chars[i] == "E" {
+                    var end = i + 1
+                    if end < chars.count, chars[end] == "+" || chars[end] == "-" {
+                        end += 1
+                    }
+                    let exponentStart = end
+                    while end < chars.count, isDigit(chars[end]) { end += 1 }
+                    if end > exponentStart {
+                        text += String(chars[i..<end])
+                        i = end
+                    }
+                }
                 guard let value = Double(text) else { return nil }
                 tokens.append(.number(value))
                 continue
@@ -85,6 +97,12 @@ enum CalcTokenizer {
             if let code = CurrencyData.signs[ch] {
                 tokens.append(.ident(code))
                 i += 1
+                continue
+            }
+
+            if ch == "*", i + 1 < chars.count, chars[i + 1] == "*" {
+                tokens.append(.op("^"))
+                i += 2
                 continue
             }
 
@@ -159,13 +177,32 @@ private struct Parser {
 
     mutating func parseExpression(minBP: Int) -> Value? {
         guard var lhs = parseOperand() else { return nil }
-        while let (op, bp, rightBP) = peekBinary(), bp >= minBP {
-            pos += 1
-            guard let rhs = parseExpression(minBP: rightBP) else { return nil }
-            guard let combined = apply(op, lhs, rhs) else { return nil }
-            lhs = combined
+        while true {
+            if let (op, bp, rightBP) = peekBinary(), bp >= minBP {
+                pos += 1
+                guard let rhs = parseExpression(minBP: rightBP) else { return nil }
+                guard let combined = apply(op, lhs, rhs) else { return nil }
+                lhs = combined
+                continue
+            }
+            if impliesMultiplication(), 20 >= minBP {
+                guard let rhs = parseExpression(minBP: 21) else { return nil }
+                guard let combined = apply("*", lhs, rhs) else { return nil }
+                lhs = combined
+                continue
+            }
+            break
         }
         return lhs
+    }
+
+    private func impliesMultiplication() -> Bool {
+        switch current {
+        case .op("("): return true
+        case .ident(let name):
+            return CalcParser.constants[name] != nil || CalcParser.functions[name] != nil
+        default: return false
+        }
     }
 
     /// (operator, its binding power, minimum bp for its right operand).
@@ -173,7 +210,9 @@ private struct Parser {
         switch current {
         case .op(let op) where op == "+" || op == "-": return (op, 10, 11)
         case .op(let op) where op == "*" || op == "/": return (op, 20, 21)
+        case .op("%"): return ("%", 20, 21)
         case .ident("of"): return ("*", 20, 21)
+        case .ident("mod"): return ("%", 20, 21)
         case .op("^"): return ("^", 30, 30)  // right-associative: 2^3^2 = 512
         default: return nil
         }
@@ -193,6 +232,7 @@ private struct Parser {
                 ? lhs.effective * (1 - rhs.value / 100) : lhs.effective - rhs.effective
         case "*": result = lhs.effective * rhs.effective
         case "/": result = lhs.effective / rhs.effective
+        case "%": result = lhs.effective.truncatingRemainder(dividingBy: rhs.effective)
         case "^": result = pow(lhs.effective, rhs.effective)
         default: return nil
         }
@@ -209,6 +249,7 @@ private struct Parser {
                 value = Value(value: fact)
             case .op("%"):
                 guard !value.isPercent else { return nil }
+                if percentIsModulo() { break loop }
                 value.isPercent = true
             case .ident("deg"):
                 guard !value.isPercent else { return nil }
@@ -219,6 +260,18 @@ private struct Parser {
             pos += 1
         }
         return value
+    }
+
+    private func percentIsModulo() -> Bool {
+        guard pos + 1 < tokens.count else { return false }
+        switch tokens[pos + 1] {
+        case .number, .intLiteral, .op("-"), .op("+"), .op("("):
+            return true
+        case .ident(let name):
+            return CalcParser.constants[name] != nil || CalcParser.functions[name] != nil
+        default:
+            return false
+        }
     }
 
     private mutating func parsePrefix() -> Value? {
