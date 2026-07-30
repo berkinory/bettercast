@@ -60,6 +60,9 @@ struct CalcTests {
         expectDisplay("450 + 20%", "540")
         expectDisplay("450 - 15%", "382.5")
         expectDisplay("20%", "0.2")
+        expectDisplay("10 % 3", "1")
+        expectDisplay("17 mod 5", "2")
+        expectDisplay("2 + 10 % 3", "3")
 
         // Unit conversion — length / weight / temperature / time / area / volume / storage
         expectDisplay("10km to mi", "6.213711922 mi")

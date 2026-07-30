@@ -210,7 +210,9 @@ private struct Parser {
         switch current {
         case .op(let op) where op == "+" || op == "-": return (op, 10, 11)
         case .op(let op) where op == "*" || op == "/": return (op, 20, 21)
+        case .op("%"): return ("%", 20, 21)
         case .ident("of"): return ("*", 20, 21)
+        case .ident("mod"): return ("%", 20, 21)
         case .op("^"): return ("^", 30, 30)  // right-associative: 2^3^2 = 512
         default: return nil
         }
@@ -230,6 +232,7 @@ private struct Parser {
                 ? lhs.effective * (1 - rhs.value / 100) : lhs.effective - rhs.effective
         case "*": result = lhs.effective * rhs.effective
         case "/": result = lhs.effective / rhs.effective
+        case "%": result = lhs.effective.truncatingRemainder(dividingBy: rhs.effective)
         case "^": result = pow(lhs.effective, rhs.effective)
         default: return nil
         }
@@ -246,6 +249,7 @@ private struct Parser {
                 value = Value(value: fact)
             case .op("%"):
                 guard !value.isPercent else { return nil }
+                if percentIsModulo() { break loop }
                 value.isPercent = true
             case .ident("deg"):
                 guard !value.isPercent else { return nil }
@@ -256,6 +260,18 @@ private struct Parser {
             pos += 1
         }
         return value
+    }
+
+    private func percentIsModulo() -> Bool {
+        guard pos + 1 < tokens.count else { return false }
+        switch tokens[pos + 1] {
+        case .number, .intLiteral, .op("-"), .op("+"), .op("("):
+            return true
+        case .ident(let name):
+            return CalcParser.constants[name] != nil || CalcParser.functions[name] != nil
+        default:
+            return false
+        }
     }
 
     private mutating func parsePrefix() -> Value? {
