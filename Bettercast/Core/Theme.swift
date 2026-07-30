@@ -210,9 +210,16 @@ struct KeyCapChip: View {
 }
 
 extension View {
-    /// A floating Liquid Glass control surface (action group + menu button), interactive for native lensing with a whitish frost tint so it reads brighter than clear glass.
-    func frosted(in shape: some Shape) -> some View {
-        glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
-            .tint(.clear)
+    /// A floating Liquid Glass control surface on Tahoe, with a solid dark fallback on older supported systems.
+    @ViewBuilder
+    func frosted<S: Shape>(in shape: S) -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
+                .tint(.clear)
+        } else {
+            background(shape.fill(Theme.Colors.controlSurface))
+                .overlay(shape.stroke(Theme.Colors.border, lineWidth: 1))
+                .tint(.clear)
+        }
     }
 }

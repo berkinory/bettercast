@@ -12,7 +12,8 @@ Bettercast has two signing paths:
 
 Debug and release use separate bundle identifiers. Debug is for local development and permissions; release
 is the artifact distributed outside the Mac App Store. The release path follows Apple's Developer ID and
-notary service requirements.
+notary service requirements. Release builds are universal (`arm64` + `x86_64`) and target macOS 15.0;
+macOS 26+ uses Liquid Glass while older supported systems use the solid fallback surface.
 
 ## 1. developer account setup
 
@@ -86,7 +87,7 @@ The script performs this sequence:
 1. Build the Release app with Developer ID Application signing and a secure timestamp.
 2. Verify the code signature.
 3. Zip and submit the app with `notarytool`.
-4. Wait for acceptance and staple the ticket to the app.
+4. Wait up to 25 minutes for acceptance and staple the ticket to the app.
 5. Validate the stapled app.
 6. Package the stapled app in a DMG and run a Gatekeeper assessment.
 
@@ -120,8 +121,9 @@ Paste that value into `DEVELOPER_ID_P12_BASE64`. Keep the `.p12` password in
 `DEVELOPER_ID_P12_PASSWORD`; never put it in the repository.
 
 The release workflow never uses Apple Development signing, Apple Distribution signing, self-signed
-certificates, or plaintext Apple passwords. It signs the single release with Developer ID Application,
-notarizes the app, staples its ticket, and only then creates the DMG.
+certificates, or plaintext Apple passwords. It signs one universal release with Developer ID Application,
+submits it to notarytool, waits up to 25 minutes, fetches the notary log on failure, staples its ticket,
+and only then creates the DMG. The GitHub job has a 30-minute hard limit.
 
 ## 5. self-hosting
 

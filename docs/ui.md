@@ -14,9 +14,9 @@ Bettercast is a **Raycast-style dark command palette**: a borderless floating pa
 just the OS behind-window blur under a 40% black scrim — there is no gray chrome. Everything on that
 surface is white at a fixed alpha ramp. The header and bottom bar **float over the list as fully
 transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
-bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating
-controls (the action pill, the menu circle, popover menus) are **Liquid Glass**. The whole app is
-locked to dark mode because the glass material is tuned for a deep dark surface.
+bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the action pill, the menu circle, popover menus) use **Liquid Glass on macOS 26+**
+and a solid dark fallback on older supported systems. The whole app is locked to dark mode because the
+glass material is tuned for a deep dark surface.
 
 Five load-bearing ideas, in priority order:
 
@@ -156,9 +156,9 @@ leading gap. Headers are non-selectable display rows, so selection (keyed by id)
 
 Glass is **only** for floating controls, never the main surface.
 
-- `View.frosted(in:)` = `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` — interactive lensing with a whitish frost tint (`glassFrost`) so the glass reads brighter than clear. Used on the action-group capsule and the menu circle; tune the frost amount via the `glassFrost` token, not per call site.
+- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and a solid dark surface with a border below it. Used on the action-group capsule, menu circle, and popover menus; tune the frost amount via the `glassFrost` token, not per call site.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a bottom corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's.
-- **`PopoverMenu`** uses `glassEffect(.regular, in: RoundedRectangle(menuPanel 16))` with **no hand-tuned shadow** — Tahoe glass carries its own elevation; adding a drop shadow reads heavy and non-native.
+- **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback uses the shared dark surface and border.
 - `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.
 - The glyph is a `PopoverMenuIcon`: `.symbol` (SF Symbol, `hierarchical`, secondary — or **red** when `isDestructive`) or `.file` (a real app icon via `IconCache`, used by the paste rows to show the paste target). `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
 - **Both glyph kinds share one square `menuIcon` (20) slot**, which is what makes symbol and app-icon rows read as the same size and pins a single row height. 20 is deliberately larger than the artwork looks: an `IconCache` icon paints only ~85% of its canvas (13pt visible at a 16pt slot), while a `.body` SF Symbol renders 17–18pt tall — at 20 the icon lands on 17pt and the two match. Measure before changing it.

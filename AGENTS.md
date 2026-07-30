@@ -2,8 +2,8 @@
 
 Bettercast is a native macOS menu-bar launcher (a minimal Raycast): fuzzy app launcher, global +
 per-app hotkeys, a text/image clipboard history, an inline calculator, and an emoji picker. SwiftUI +
-AppKit, runs as an accessory (no Dock icon, `LSUIElement`). Targets **macOS 26+** (Liquid Glass) and
-builds with the **Xcode 26** toolchain.
+AppKit, runs as an accessory (no Dock icon, `LSUIElement`). Targets **macOS 15+**; macOS 26+ gets
+Liquid Glass while older supported systems use the solid dark fallback. Builds with the **Xcode 26** toolchain.
 
 - **Build:** XcodeGen owns the project — `Bettercast.xcodeproj` is committed but generated from
   `project.yml`. After editing `project.yml`, run `xcodegen generate` and commit. There is **no**

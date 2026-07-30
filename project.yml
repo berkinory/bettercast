@@ -2,7 +2,7 @@ name: Bettercast
 options:
   bundleIdPrefix: com.bettercast
   deploymentTarget:
-    macOS: "26.0"
+    macOS: "15.0"
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -11,6 +11,7 @@ settings:
     MARKETING_VERSION: "0.0.2"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "6.0"
+    ARCHS: "arm64 x86_64"
     DEVELOPMENT_TEAM: "Z66C58Z3RC"
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "Apple Development"

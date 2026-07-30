@@ -4,7 +4,7 @@ How to build and test Bettercast.
 
 ## Requirements
 
-- macOS 26 or later (Liquid Glass).
+- macOS 15 or later. macOS 26 adds the native Liquid Glass surface; older supported systems use the solid fallback.
 - Xcode 26 installed — it provides the SwiftUI macro plugin and SDK used to build.
 
 ## First-time setup
