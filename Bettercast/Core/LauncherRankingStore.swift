@@ -1,19 +1,20 @@
 import Foundation
 
-/// One learned launcher choice for a normalized query prefix.
+/// One learned launcher choice for a normalized query prefix. An empty query is the item's global usage record.
 struct LauncherRankingRecord: Codable, Hashable, Sendable {
     let itemKey: String
     let query: String
-    var count: Int
+    var count: Double
     var lastUsed: Date
 }
 
-/// Learns which launcher results the user chooses for each query and persists the bounded, on-device-only frecency data under `~/Library/Caches/<bundle-id>/`.
+/// Learns launcher choices and persists bounded, on-device-only adaptive history under `~/Library/Caches/<bundle-id>/`.
 @MainActor
 final class LauncherRankingStore: ObservableObject {
     private static let cap = 1_000
-    /// Stays below half the 10k gaps between FuzzyMatch's relevance tiers, so learned usage can reorder similarly-matching results without ever beating a stronger match kind.
-    private static let maximumBoost = 4_500
+    private static let maximumAffinity = 10_000
+    private static let queryHalfLifeDays = 30.0
+    private static let globalHalfLifeDays = 60.0
 
     private let fileURL: URL
     private let now: () -> Date
@@ -31,9 +32,7 @@ final class LauncherRankingStore: ObservableObject {
         if let data = try? Data(contentsOf: self.fileURL),
             let decoded = try? JSONDecoder().decode([LauncherRankingRecord].self, from: data)
         {
-            records = decoded.filter {
-                !$0.itemKey.isEmpty && !$0.query.isEmpty && $0.count > 0
-            }
+            records = decoded.filter { !$0.itemKey.isEmpty && $0.count > 0 }
         } else {
             records = []
         }
@@ -41,48 +40,48 @@ final class LauncherRankingStore: ObservableObject {
 
     var isEmpty: Bool { records.isEmpty }
 
-    /// Records every prefix of the submitted query: choosing WhatsApp for "wha" teaches "w", "wh" and "wha", so the preferred result surfaces for progressively shorter input.
+    /// Records global usage plus every prefix of a submitted query. An empty query records global usage only.
     func record(itemKey: String, query: String) {
+        guard !itemKey.isEmpty else { return }
         let query = Self.normalize(query)
-        guard !itemKey.isEmpty, !query.isEmpty else { return }
-
         let timestamp = now()
+
+        visit(itemKey: itemKey, query: "", at: timestamp)
         for prefix in Self.prefixes(of: query) {
-            if let index = records.firstIndex(where: {
-                $0.itemKey == itemKey && $0.query == prefix
-            }) {
-                records[index].count += 1
-                records[index].lastUsed = timestamp
-            } else {
-                records.append(
-                    LauncherRankingRecord(
-                        itemKey: itemKey, query: prefix, count: 1, lastUsed: timestamp))
-            }
+            visit(itemKey: itemKey, query: prefix, at: timestamp)
         }
 
         if records.count > Self.cap {
-            records.sort {
-                $0.count != $1.count ? $0.count > $1.count : $0.lastUsed > $1.lastUsed
-            }
-            records.removeLast(records.count - Self.cap)
+            records =
+                records
+                .map { (record: $0, affinity: retentionAffinity($0, at: timestamp)) }
+                .sorted {
+                    $0.affinity != $1.affinity
+                        ? $0.affinity > $1.affinity : $0.record.lastUsed > $1.record.lastUsed
+                }
+                .prefix(Self.cap)
+                .map(\.record)
         }
         didMutate()
     }
 
-    /// Learned boosts for one query, keyed by item — a ranking pass folds the query and reads the clock once here rather than per candidate.
-    func boosts(query: String) -> [String: Int] {
+    /// Query-specific confidence on a 0...10,000 scale. Three recent selections are enough for a controlled one-tier promotion; stale history decays below that threshold.
+    func affinities(query: String) -> [String: Int] {
         let query = Self.normalize(query)
         guard !query.isEmpty, let learned = rankingLookup()[query] else { return [:] }
         let timestamp = now()
-        return learned.mapValues { boost($0, at: timestamp) }
+        return learned.mapValues {
+            affinity($0, at: timestamp, halfLifeDays: Self.queryHalfLifeDays)
+        }
     }
 
-    private func boost(_ record: LauncherRankingRecord, at timestamp: Date) -> Int {
-        let ageInDays = max(0, timestamp.timeIntervalSince(record.lastUsed)) / 86_400
-        // Cap frequency separately so an old, once-dominant habit cannot stay permanently pinned; enough recent visits to a different result can eventually overtake it.
-        let frequency = min(3_000, log2(Double(record.count) + 1) * 600)
-        let recency = 1_500 * exp(-ageInDays / 14)
-        return min(Self.maximumBoost, Int((frequency + recency).rounded()))
+    /// Weak item-wide usage signal, used only as a final tie-break after fuzzy quality and query learning.
+    func globalAffinities() -> [String: Int] {
+        guard let learned = rankingLookup()[""] else { return [:] }
+        let timestamp = now()
+        return learned.mapValues {
+            affinity($0, at: timestamp, halfLifeDays: Self.globalHalfLifeDays)
+        }
     }
 
     func hasRanking(for itemKey: String) -> Bool {
@@ -109,8 +108,45 @@ final class LauncherRankingStore: ObservableObject {
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
+    private func visit(itemKey: String, query: String, at timestamp: Date) {
+        if let index = records.firstIndex(where: {
+            $0.itemKey == itemKey && $0.query == query
+        }) {
+            let halfLife = query.isEmpty ? Self.globalHalfLifeDays : Self.queryHalfLifeDays
+            let decayed = effectiveCount(records[index], at: timestamp, halfLifeDays: halfLife)
+            // Adaptive input history approaches 10 without reaching an irreversible count; a fresh choice always matters while old evidence has already decayed.
+            records[index].count = min(10, decayed * 0.9 + 1)
+            records[index].lastUsed = timestamp
+        } else {
+            records.append(
+                LauncherRankingRecord(
+                    itemKey: itemKey, query: query, count: 1, lastUsed: timestamp))
+        }
+    }
+
+    private func affinity(
+        _ record: LauncherRankingRecord, at timestamp: Date, halfLifeDays: Double
+    ) -> Int {
+        let count = min(10, effectiveCount(record, at: timestamp, halfLifeDays: halfLifeDays))
+        return min(Self.maximumAffinity, Int((count * 1_000).rounded()))
+    }
+
+    private func effectiveCount(
+        _ record: LauncherRankingRecord, at timestamp: Date, halfLifeDays: Double
+    ) -> Double {
+        let ageInDays = max(0, timestamp.timeIntervalSince(record.lastUsed)) / 86_400
+        return record.count * exp(-log(2) * ageInDays / halfLifeDays)
+    }
+
+    private func retentionAffinity(_ record: LauncherRankingRecord, at timestamp: Date) -> Int {
+        affinity(
+            record, at: timestamp,
+            halfLifeDays: record.query.isEmpty
+                ? Self.globalHalfLifeDays : Self.queryHalfLifeDays)
+    }
+
     private static func prefixes(of query: String) -> [String] {
-        // Launcher names and useful queries are short; cap pathological pasted input so one visit cannot evict the whole bounded ranking table.
+        guard !query.isEmpty else { return [] }
         let limit = min(query.count, 64)
         var result: [String] = []
         result.reserveCapacity(limit)

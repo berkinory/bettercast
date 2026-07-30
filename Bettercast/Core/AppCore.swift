@@ -266,9 +266,8 @@ final class AppCore: ObservableObject {
     // MARK: - Actions invoked from the palette UI
 
     func launch(_ app: AppEntry, searchQuery: String? = nil) {
-        if let searchQuery {
-            launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery)
-        }
+        // Every palette launch teaches weak global usage; typed launches additionally teach the submitted query and each of its prefixes.
+        launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery ?? "")
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
             runCommand(app)

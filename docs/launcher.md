@@ -3,21 +3,27 @@
 `AppIndex.scan()` runs off-main, enumerates the standard `/Applications` dirs, and dedups by bundle ID
 (first dir wins).
 
-`FuzzyMatch.score` is a tiered scorer: exact → prefix → substring / word-start → subsequence with
-consecutive / word-boundary bonuses. `LauncherRankingStore` then adds a bounded, query-specific
-frecency boost (frequency plus decaying recency). The boost can reorder results within a relevance
-tier but cannot make a weaker match kind beat a stronger one. Matching strips invisible Unicode
-format scalars first, since app metadata can contain bidi/zero-width markers before the visible name.
+`FuzzyMatch` classifies matches as exact → prefix → word-start → substring → subsequence, with
+consecutive / word-boundary detail scoring inside each class. `LauncherRankingStore` learns an
+adaptive query affinity: one choice nudges results within the same class, while three recent choices
+may promote a word-start or substring match by exactly one class. Exact matches remain absolute,
+prefixes never become exact, and weak subsequences never receive a class promotion. This lets a
+repeated `ch` → Google Chrome choice overtake the default prefix match Chess without allowing an
+unrelated frequent app to surface. Matching strips invisible Unicode format scalars first, since app
+metadata can contain bidi/zero-width markers before the visible name.
 
 Selecting a launcher result records every prefix of the submitted query, so choosing WhatsApp for
-`wha` also teaches `w` and `wh`. Direct hotkeys and empty-query favorites do not affect learned
-ranking. Learned data stays on device in `launcher-ranking.json`; a result that has learned ranking
-offers a per-item reset in its Actions menu, and users can clear all learned ranking in General
-Settings.
+`wha` also teaches `w`, `wh`, and `wha`. Every palette launch also records weak item-wide usage,
+including empty-query favorites; it is only a final tie-break and can never change a fuzzy match
+class. Direct hotkeys remain excluded because toggling an app outside Root Search provides no query
+intent. Query affinity has a 30-day half-life, global usage a 60-day half-life, and repeated visits
+approach a ceiling with diminishing returns, so stale habits yield quickly instead of becoming permanent. Learned
+data stays on device in `launcher-ranking.json`; a ranked result offers a per-item reset in its
+Actions menu, and users can clear all learned ranking in General Settings.
 
 Rankings are memoized one query deep and keyed by the ranking store's revision, so a launch or reset
-invalidates the cached order. `rank` resolves the whole learned table for a query up front via
-`boosts(query:)` — one fold and one clock read per pass, not per candidate.
+invalidates the cached order. `rank` resolves the query and global affinity tables once per pass — one
+fold and one clock read per table, not per candidate.
 
 > **Invariant:** `Tools/fuzz-test.swift` contains a **copy** of `FuzzyMatch` from
 > `Bettercast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test

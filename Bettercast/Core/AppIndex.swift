@@ -224,40 +224,106 @@ final class AppIndex: ObservableObject {
     }
 
     private func rank(_ q: String, limit: Int) -> [AppEntry] {
-        let learned = ranking.boosts(query: q)
-        let scored = apps.compactMap { app -> (AppEntry, Int)? in
-            guard let score = FuzzyMatch.score(query: q, candidate: app.name) else { return nil }
-            return (app, score + (learned[app.preferenceKey] ?? 0))
+        let learned = ranking.affinities(query: q)
+        let global = ranking.globalAffinities()
+        let scored = apps.compactMap { app -> RankedApp? in
+            guard let match = FuzzyMatch.match(query: q, candidate: app.name) else { return nil }
+            let affinity = learned[app.preferenceKey] ?? 0
+            let globalAffinity = global[app.preferenceKey] ?? 0
+            let promotedTier = Self.promotedTier(for: match.kind, affinity: affinity)
+            // Query learning can overcome small within-tier shape differences; global usage stays a tiny tie-break and can never change tiers.
+            let adaptiveDetail =
+                match.detailScore + affinity / 100 + min(4, globalAffinity / 2_500)
+            return RankedApp(
+                app: app, tier: promotedTier, detail: adaptiveDetail,
+                affinity: affinity, globalAffinity: globalAffinity)
         }
         return
             scored
             .sorted {
-                $0.1 != $1.1
-                    ? $0.1 > $1.1
-                    : $0.0.name.localizedCaseInsensitiveCompare($1.0.name) == .orderedAscending
+                if $0.tier != $1.tier { return $0.tier > $1.tier }
+                if $0.detail != $1.detail { return $0.detail > $1.detail }
+                if $0.affinity != $1.affinity { return $0.affinity > $1.affinity }
+                if $0.globalAffinity != $1.globalAffinity {
+                    return $0.globalAffinity > $1.globalAffinity
+                }
+                return $0.app.name.localizedCaseInsensitiveCompare($1.app.name)
+                    == .orderedAscending
             }
             .prefix(limit)
-            .map(\.0)
+            .map(\.app)
+    }
+
+    private struct RankedApp {
+        let app: AppEntry
+        let tier: Int
+        let detail: Int
+        let affinity: Int
+        let globalAffinity: Int
+    }
+
+    /// A repeated, recent query choice may cross one adjacent quality boundary. Exact matches stay absolute, prefixes cannot become exact, and weak subsequences never receive a tier promotion.
+    private static func promotedTier(for kind: FuzzyMatch.Kind, affinity: Int) -> Int {
+        guard affinity >= 2_500 else { return kind.rawValue }
+        switch kind {
+        case .substring, .wordStart:
+            return kind.rawValue + 1
+        case .subsequence, .prefix, .exact:
+            return kind.rawValue
+        }
     }
 }
 
 enum FuzzyMatch {
-    /// Tiered relevance score (higher is better), or nil when the query doesn't match; tiers are spaced so a better kind always wins.
+    enum Kind: Int, Sendable {
+        case subsequence
+        case substring
+        case wordStart
+        case prefix
+        case exact
+    }
+
+    struct Result: Sendable {
+        let kind: Kind
+        /// Quality within a match kind. Ranking compares the kind separately so adaptive history can safely promote by one tier without inheriting the old artificial 10k walls.
+        let detailScore: Int
+
+        var score: Int {
+            switch kind {
+            case .exact: return 100_000
+            case .prefix: return 90_000 + detailScore
+            case .wordStart: return 80_000 + detailScore
+            case .substring: return 70_000 + detailScore
+            case .subsequence: return detailScore
+            }
+        }
+    }
+
+    /// Tiered relevance score retained for callers and the standalone matcher harness.
     static func score(query: String, candidate: String) -> Int? {
         let q = normalized(query)
-        let c = normalized(candidate)
         guard !q.isEmpty else { return 0 }
+        return match(normalizedQuery: q, candidate: normalized(candidate))?.score
+    }
 
-        if c == q { return 100_000 }
-        if c.hasPrefix(q) { return 90_000 - c.count }
+    static func match(query: String, candidate: String) -> Result? {
+        let q = normalized(query)
+        guard !q.isEmpty else { return nil }
+        return match(normalizedQuery: q, candidate: normalized(candidate))
+    }
+
+    private static func match(normalizedQuery q: String, candidate c: String) -> Result? {
+
+        if c == q { return Result(kind: .exact, detailScore: 0) }
+        if c.hasPrefix(q) { return Result(kind: .prefix, detailScore: -c.count) }
 
         if let range = c.range(of: q) {
-            let atWordStart = isWordStart(c, range.lowerBound)
-            return (atWordStart ? 80_000 : 70_000) - c.count
+            let kind: Kind = isWordStart(c, range.lowerBound) ? .wordStart : .substring
+            return Result(kind: kind, detailScore: -c.count)
         }
 
-        guard let sub = subsequenceScore(Array(q), Array(c)) else { return nil }
-        return sub
+        guard let score = subsequenceScore(Array(q), Array(c)) else { return nil }
+        return Result(kind: .subsequence, detailScore: score)
     }
 
     /// App metadata can contain invisible bidirectional/zero-width format scalars (WhatsApp's display name starts with U+200E); they must not demote an otherwise-visible prefix match.
