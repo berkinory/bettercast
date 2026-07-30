@@ -121,6 +121,7 @@ struct ShortcutRecorder: View {
                     width: Theme.Settings.Size.shortcutRecorderClearWidth,
                     height: Theme.Settings.Size.shortcutRecorderHeight
                 )
+                .offset(x: -1)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -465,8 +466,7 @@ private final class CaptureSession: ObservableObject {
                     guard let self else { return }
                     self.heldModifiers = flags
                     switch self.state {
-                    case .editing,
-                        .success where !flags.isEmpty:
+                    case .editing where !flags.isEmpty:
                         self.successResolutionTask?.cancel()
                         self.successResolutionTask = nil
                         self.state = .recording

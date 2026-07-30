@@ -45,7 +45,6 @@ final class HotKeyManager: ObservableObject {
 
     /// Persists (or clears, when `nil`) the binding, swaps the live Carbon registration, and publishes so the launcher and recorders re-render.
     func setShortcut(_ shortcut: KeyShortcut?, for action: HotKeyAction) {
-        objectWillChange.send()
         if let shortcut,
             let data = try? JSONEncoder().encode(shortcut),
             let json = String(data: data, encoding: .utf8)
@@ -68,6 +67,7 @@ final class HotKeyManager: ObservableObject {
         case .togglePalette, .toggleClipboard, .toggleEmoji:
             break
         }
+        objectWillChange.send()
     }
 
     /// The display name of whatever else `shortcut` is bound to (or `nil` if free), driving the recorder's "Used by …" message.
