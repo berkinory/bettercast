@@ -18,7 +18,6 @@ struct RootPaletteView: View {
     @EnvironmentObject private var store: ClipboardStore
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var visibility: VisibilityStore
-    @EnvironmentObject private var calcHistory: CalculatorHistoryStore
     /// Observed so the inline card re-evaluates the moment a fresh FX snapshot lands, or the user
     /// turns currency conversion on or off.
     @EnvironmentObject private var currencyRates: CurrencyRateStore
@@ -60,16 +59,15 @@ struct RootPaletteView: View {
         return split.favorites + split.rest
     }
     private var clipResults: [ClipboardItem] { store.search(vm.query) }
-    private var histResults: [CalcHistoryEntry] { calcHistory.search(vm.query) }
     private var emojiSections: [EmojiGridSection] {
         EmojiGrid.sections(query: vm.query, index: emojiIndex, frequent: frequentEmoji)
     }
     /// Flat grid order across sections — what `vm.selection` indexes in emoji mode.
     private var emojiResults: [EmojiEntry] { emojiSections.flatMap(\.entries) }
 
-    /// Inline calculator answer for the current query, live in both the launcher and Calculator History search; when present it occupies flat selection index 0 so rows shift by `calcCount`.
+    /// Inline calculator answer for the current launcher query; when present it occupies flat selection index 0 so rows shift by `calcCount`.
     private var calcResult: CalcResult? {
-        vm.mode == .launcher || vm.mode == .calculatorHistory
+        vm.mode == .launcher
             ? CalcMemo.evaluate(
                 vm.query,
                 currency: settings.currencyConversionEnabled
@@ -84,7 +82,6 @@ struct RootPaletteView: View {
         switch vm.mode {
         case .launcher: return appResults.count + calcCount
         case .clipboard: return clipResults.count
-        case .calculatorHistory: return histResults.count + calcCount
         case .emoji: return emojiResults.count
         }
     }
@@ -112,10 +109,6 @@ struct RootPaletteView: View {
     }
     private var selectedClipItem: ClipboardItem? {
         clipResults.indices.contains(selection) ? clipResults[selection] : nil
-    }
-    private var selectedHistEntry: CalcHistoryEntry? {
-        let index = selection - calcCount
-        return histResults.indices.contains(index) ? histResults[index] : nil
     }
     private var selectedEmojiEntry: EmojiEntry? {
         emojiResults.indices.contains(selection) ? emojiResults[selection] : nil
@@ -146,15 +139,6 @@ struct RootPaletteView: View {
             if let clip = selectedClipItem {
                 return ClipboardActionsMenu.content(
                     item: clip, core: core, store: store, target: vm.pasteTarget)
-            }
-            return nil
-        case .calculatorHistory:
-            if let calc = calcActionableResult {
-                return CalcActionsMenu.content(result: calc, core: core)
-            }
-            if let hist = selectedHistEntry {
-                return CalcHistoryActionsMenu.content(
-                    entry: hist, core: core, calcHistory: calcHistory)
             }
             return nil
         case .emoji:
@@ -189,7 +173,6 @@ struct RootPaletteView: View {
         // Filter once per render for the active mode only, so the matcher/search doesn't run several times per render (rare event handlers use the computed properties above).
         let apps = vm.mode == .launcher ? appResults : []
         let clips = vm.mode == .clipboard ? clipResults : []
-        let hist = vm.mode == .calculatorHistory ? histResults : []
         let emojiSections = vm.mode == .emoji ? emojiSections : []
         let emojis = emojiSections.flatMap(\.entries)
         // Newest stored clip + the reorder token: the pair changes only when the store mutates, never when a query filters the list.
@@ -198,7 +181,7 @@ struct RootPaletteView: View {
         let calc = calcResult
         let offset = calc == nil ? 0 : 1
         // Only the active mode is non-empty.
-        let count = apps.count + offset + clips.count + hist.count + emojis.count
+        let count = apps.count + offset + clips.count + emojis.count
         let sel = count == 0 ? 0 : min(max(vm.selection, 0), count - 1)
         let calcSelected = calc != nil && sel == 0
         // An error card is selectable but has no action: it must not drive the Copy Answer pill, ⌘K menu, or Enter.
@@ -217,7 +200,7 @@ struct RootPaletteView: View {
                 Color.clear
             } else {
                 content(
-                    apps: apps, clips: clips, hist: hist, emojiSections: emojiSections, calc: calc,
+                    apps: apps, clips: clips, emojiSections: emojiSections, calc: calc,
                     selection: sel, favoriteCount: favoriteCount, showSections: showSections
                 )
             }
@@ -231,7 +214,7 @@ struct RootPaletteView: View {
         // Menus are in-window overlays anchored to a bottom corner, so they stay clipped inside the panel — never a system popover spilling outside the window.
         .overlay {
             if showAppMenu || showActions {
-                Color.black.opacity(0.001)
+                Theme.Colors.invisibleOverlay
                     .contentShape(Rectangle())
                     .onTapGesture(perform: closeMenus)
             }
@@ -259,7 +242,7 @@ struct RootPaletteView: View {
         }
         // The window's own frame (driven by `PaletteWindowController`) is the size source of truth; filling it keeps the glass background and corner clip matched to the current compact/expanded window height.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.black.opacity(Theme.Colors.panelDimming))
+        .background(Theme.Colors.panelSurface)
         .background(VisualEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
@@ -401,11 +384,6 @@ struct RootPaletteView: View {
             case .clipboard:
                 guard command, clipResults.indices.contains(selection) else { return .ignored }
                 core.copyToClipboard(clipResults[selection])
-            case .calculatorHistory:
-                // The inline calc card (index 0 when present) has no secondary action; only stored entries respond.
-                let index = selection - calcCount
-                guard command, histResults.indices.contains(index) else { return .ignored }
-                core.copyHistoryExpression(histResults[index])
             case .launcher:
                 // ⌘↵ reveals applications and settings in Finder, matching the Actions menu.
                 guard command, let app = selectedAppEntry, app.kind != .command else {
@@ -475,8 +453,6 @@ struct RootPaletteView: View {
             switch vm.mode {
             case .clipboard:
                 deleteSelectedClip()
-            case .calculatorHistory:
-                deleteSelectedHistoryEntry()
             case .launcher, .emoji:
                 return .ignored
             }
@@ -494,7 +470,7 @@ struct RootPaletteView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            // Clipboard and Calculator History are sub-screens of the root search, so their header icon is a back chevron instead of a mode glyph.
+            // Sub-screens use a back chevron instead of a mode glyph.
             if vm.mode != .launcher {
                 Button(action: exitToLauncher) {
                     Image(systemName: "chevron.left")
@@ -537,7 +513,7 @@ struct RootPaletteView: View {
     private var searchField: some View {
         TextField(
             "", text: $vm.query,
-            prompt: Text(vm.mode.placeholder).foregroundStyle(Theme.Colors.textTertiary)
+            prompt: Text(vm.mode.placeholder).foregroundStyle(Theme.Colors.searchPlaceholder)
         )
         .textFieldStyle(.plain)
         .font(Theme.Typography.searchField)
@@ -548,7 +524,7 @@ struct RootPaletteView: View {
 
     @ViewBuilder
     private func content(
-        apps: [AppEntry], clips: [ClipboardItem], hist: [CalcHistoryEntry],
+        apps: [AppEntry], clips: [ClipboardItem],
         emojiSections: [EmojiGridSection], calc: CalcResult?,
         selection: Int, favoriteCount: Int, showSections: Bool
     ) -> some View {
@@ -605,40 +581,6 @@ struct RootPaletteView: View {
                         .frame(width: 1)
                     ClipboardPreview(item: selected)
                 }
-            }
-        case .calculatorHistory:
-            if hist.isEmpty && calc == nil {
-                EmptyResults(
-                    text: isQueryEmpty ? "No calculations yet" : "No matching calculations")
-            } else {
-                let offset = calc == nil ? 0 : 1
-                let calcSelected = calc != nil && selection == 0
-                let histIndex = selection - offset
-                let selected = hist.indices.contains(histIndex) ? hist[histIndex] : nil
-                CalculatorHistoryList(
-                    results: hist,
-                    selectedID: calcSelected ? nil : selected?.id,
-                    scrollIntent: listScroll,
-                    calc: calc,
-                    calcSelected: calcSelected,
-                    onActivateCalc: {
-                        vm.selection = 0
-                        activateSelection()
-                    },
-                    onCalcActions: {
-                        guard let calc, case .value = calc.payload else { return }
-                        vm.selection = 0
-                        openActions()
-                    },
-                    onSelect: { entry in
-                        if let index = hist.firstIndex(of: entry) { vm.selection = index + offset }
-                    },
-                    onActivate: activateSelection,
-                    onActions: { entry in
-                        if let index = hist.firstIndex(of: entry) { vm.selection = index + offset }
-                        openActions()
-                    }
-                )
             }
         case .emoji:
             if !emojiIndex.isLoaded {
@@ -697,7 +639,7 @@ struct RootPaletteView: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     Text(pillLabel)
                         .font(Theme.Typography.bar)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                     KeyCapChip(text: "↵", style: .outline)
                 }
             }
@@ -722,8 +664,6 @@ struct RootPaletteView: View {
         switch vm.mode {
         case .clipboard, .emoji:
             return vm.pasteTarget?.pasteTitle ?? "Paste"
-        case .calculatorHistory:
-            return "Copy Answer"
         case .launcher:
             if calcActionable { return "Copy Answer" }
             switch selectedApp?.kind {
@@ -782,12 +722,6 @@ struct RootPaletteView: View {
         store.remove(clipResults[selection])
     }
 
-    private func deleteSelectedHistoryEntry() {
-        let index = selection - calcCount  // the inline calc card can't be deleted
-        guard histResults.indices.contains(index) else { return }
-        calcHistory.remove(histResults[index])
-    }
-
     // MARK: - Actions
 
     private func move(_ delta: Int) {
@@ -821,7 +755,7 @@ struct RootPaletteView: View {
         emojiScroll = EmojiScrollIntent(kind: .follow)
     }
 
-    /// Tab flips launcher↔clipboard; Calculator History (entered via its command) exits back to the launcher rather than joining the cycle.
+    /// Tab flips between the launcher and clipboard.
     private func toggleMode() {
         vm.mode = vm.mode == .launcher ? .clipboard : .launcher
     }
@@ -847,15 +781,6 @@ struct RootPaletteView: View {
         case .clipboard:
             guard clipResults.indices.contains(selection) else { return }
             core.paste(clipResults[selection])
-        case .calculatorHistory:
-            if let calcResult, selection == 0 {
-                // A fresh calculation typed into the history search: copy + record like the launcher card (error cards no-op).
-                core.copyCalculatorResult(calcResult)
-                return
-            }
-            let index = selection - calcCount
-            guard histResults.indices.contains(index) else { return }
-            core.copyHistoryEntry(histResults[index])
         case .emoji:
             guard emojiResults.indices.contains(selection) else { return }
             core.pasteEmoji(emojiResults[selection])
@@ -894,7 +819,7 @@ private struct PaletteFeedbackButton: View {
             .frame(width: Theme.Size.feedbackHalo, height: Theme.Size.feedbackHalo)
             Text(message)
                 .font(Theme.Typography.bar)
-                .foregroundStyle(.primary)
+                .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(1)
         }
         .padding(.leading, Theme.Spacing.xl)
@@ -934,8 +859,8 @@ private struct PaletteModeMenuButton: View {
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
                 Text(mode.title)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.primary)
+                    .font(Theme.Typography.calloutMedium)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .lineLimit(1)
             }
             .padding(.horizontal, Theme.Spacing.md)
@@ -1011,7 +936,7 @@ struct EmptyResults: View {
     let text: String
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").font(.largeTitle)
+            Image(systemName: "magnifyingglass").font(Theme.Typography.largeTitle)
                 .symbolRenderingMode(.hierarchical).foregroundStyle(.tertiary)
             Text(text).foregroundStyle(.secondary)
         }
@@ -1055,7 +980,7 @@ private struct CompactFavoritesRow: View {
                         title: "Show all", shortcutIndex: index + 1, action: onOverflow
                     ) {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 10))
+                            .font(Theme.Typography.iconTiny)
                             .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                             .background(
@@ -1103,8 +1028,8 @@ private struct CompactFavoriteTooltip: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.xl) {
             Text(title)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
+                .font(Theme.Typography.headlineSemibold)
+                .foregroundStyle(Theme.Colors.textPrimary)
                 .lineLimit(1)
             HStack(spacing: Theme.Spacing.xxs) {
                 KeyCapChip(text: "⌘")
@@ -1115,7 +1040,7 @@ private struct CompactFavoriteTooltip: View {
         .padding(.vertical, Theme.Spacing.sm)
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.menuPanel, style: .continuous)
-                .fill(Color.black.opacity(0.86))
+                .fill(Theme.Colors.tooltipSurface)
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.Radius.menuPanel, style: .continuous)
                         .strokeBorder(Theme.Colors.border, lineWidth: 1)

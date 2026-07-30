@@ -1,6 +1,6 @@
 # Emoji picker
 
-A palette sub-screen (reached like Clipboard / Calculator History) presenting a searchable emoji grid.
+A palette sub-screen (reached like Clipboard) presenting a searchable emoji grid.
 
 ## Layout
 

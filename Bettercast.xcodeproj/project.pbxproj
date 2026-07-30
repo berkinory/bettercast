@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		038288E0BB17581DBD649BC5 /* CalculatorHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2015901F6931A636CF402EC6 /* CalculatorHistoryStore.swift */; };
-		03DC4F2FE1A1ABB975A39CA4 /* CalculatorHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3621B7FC0592F07B4F7F097D /* CalculatorHistoryView.swift */; };
 		086BCBAB1D32A0DA84C0A50D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EAD05707838D4962F8DEAC7 /* AppDelegate.swift */; };
 		0A3708F1D210874864AFD448 /* OnboardingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F154F147CA4AFCA0939DF64 /* OnboardingState.swift */; };
 		0F620068EB4639E4F1DD9542 /* CurrencyRateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0FE10714950EC82644EEB5 /* CurrencyRateStore.swift */; };
@@ -23,7 +21,6 @@
 		294AC5ADD31C0DCC7C9F6891 /* RunningApps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89915E4CB7B21D04E4A04B40 /* RunningApps.swift */; };
 		2993DAEBBD3D2E1DF1DAA050 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3519AF3D6C2E5CC8DC90077C /* GeneralSettingsView.swift */; };
 		2A47D12EE5EFFF18079329D9 /* ClipboardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BD69733E927F963EB8E480 /* ClipboardSettingsView.swift */; };
-		2A61D06E96C4DA3C828E94F4 /* SettingsBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76A20C3E515959D81B66F7F7 /* SettingsBackup.swift */; };
 		2B3F00C89359013136BE3A7A /* LauncherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C847927895B2183A016901B /* LauncherView.swift */; };
 		31D0CED02D5EAC5DE6B84C15 /* EmojiIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47DBB1D43E3AF0C779F6BA37 /* EmojiIndex.swift */; };
 		3466A8C0B1F1AAB172EDA844 /* ImageThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE2E023A17E374A164C698D9 /* ImageThumbnail.swift */; };
@@ -77,7 +74,6 @@
 		F212ACD48FBECFF74F47A0A6 /* AppLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B958BE256565B0B93D47C3A /* AppLauncher.swift */; };
 		F3A68F94162564A59E8A3007 /* CalcDateTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910C8961B54EDEB3DAD37751 /* CalcDateTime.swift */; };
 		F5A396B9FC388FF566AC21A9 /* PermissionsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D654428D9513269E8BFF8974 /* PermissionsSettingsView.swift */; };
-		F7781627FD5C8320930A5971 /* BackupActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E0DA3A94FA3A25A7449DE4 /* BackupActions.swift */; };
 		FB7B61A0D75D54668A40C633 /* BettercastApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7CA13A67D1F43B530B1DD5 /* BettercastApp.swift */; };
 		FC8C987D89609CB4FAC716D4 /* CalculatorCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 148A67707CDB7C0D951A9ACF /* CalculatorCardView.swift */; };
 		FE4AACB462D0E567E4D05C6F /* EmojiGridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 372C0DF3B0644E73CE7E03D4 /* EmojiGridGeometry.swift */; };
@@ -93,7 +89,6 @@
 		16F8497887F37D47F37D5681 /* FrequentEmojiStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentEmojiStore.swift; sourceTree = "<group>"; };
 		196F9EF01154C3EC0E98149A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1CB6CA4A9FC2DDCA51D7D88C /* PalettePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePanel.swift; sourceTree = "<group>"; };
-		2015901F6931A636CF402EC6 /* CalculatorHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorHistoryStore.swift; sourceTree = "<group>"; };
 		2029AB5A8DCF7801DFC115B9 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
 		238C67714B196D0C97CD9F81 /* CalcParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcParser.swift; sourceTree = "<group>"; };
 		2487E1E33168F9BDE2D767B7 /* SettingsSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSearchIndex.swift; sourceTree = "<group>"; };
@@ -103,7 +98,6 @@
 		293306F130F44F0A817BD906 /* CalcUnits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcUnits.swift; sourceTree = "<group>"; };
 		2C847927895B2183A016901B /* LauncherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherView.swift; sourceTree = "<group>"; };
 		3519AF3D6C2E5CC8DC90077C /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
-		3621B7FC0592F07B4F7F097D /* CalculatorHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorHistoryView.swift; sourceTree = "<group>"; };
 		3714BB0D0102E507DF9174D4 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		372C0DF3B0644E73CE7E03D4 /* EmojiGridGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridGeometry.swift; sourceTree = "<group>"; };
 		3A113CAEC53AF1C6AF86382A /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -126,7 +120,6 @@
 		68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
 		6EE602D0F879521C586FE8A4 /* EmojiData.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiData.generated.swift; sourceTree = "<group>"; };
 		71E47B17BEE8AD96599566C0 /* RightClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightClick.swift; sourceTree = "<group>"; };
-		76A20C3E515959D81B66F7F7 /* SettingsBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackup.swift; sourceTree = "<group>"; };
 		7B5FCCFFE79A086A53A5241C /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
 		828E4F96599556B426BD8DB9 /* ClipboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardManager.swift; sourceTree = "<group>"; };
 		82B53C15DDD7788A332252A1 /* Bettercast.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Bettercast.entitlements; sourceTree = "<group>"; };
@@ -152,7 +145,6 @@
 		D62E2F6E52CA165BF004E1F1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		D654428D9513269E8BFF8974 /* PermissionsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsSettingsView.swift; sourceTree = "<group>"; };
 		D6B10EFBFC2FC71096F6F398 /* LauncherRankingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherRankingStore.swift; sourceTree = "<group>"; };
-		D7E0DA3A94FA3A25A7449DE4 /* BackupActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupActions.swift; sourceTree = "<group>"; };
 		DB305954F02474FD2B47711E /* HotKeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyCenter.swift; sourceTree = "<group>"; };
 		DFF61A2A87E5AD6147E99044 /* ThinScrollbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinScrollbar.swift; sourceTree = "<group>"; };
 		E4BD69733E927F963EB8E480 /* ClipboardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSettingsView.swift; sourceTree = "<group>"; };
@@ -181,18 +173,9 @@
 			path = Emoji;
 			sourceTree = "<group>";
 		};
-		32E417ED18B910B0BE864D4F /* Calculator */ = {
-			isa = PBXGroup;
-			children = (
-				3621B7FC0592F07B4F7F097D /* CalculatorHistoryView.swift */,
-			);
-			path = Calculator;
-			sourceTree = "<group>";
-		};
 		35E9857F5A7CBAD11367166C /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				BCA6A8CF5C23DBD29575ED2F /* Backup */,
 				81612056953B40E801AD7A05 /* Calculator */,
 				4F596DE014A9AA7D58830327 /* Emoji */,
 				69522A695B979ECC9CAC2787 /* HotKey */,
@@ -202,7 +185,6 @@
 				3714BB0D0102E507DF9174D4 /* AppSettings.swift */,
 				5DAE1F03988D52499A48F105 /* AppUninstaller.swift */,
 				EC44B7DB01BAA4B55129CBC5 /* Bundle+AppName.swift */,
-				2015901F6931A636CF402EC6 /* CalculatorHistoryStore.swift */,
 				828E4F96599556B426BD8DB9 /* ClipboardManager.swift */,
 				0C55C633002654B962059B01 /* ClipboardStore.swift */,
 				031A1FF2068559E3C45253A5 /* CommandRegistry.swift */,
@@ -332,7 +314,6 @@
 			isa = PBXGroup;
 			children = (
 				8E0FD6FB01E13259AEF23DAA /* About */,
-				32E417ED18B910B0BE864D4F /* Calculator */,
 				A1F069A0753109A51908BA3E /* Clipboard */,
 				318FA727C0D7DBA7C615B460 /* Emoji */,
 				563ACF065C06C68503A93524 /* Launcher */,
@@ -342,15 +323,6 @@
 				F2693267F9F03712FC1896C8 /* RootPaletteView.swift */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		BCA6A8CF5C23DBD29575ED2F /* Backup */ = {
-			isa = PBXGroup;
-			children = (
-				D7E0DA3A94FA3A25A7449DE4 /* BackupActions.swift */,
-				76A20C3E515959D81B66F7F7 /* SettingsBackup.swift */,
-			);
-			path = Backup;
 			sourceTree = "<group>";
 		};
 		C7CFC933079B40EB2021E827 /* Bettercast */ = {
@@ -453,7 +425,6 @@
 				F212ACD48FBECFF74F47A0A6 /* AppLauncher.swift in Sources */,
 				9745871BDB1CB45E7E0FE048 /* AppSettings.swift in Sources */,
 				B43CB63645F4CBF3462C86AE /* AppUninstaller.swift in Sources */,
-				F7781627FD5C8320930A5971 /* BackupActions.swift in Sources */,
 				FB7B61A0D75D54668A40C633 /* BettercastApp.swift in Sources */,
 				4A021DCD2DA1748EEDECE318 /* Bundle+AppName.swift in Sources */,
 				938BDBBFC18C241C0658D207 /* CalcCurrency.swift in Sources */,
@@ -465,8 +436,6 @@
 				9AE0BB4BF45A38788A31B75F /* CalcQuantity.swift in Sources */,
 				9CAFED143C26E767BB40D05F /* CalcUnits.swift in Sources */,
 				FC8C987D89609CB4FAC716D4 /* CalculatorCardView.swift in Sources */,
-				038288E0BB17581DBD649BC5 /* CalculatorHistoryStore.swift in Sources */,
-				03DC4F2FE1A1ABB975A39CA4 /* CalculatorHistoryView.swift in Sources */,
 				B0117926CB7A3A0F7830B749 /* CalculatorSettingsView.swift in Sources */,
 				AF0CD42051E2BB5BC7AA8F10 /* ClipboardManager.swift in Sources */,
 				2A47D12EE5EFFF18079329D9 /* ClipboardSettingsView.swift in Sources */,
@@ -506,7 +475,6 @@
 				44CB1390C0741025E197CCC1 /* RightClick.swift in Sources */,
 				45F4F5B0E7F01B3464BAF07E /* RootPaletteView.swift in Sources */,
 				294AC5ADD31C0DCC7C9F6891 /* RunningApps.swift in Sources */,
-				2A61D06E96C4DA3C828E94F4 /* SettingsBackup.swift in Sources */,
 				9A054D4C37BBC0265DCB078C /* SettingsComponents.swift in Sources */,
 				B274EF4A97CA03A399FC1BF4 /* SettingsPaneScanner.swift in Sources */,
 				D2C3EF7C6B2FA90F729F968D /* SettingsRootView.swift in Sources */,

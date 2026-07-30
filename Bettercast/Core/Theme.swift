@@ -12,7 +12,7 @@ enum Theme {
         static let xxl: CGFloat = 20
         /// Calculator answer card's roomier vertical breathing room.
         static let xxxl: CGFloat = 28
-        /// Gap under a category header before its first row; shared by every palette list's `SectionHeader` (launcher, clipboard, emoji, calculator history).
+        /// Gap under a category header before its first row; shared by every palette list's `SectionHeader`.
         static let sectionHeaderBottom: CGFloat = 4
         /// Space above a category header (every header except the list's first), which reads as bottom padding closing the previous section — shared by every palette list.
         static let sectionSpacing: CGFloat = 12
@@ -66,6 +66,41 @@ enum Theme {
         static let searchField = Font.system(size: 20, weight: .regular)
         static let headerIcon = Font.system(size: 18, weight: .medium)
         static let rowTitle = Font.body
+        static let body = Font.body
+        static let bodyMedium = Font.body.weight(.medium)
+        static let bodySemibold = Font.body.weight(.semibold)
+        static let callout = Font.callout
+        static let calloutMedium = Font.callout.weight(.medium)
+        static let calloutSemibold = Font.callout.weight(.semibold)
+        static let caption = Font.caption
+        static let captionMonospacedDigit = Font.caption.monospacedDigit()
+        static let captionMedium = Font.caption.weight(.medium)
+        static let captionSemibold = Font.caption.weight(.semibold)
+        static let caption2 = Font.caption2
+        static let caption2Medium = Font.caption2.weight(.medium)
+        static let caption2Semibold = Font.caption2.weight(.semibold)
+        static let headline = Font.headline
+        static let headlineSemibold = Font.headline.weight(.semibold)
+        static let subheadline = Font.subheadline
+        static let titleBold = Font.title.weight(.bold)
+        static let title2Bold = Font.title2.weight(.bold)
+        static let title3 = Font.title3
+        static let title3Semibold = Font.title3.weight(.semibold)
+        static let largeTitle = Font.largeTitle
+        static let iconMicro = Font.system(size: 7, weight: .semibold)
+        static let iconClose = Font.system(size: 9, weight: .semibold)
+        static let iconTiny = Font.system(size: 10)
+        static let iconSmall = Font.system(size: 12)
+        static let iconMedium = Font.system(size: 13, weight: .medium)
+        static let iconMediumSmall = Font.system(size: 14, weight: .medium)
+        static let iconLarge = Font.system(size: 18, weight: .medium)
+        static let iconLargeSemibold = Font.system(size: 16, weight: .semibold)
+        static let iconXL = Font.system(size: 22, weight: .medium)
+        static let iconHero = Font.system(size: 30, weight: .semibold)
+        static let emojiGlyph = Font.system(size: 30)
+        static let emptyStateIcon = Font.system(size: 26, weight: .medium)
+        static let largeTitleIcon = Font.system(.largeTitle)
+        static let monospacedSubheadline = Font.system(.subheadline, design: .monospaced)
         static let rowTrailing = Font.callout
         static let sectionHeader = Font.subheadline.weight(.medium)
         /// The big value line on the calculator answer card (both source and target sides).
@@ -154,8 +189,9 @@ enum Theme {
     }
 
     enum Colors {
-        /// Black opacity of the panel's surface tint over the behind-window material.
-        static let panelDimming: CGFloat = 0.4
+        static let panelSurface = Color.black.opacity(0.4)
+        static let textPrimary = Color.white
+        static let searchPlaceholder = Color.white.opacity(0.32)
         /// Selection fill: a soft neutral translucent layer shared by launcher and clipboard so both lists look identical.
         static let selection = Color.white.opacity(0.10)
         /// Mouse hover — a fainter layer that follows the cursor, visually distinct from selection.
@@ -177,6 +213,18 @@ enum Theme {
         static let feedbackShade = Color.black.opacity(0.40)
         static let feedbackStroke = Color.white.opacity(0.20)
         static let feedbackAccent = Color(red: 0.24, green: 0.82, blue: 0.52)
+        static let success = Color.green
+        static let warning = Color.orange
+        static let attention = Color.yellow
+        static let destructive = Color.red
+        static let imagePlaceholder = Color.white.opacity(0.06)
+        static let overlayDimming = Color.black.opacity(0.38)
+        static let invisibleOverlay = Color.black.opacity(0.001)
+        static let tooltipSurface = Color.black.opacity(0.86)
+        static let onboardingGradientStart = Color.white.opacity(0.04)
+        static let previewDimming = Color.black.opacity(0.38)
+        static let previewSelected = Color.white.opacity(0.45)
+        static let previewUnselected = Color.white.opacity(0.22)
         /// The violet of the app mark. The one non-white hue in the system, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
     }

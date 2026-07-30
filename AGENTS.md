@@ -82,7 +82,7 @@ Never break these without an explicit task to do so.
   provider, the cadence and what leaves the machine, and its owning store must re-check consent at
   every entry point — including on both sides of the `await` around the request, since consent can
   be withdrawn mid-flight. Consent flags live on the owning store, never in `AppSettings`
-  (`SettingsBackup` mirrors that type, and an import must not grant network access). Model the gate
+  (settings changes must not grant network access). Model the gate
   so the *safe* state is the default: `CalcEngine.evaluate`'s `currency:` parameter defaults to
   `.off`, so forgetting to pass one disables the feature rather than enabling it. Fetch on a private
   **cacheless** `URLSession` (`.ephemeral`, `urlCache = nil`), never `URLSession.shared` — a cacheable

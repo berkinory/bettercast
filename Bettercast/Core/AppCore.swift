@@ -4,7 +4,6 @@ import SwiftUI
 enum PaletteMode: String, CaseIterable, Identifiable {
     case launcher
     case clipboard
-    case calculatorHistory
     case emoji
 
     var id: String { rawValue }
@@ -12,7 +11,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         switch self {
         case .launcher: return "Apps"
         case .clipboard: return "Clipboard History"
-        case .calculatorHistory: return "Calculator History"
         case .emoji: return "Emoji & Symbols"
         }
     }
@@ -20,7 +18,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         switch self {
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.clipboard"
-        case .calculatorHistory: return "plus.forwardslash.minus"
         case .emoji: return "face.smiling"
         }
     }
@@ -28,7 +25,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         switch self {
         case .launcher: return "Search for apps and commands…"
         case .clipboard: return "Type to filter entries…"
-        case .calculatorHistory: return "Do math, convert units, or search your past calculations…"
         case .emoji: return "Search emoji and symbols…"
         }
     }
@@ -97,7 +93,6 @@ final class AppCore: ObservableObject {
     let settings = AppSettings()
     let favorites = FavoritesStore()
     let visibility = VisibilityStore()
-    let calcHistory = CalculatorHistoryStore()
     let currencyRates = CurrencyRateStore()
     let emojiIndex = EmojiIndex()
     let frequentEmoji = FrequentEmojiStore()
@@ -380,7 +375,7 @@ final class AppCore: ObservableObject {
     }
 
     private static func confirmQuitAll(count: Int) -> Bool {
-        // An accessory app's alert opens behind the frontmost app unless it activates first (same as `BackupActions`).
+        // An accessory app's alert opens behind the frontmost app unless it activates first.
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = count == 1 ? "Quit 1 application?" : "Quit \(count) applications?"
@@ -396,24 +391,13 @@ final class AppCore: ObservableObject {
 
     private func runCommand(_ entry: AppEntry) {
         switch CommandRegistry.command(for: entry) {
-        case .calculatorHistory:
-            showPalette(mode: .calculatorHistory)
         case .clipboardHistory:
             showPalette(mode: .clipboard)
         case .searchEmoji:
             showPalette(mode: .emoji)
-        case .exportSettings:
-            hidePalette(restoreFocus: false)
-            BackupActions.exportSettings()
-        case .importSettings:
-            hidePalette(restoreFocus: false)
-            BackupActions.importSettings()
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()
-        case .about:
-            hidePalette(restoreFocus: false)
-            showAbout()
         case .quitAllApps:
             // Hide before confirming: the palette is a floating panel and would sit above the alert.
             hidePalette(restoreFocus: false)
@@ -425,23 +409,11 @@ final class AppCore: ObservableObject {
         }
     }
 
-    /// Enter on the inline calculator card: copy the answer, remember the calculation, dismiss.
+    /// Enter on the inline calculator card: copy the answer and dismiss.
     func copyCalculatorResult(_ result: CalcResult) {
-        guard case .value(let display, let copyText) = result.payload else { return }
-        calcHistory.record(expression: result.expression, result: display)
+        guard case .value(_, let copyText) = result.payload else { return }
         hidePalette(restoreFocus: false)
         Paster.copyPlainText(copyText)
-    }
-
-    /// Enter on a Calculator History row: re-copy the stored answer (no re-record).
-    func copyHistoryEntry(_ entry: CalcHistoryEntry) {
-        hidePalette(restoreFocus: false)
-        Paster.copyPlainText(entry.result.replacingOccurrences(of: ",", with: ""))
-    }
-
-    func copyHistoryExpression(_ entry: CalcHistoryEntry) {
-        hidePalette(restoreFocus: false)
-        Paster.copyPlainText(entry.expression)
     }
 
     func showInFinder(_ app: AppEntry) {

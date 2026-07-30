@@ -87,9 +87,7 @@ unavailable" message.
 `CurrencyRateStore` re-checks consent at every entry point rather than trusting a caller: reading the
 cache at init, the `source` the engine is handed, `start()`, each turn of the refresh loop, and twice
 around the network call itself — once before the request and once after the `await`, since consent
-can be withdrawn while a response is in flight. Disabling conversion or crypto stops future requests and removes disabled crypto rates. Revoking consent cancels the loop, drops the snapshot and deletes the cached file. The provider-consent flag lives on the store, deliberately *not* in `AppSettings`:
-`SettingsBackup` mirrors that type field-for-field, and importing a config must never be able to
-grant network access.
+can be withdrawn while a response is in flight. Disabling conversion or crypto stops future requests and removes disabled crypto rates. Revoking consent cancels the loop, drops the snapshot and deletes the cached file. The provider-consent flag lives on the store, deliberately *not* in `AppSettings`, so settings changes cannot silently grant network access.
 
 For "revoking deletes the rates" to be true there has to be exactly one copy, so the fetch runs on a
 private **cacheless** `URLSession` (`.ephemeral`, `urlCache = nil`) rather than `URLSession.shared`.
@@ -123,6 +121,6 @@ than `5.539e-05`.
 `CalcResult` carries an `expression` (left), a `display` / `copyText` payload (right), and optional
 `sourceBadge` / `targetBadge` word-name pills. `CalculatorCard` renders it as a two-column card.
 
-When the launcher or Calculator History query evaluates to a result the card is pinned at the top of
-the list (flat selection index 0, shifting rows by one) and Enter copies the answer + records it to
-`CalculatorHistoryStore`.
+When the launcher query evaluates to a result, the card is pinned at the top of the list (flat
+selection index 0, shifting rows by one). Enter copies the answer; because it is an unmarked copy,
+the normal clipboard poller can retain it in Clipboard History.
