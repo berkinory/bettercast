@@ -57,6 +57,18 @@ enum CalcTokenizer {
                     }
                     i += 1
                 }
+                if i < chars.count, chars[i] == "e" || chars[i] == "E" {
+                    var end = i + 1
+                    if end < chars.count, chars[end] == "+" || chars[end] == "-" {
+                        end += 1
+                    }
+                    let exponentStart = end
+                    while end < chars.count, isDigit(chars[end]) { end += 1 }
+                    if end > exponentStart {
+                        text += String(chars[i..<end])
+                        i = end
+                    }
+                }
                 guard let value = Double(text) else { return nil }
                 tokens.append(.number(value))
                 continue
