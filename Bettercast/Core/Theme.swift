@@ -57,7 +57,6 @@ enum Theme {
         static let menuWidth: CGFloat = 276
         /// Square slot for a popover-menu row's leading glyph. 20 (not the 16 the artwork suggests) because an `IconCache` app icon only paints ~85% of its canvas: at 20 its visible artwork is 17pt, matching the 17–18pt a `.body` SF Symbol renders at, so symbol and app-icon rows read the same size.
         static let menuIcon: CGFloat = 20
-        /// Little state indicator dot next to a settings row title (Hyper Key active/needs-permission).
         static let statusDot: CGFloat = 6
     }
 
@@ -97,7 +96,6 @@ enum Theme {
             static let excludedAppChipMinimum: CGFloat = 150
             static let excludedAppChipHeight: CGFloat = 36
             static let skinToneButton: CGFloat = 40
-            static let hyperKeyCap: CGFloat = 26
             static let shortcutColumn: CGFloat = 132
             static let visibilityButton: CGFloat = 36
             static let shortcutRecorderHeight: CGFloat = 28

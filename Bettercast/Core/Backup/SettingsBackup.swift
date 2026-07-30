@@ -1,6 +1,6 @@
 import Foundation
 
-/// A passwordless, human-readable snapshot of Bettercast's configuration. Every field is optional so an import applies only the keys actually present (non-destructive merge): a partial file — or one from Raycast — leaves everything it omits untouched.
+/// A passwordless, human-readable snapshot of Bettercast's configuration. Every field is optional so an import applies only the keys actually present (non-destructive merge).
 struct SettingsBackup: Codable {
     var version = 1
     var settings: SettingsData?
@@ -14,10 +14,6 @@ struct SettingsBackup: Codable {
         var clipboardRetentionDays: Int?
         var clipboardDisabledApps: [String]?
         var launchAtLogin: Bool?
-        var hyperKey: String?
-        var hyperKeyIncludesShift: Bool?
-        var hyperKeyQuickPress: String?
-        var hyperKeyReplacesGlyph: Bool?
         var emojiSkinTone: String?
         var showInMenuBar: Bool?
         var popToRootSeconds: Int?
@@ -53,10 +49,6 @@ extension SettingsBackup {
             clipboardRetentionDays: s.clipboardRetention.rawValue,
             clipboardDisabledApps: s.clipboardDisabledApps,
             launchAtLogin: s.launchAtLogin,
-            hyperKey: s.hyperKey.rawValue,
-            hyperKeyIncludesShift: s.hyperKeyIncludesShift,
-            hyperKeyQuickPress: s.hyperKeyQuickPress.rawValue,
-            hyperKeyReplacesGlyph: s.hyperKeyReplacesGlyph,
             emojiSkinTone: s.emojiSkinTone.rawValue,
             showInMenuBar: UserDefaults.standard.object(forKey: SettingsKey.showInMenuBar) as? Bool
                 ?? true,
@@ -118,22 +110,6 @@ extension SettingsBackup {
         }
         if let launch = s.launchAtLogin {
             settings.launchAtLogin = launch
-            count += 1
-        }
-        if let raw = s.hyperKey, let key = HyperKeyPhysicalKey(rawValue: raw) {
-            settings.hyperKey = key
-            count += 1
-        }
-        if let flag = s.hyperKeyIncludesShift {
-            settings.hyperKeyIncludesShift = flag
-            count += 1
-        }
-        if let raw = s.hyperKeyQuickPress, let quick = HyperKeyQuickPress(rawValue: raw) {
-            settings.hyperKeyQuickPress = quick
-            count += 1
-        }
-        if let flag = s.hyperKeyReplacesGlyph {
-            settings.hyperKeyReplacesGlyph = flag
             count += 1
         }
         if let raw = s.emojiSkinTone, let tone = EmojiSkinTone(rawValue: raw) {

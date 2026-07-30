@@ -32,7 +32,7 @@ final class CurrencyRateStore: ObservableObject {
 
     /// Explicit user consent, persisted under the bundle-scoped defaults. Deliberately *not* part of
     /// `AppSettings`: `SettingsBackup` mirrors that type field-for-field, and an imported config —
-    /// or a Raycast import — must never be able to silently grant network access.
+    /// or an imported config — must never be able to silently grant network access.
     @Published private(set) var isEnabled: Bool
 
     /// The newest snapshot, or nil when none has landed — and always nil while consent is withheld.

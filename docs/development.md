@@ -69,9 +69,6 @@ Consequences worth knowing:
   and onboarding unseen. Grant + bind once; the fixed build path and bundle id keep local state stable.
   `make build` is unsigned by default; Xcode can use Apple Development signing if an account is available.
 - Don't bind the same global hotkey in both — whichever registered first wins.
-- The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**:
-  quitting one build clears the remap for the other, which then needs a rebind (or relaunch) to
-  restore it.
 
 ### Editor (VS Code) code-intelligence
 

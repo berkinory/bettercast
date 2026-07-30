@@ -3,10 +3,6 @@ import SwiftUI
 enum SettingsDestination: Hashable, Sendable {
     case launcherShortcut
     case learnedRanking
-    case hyperKey
-    case hyperQuickPress
-    case hyperIncludeShift
-    case hyperReplaceGlyph
     case compactMode
     case compactFavorites
     case launchAtLogin
@@ -28,10 +24,6 @@ enum SettingsDestination: Hashable, Sendable {
         switch self {
         case .launcherShortcut: return "launcher-shortcut"
         case .learnedRanking: return "learned-ranking"
-        case .hyperKey: return "hyper-key"
-        case .hyperQuickPress: return "hyper-quick-press"
-        case .hyperIncludeShift: return "hyper-include-shift"
-        case .hyperReplaceGlyph: return "hyper-replace-glyph"
         case .compactMode: return "compact-mode"
         case .compactFavorites: return "compact-favorites"
         case .launchAtLogin: return "launch-at-login"
@@ -73,7 +65,7 @@ enum SettingsSearchCatalog {
         pane(.clipboard, detail: "History retention and excluded applications."),
         pane(.emoji, detail: "Emoji shortcut and preferred skin tone."),
         pane(.calculator, detail: "Inline calculations and currency conversion."),
-        pane(.shortcuts, detail: "Hyper Key, application visibility, and shortcuts."),
+        pane(.shortcuts, detail: "Application visibility and shortcuts."),
         pane(.permissions, detail: "Access Bettercast needs to work with other apps."),
         pane(.about, detail: "Version, support, and project links."),
         item(
@@ -87,28 +79,6 @@ enum SettingsSearchCatalog {
             detail: "Reset privately learned search result ordering.", section: "Behavior",
             keywords: ["personalized", "results", "reset", "relearn"],
             image: "chart.line.uptrend.xyaxis", tint: .blue
-        ),
-        item(
-            .hyperKey, tab: .shortcuts, title: "Hyper Key",
-            detail: "Remap one physical key to multiple modifiers.", section: "Hyper Key",
-            keywords: ["caps lock", "modifier", "control", "option", "command"],
-            image: "sparkle", tint: .purple
-        ),
-        item(
-            .hyperQuickPress, tab: .shortcuts, title: "Hyper Key Quick Press",
-            detail: "Choose what a short press of the remapped key does.", section: "Hyper Key",
-            keywords: ["escape", "original key", "tap"], image: "hand.tap", tint: .teal
-        ),
-        item(
-            .hyperIncludeShift, tab: .shortcuts, title: "Include Shift",
-            detail: "Add Shift to the Hyper Key modifier chord.", section: "Hyper Key",
-            keywords: ["modifier", "hyper", "shift"], image: "shift", tint: .indigo
-        ),
-        item(
-            .hyperReplaceGlyph, tab: .shortcuts, title: "Show Hyper Key as ✦",
-            detail: "Replace the modifier chord with one symbol.", section: "Hyper Key",
-            keywords: ["glyph", "keycaps", "display", "replace"], image: "keyboard",
-            tint: .gray
         ),
         item(
             .compactMode, tab: .launcher, title: "Compact Mode",

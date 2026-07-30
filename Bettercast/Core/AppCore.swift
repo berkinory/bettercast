@@ -94,7 +94,6 @@ final class AppCore: ObservableObject {
     let clipboardStore = ClipboardStore()
     let clipboardManager: ClipboardManager
     let hotKeys = HotKeyManager()
-    let hyperKeyTap = HyperKeyTap()
     let settings = AppSettings()
     let favorites = FavoritesStore()
     let visibility = VisibilityStore()
@@ -135,8 +134,6 @@ final class AppCore: ObservableObject {
         hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
         hotKeys.onToggleEmoji = { [weak self] in self?.toggleEmoji() }
         hotKeys.start()
-        // Deliberately keeps running while `hotKeys.recordingAction` pauses Carbon: the recorder relies on the tap's rewritten flags to capture Hyper shortcuts.
-        hyperKeyTap.start(settings: settings)
 
         // First launch has no palette hotkey bound and shows nothing but the menu-bar icon; guide the user once. Marker is written at show-time so it stays one-time even if they Cmd-Q mid-flow.
         if !OnboardingState.hasOnboarded {

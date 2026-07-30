@@ -190,7 +190,7 @@ struct ShortcutRecorder: View {
         if isRecording, let captured = session.capturedShortcut {
             HotkeyInlineValue(caps: captured.keycaps)
         } else if isRecording {
-            let caps = KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers)
+            let caps = KeyShortcut.modifierSymbols(from: session.heldModifiers)
             if caps.isEmpty {
                 Text("Press Keys")
                     .font(.callout.weight(.medium))
@@ -377,7 +377,7 @@ private struct ShortcutCapturePopover: View {
     }
 
     private var captureCaps: [String] {
-        KeyShortcut.collapsedModifierSymbols(from: session.heldModifiers)
+        KeyShortcut.modifierSymbols(from: session.heldModifiers)
     }
 }
 

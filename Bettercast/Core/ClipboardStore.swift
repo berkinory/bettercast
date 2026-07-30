@@ -214,35 +214,6 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
-    /// Bulk-insert history from an external source (e.g. a Raycast import). Entries carry their original `createdAt` and image *paths* are stored as external references (zero-copy) — the store never owns or prunes files outside `imagesDir`. Dedups within the batch and against existing rows; imported items older than `maxAge` are pruned on reload.
-    func importEntries(_ entries: [ClipboardItem]) -> Int {
-        guard let stmt = insertStmt else { return 0 }
-        var seenText = Set<String>()
-        var seenPath = Set<String>()
-        var inserted = 0
-        // One transaction for the whole batch: ~1 WAL commit instead of one per row (dedup reads still see the in-progress inserts on this connection).
-        sqlite3_exec(db, "BEGIN", nil, nil, nil)
-        // Oldest first so newest ends up with the highest rowid (load orders by rowid DESC).
-        for item in entries.sorted(by: { $0.createdAt < $1.createdAt }) {
-            switch item.kind {
-            case .text:
-                guard let text = item.text, !seenText.contains(text), !textExists(text) else {
-                    continue
-                }
-                seenText.insert(text)
-            case .image:
-                guard let path = item.imagePath, !seenPath.contains(path), !imagePathExists(path)
-                else { continue }
-                seenPath.insert(path)
-            }
-            bindAndInsert(stmt, item)
-            inserted += 1
-        }
-        sqlite3_exec(db, "COMMIT", nil, nil, nil)
-        load()
-        return inserted
-    }
-
     /// Move an item to the top of history (pasting/copying it from the palette re-recencies it, Raycast-style).
     func promote(_ item: ClipboardItem) {
         // A pinned row holds its place in the Pinned section, so re-recencying one would rewrite the row and its FTS entry for no visible change.
