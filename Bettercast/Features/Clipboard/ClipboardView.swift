@@ -239,7 +239,6 @@ private struct ClipboardRow: View {
         }
     }
 
-    /// An SF Symbol centered on a rounded tile, sized to match the launcher's app icon so text and image rows share one thumbnail shape.
     private func glyphTile(_ systemName: String) -> some View {
         RoundedRectangle(cornerRadius: Theme.Radius.thumbnail, style: .continuous)
             .fill(Theme.Colors.controlSurface)

@@ -196,15 +196,34 @@ struct AppIconView: View {
 
     init(app: AppEntry) {
         self.app = app
-        _image = State(
-            initialValue: app.isSymbolIcon
-                ? IconCache.cachedSymbol(named: app.symbolIconName)
-                : IconCache.cached(forFile: app.url.path))
+        _image = State(initialValue: app.isSymbolIcon ? nil : IconCache.cached(forFile: app.url.path))
+    }
+
+    private var iconTint: Color {
+        switch CommandRegistry.command(for: app) {
+        case .searchEmoji: return Theme.Colors.emojiAccent
+        case .clipboardHistory: return Theme.Colors.clipboardAccent
+        case .settings: return Theme.Colors.systemAccent
+        case .quitAllApps, .quit: return Theme.Colors.textSecondary
+        case nil: return Theme.Colors.textPrimary
+        }
     }
 
     var body: some View {
         Group {
-            if let image {
+            if CommandRegistry.command(for: app) == .searchEmoji {
+                FeatureIcon(
+                    emoji: "😀",
+                    tint: Theme.Colors.emojiAccent,
+                    size: Theme.Size.rowIcon
+                )
+            } else if app.isSymbolIcon {
+                FeatureIcon(
+                    systemImage: app.symbolIconName,
+                    tint: iconTint,
+                    size: Theme.Size.rowIcon
+                )
+            } else if let image {
                 Image(nsImage: image).resizable()
             } else {
                 RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
@@ -212,11 +231,8 @@ struct AppIconView: View {
             }
         }
         .task(id: app.id) {
-            guard image == nil else { return }
-            image =
-                app.isSymbolIcon
-                ? await IconCache.loadSymbolAsync(named: app.symbolIconName)
-                : await IconCache.loadAsync(forFile: app.url.path)
+            guard !app.isSymbolIcon, image == nil else { return }
+            image = await IconCache.loadAsync(forFile: app.url.path)
         }
     }
 }

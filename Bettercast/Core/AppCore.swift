@@ -181,6 +181,19 @@ final class AppCore: ObservableObject {
         windowController.hide(restoreFocus: restoreFocus)
     }
 
+    func handlePaletteEscape() {
+        if !palette.query.isEmpty {
+            palette.query = ""
+            palette.selection = 0
+            return
+        }
+        if palette.mode != .launcher {
+            palette.prepare(mode: .launcher)
+            return
+        }
+        hidePalette()
+    }
+
     /// True when the palette should render as the slim compact bar: compact mode on, launcher root, empty query, and not force-expanded via the "…" overflow.
     var paletteIsCollapsed: Bool {
         settings.compactMode

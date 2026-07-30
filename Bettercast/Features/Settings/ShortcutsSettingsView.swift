@@ -223,10 +223,8 @@ private struct ShortcutTableRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.lg) {
-            Image(nsImage: entry.icon)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 22, height: 22)
+            AppIconView(app: entry)
+                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
             Text(entry.name)
                 .font(Theme.Typography.calloutMedium)
                 .lineLimit(1)

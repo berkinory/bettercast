@@ -40,9 +40,13 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .emoji: return "face.smiling"
         case .calculator: return "function"
         case .shortcuts: return "keyboard"
-        case .permissions: return "checkmark.shield"
-        case .about: return "info.circle"
+        case .permissions: return "lock.shield.fill"
+        case .about: return "info.circle.fill"
         }
+    }
+
+    var emoji: String? {
+        self == .emoji ? "😀" : nil
     }
 
     var group: SettingsGroup {
@@ -54,7 +58,17 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var tint: Color { Theme.Colors.textSecondary }
+    var tint: Color {
+        switch self {
+        case .general: return Theme.Colors.generalAccent
+        case .launcher: return Theme.Colors.launcherAccent
+        case .clipboard: return Theme.Colors.clipboardAccent
+        case .emoji: return Theme.Colors.emojiAccent
+        case .calculator: return Theme.Colors.calculatorAccent
+        case .shortcuts, .permissions: return Theme.Colors.systemAccent
+        case .about: return Theme.Colors.brand
+        }
+    }
 }
 
 enum SettingsGroup: String, CaseIterable, Identifiable, Sendable {
@@ -268,6 +282,8 @@ struct SettingsRootView: View {
         SidebarRow(
             title: item.title,
             systemImage: item.systemImage,
+            emoji: item.emoji,
+            tint: item.tint,
             isSelected: navigation.route.tab == item
         ) {
             searchFocused = false
@@ -336,6 +352,8 @@ private struct SidebarSearchField: View {
 private struct SidebarRow: View {
     let title: String
     let systemImage: String
+    let emoji: String?
+    let tint: Color
     let isSelected: Bool
     let action: () -> Void
 
@@ -345,11 +363,19 @@ private struct SidebarRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.lg) {
-                Image(systemName: systemImage)
-                    .font(Theme.Typography.iconMedium)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .frame(width: Theme.Settings.Size.sidebarIcon)
+                if let emoji {
+                    FeatureIcon(
+                        emoji: emoji,
+                        tint: isSelected ? tint : tint.opacity(0.72),
+                        size: Theme.Size.rowIcon
+                    )
+                } else {
+                    FeatureIcon(
+                        systemImage: systemImage,
+                        tint: isSelected ? tint : tint.opacity(0.72),
+                        size: Theme.Size.rowIcon
+                    )
+                }
 
                 Text(title)
                     .font(Theme.Typography.callout.weight(isSelected ? .medium : .regular))

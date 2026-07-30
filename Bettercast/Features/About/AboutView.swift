@@ -99,7 +99,7 @@ struct AboutView: View {
             title: "Built in the open",
             message: "Bettercast builds on Tinycast by Abue Ammar and is released under AGPL-3.0.",
             systemImage: "chevron.left.forwardslash.chevron.right",
-            tint: Theme.Colors.brand
+            tint: Theme.Colors.textSecondary
         )
     }
 

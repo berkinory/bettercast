@@ -422,7 +422,7 @@ struct RootPaletteView: View {
                 closeMenus()
                 return .handled
             }
-            core.hidePalette()
+            core.handlePaletteEscape()
             return .handled
         }
         .onKeyPress(.tab) {
@@ -481,6 +481,9 @@ struct RootPaletteView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    if hovering { NSCursor.arrow.set() }
+                }
             } else {
                 Image(systemName: vm.mode.systemImage)
                     .font(Theme.Typography.headerIcon)
@@ -851,13 +854,22 @@ private struct PaletteModeMenuButton: View {
     let action: () -> Void
     @State private var hovered = false
 
+    private var iconTint: Color {
+        switch mode {
+        case .launcher: return Theme.Colors.launcherAccent
+        case .clipboard: return Theme.Colors.clipboardAccent
+        case .emoji: return Theme.Colors.emojiAccent
+        }
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.md) {
-                Image(systemName: mode.systemImage)
-                    .font(Theme.Typography.menuIcon)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
+                FeatureIcon(
+                    systemImage: mode.systemImage,
+                    tint: iconTint,
+                    size: Theme.Size.rowIcon
+                )
                 Text(mode.title)
                     .font(Theme.Typography.calloutMedium)
                     .foregroundStyle(Theme.Colors.textPrimary)

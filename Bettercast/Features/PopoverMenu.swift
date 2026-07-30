@@ -99,11 +99,11 @@ private struct PopoverMenuRow: View {
             HStack(spacing: Theme.Spacing.sm) {
                 switch item.icon {
                 case .symbol(let name):
-                    Image(systemName: name)
-                        .font(Theme.Typography.menuIcon)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(item.isDestructive ? Theme.Colors.destructive : Theme.Colors.textPrimary)
-                        .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
+                    FeatureIcon(
+                        systemImage: name,
+                        tint: item.isDestructive ? Theme.Colors.destructive : Theme.Colors.textPrimary,
+                        size: Theme.Size.menuIcon
+                    )
                 case .file(let path):
                     MenuFileIcon(path: path)
                 }

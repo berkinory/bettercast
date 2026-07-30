@@ -39,6 +39,17 @@ frozen instead:
   force-casts its field editor to a private subclass, so vending a custom one crashes — only the
   existing one can be tuned.
 
+## Escape behavior
+
+Escape follows the same back-out hierarchy as the search field:
+
+1. close an open footer menu;
+2. clear a non-empty query;
+3. return Clipboard or Emoji to the launcher when the query is empty;
+4. hide the palette when the launcher is already at an empty query.
+
+`AppCore.handlePaletteEscape()` owns the state transition; `RootPaletteView` only handles the menu-first rule.
+
 ## Focus restoration (load-bearing)
 
 `PaletteWindowController` records `previousApp` (the frontmost app) on show. Paste then targets that

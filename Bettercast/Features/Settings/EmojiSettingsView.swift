@@ -8,6 +8,7 @@ struct EmojiSettingsView: View {
             title: "Emoji & Symbols",
             subtitle: "Search and paste emoji from anywhere.",
             systemImage: "face.smiling",
+            emoji: "😀",
             tint: .yellow
         ) {
             SettingsSection(header: "Shortcut") {
@@ -25,13 +26,11 @@ struct EmojiSettingsView: View {
             SettingsSection(header: "Skin Tone") {
                 VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
                     HStack(spacing: Theme.Spacing.md) {
-                        Image(systemName: "hand.wave")
-                            .font(Theme.Typography.iconMedium)
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                            .frame(
-                                width: Theme.Settings.Size.controlIcon,
-                                height: Theme.Settings.Size.controlIcon
-                            )
+                        FeatureIcon(
+                            emoji: "👋",
+                            tint: Theme.Colors.emojiAccent,
+                            size: Theme.Settings.Size.controlIcon
+                        )
 
                         VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                             Text("Preferred tone")

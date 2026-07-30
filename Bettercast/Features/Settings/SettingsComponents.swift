@@ -15,6 +15,7 @@ struct SettingsPane<Content: View>: View {
     let title: String
     let subtitle: String
     let systemImage: String
+    var emoji: String? = nil
     let tint: Color
     @ViewBuilder var content: Content
 
@@ -28,6 +29,7 @@ struct SettingsPane<Content: View>: View {
                         title: title,
                         subtitle: subtitle,
                         systemImage: systemImage,
+                        emoji: emoji,
                         tint: tint
                     )
                     content
@@ -50,18 +52,22 @@ struct SettingsFeatureHeader: View {
     let title: String
     let subtitle: String
     let systemImage: String
+    var emoji: String? = nil
     let tint: Color
 
     var body: some View {
         HStack(spacing: Theme.Spacing.xl) {
-            Image(systemName: systemImage)
-                .font(Theme.Typography.iconLarge)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(Theme.Colors.textSecondary)
-                .frame(
-                    width: Theme.Settings.Size.controlIcon,
-                    height: Theme.Settings.Size.headerIcon
-                )
+            Group {
+                if let emoji {
+                    FeatureIcon(emoji: emoji, tint: tint, size: Theme.Settings.Size.controlIcon)
+                } else {
+                    FeatureIcon(
+                        systemImage: systemImage,
+                        tint: tint,
+                        size: Theme.Settings.Size.controlIcon
+                    )
+                }
+            }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                 Text(title)
@@ -125,7 +131,7 @@ struct SettingsControlRow<Trailing: View>: View {
     let title: String
     var subtitle: String? = nil
     var systemImage: String? = nil
-    var tint: Color = .secondary
+    var tint: Color = Theme.Colors.textSecondary
     var statusDot: Color? = nil
     var destination: SettingsDestination? = nil
     @ViewBuilder var trailing: Trailing
@@ -133,14 +139,11 @@ struct SettingsControlRow<Trailing: View>: View {
     var body: some View {
         HStack(spacing: Theme.Settings.Layout.rowGap) {
             if let systemImage {
-                Image(systemName: systemImage)
-                    .font(Theme.Typography.iconMedium)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .frame(
-                        width: Theme.Settings.Size.controlIcon,
-                        height: Theme.Settings.Size.controlIcon
-                    )
+                FeatureIcon(
+                    systemImage: systemImage,
+                    tint: tint,
+                    size: Theme.Settings.Size.controlIcon
+                )
             }
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
@@ -176,25 +179,15 @@ struct SettingsStatusCard<Trailing: View>: View {
     let title: String
     var message: String? = nil
     var systemImage: String = "info.circle"
-    var tint: Color = .secondary
+    var tint: Color = Theme.Colors.textSecondary
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
         HStack(spacing: Theme.Spacing.xl) {
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.controlIcon,
-                style: .continuous
-            )
-            .fill(Theme.Colors.controlSurface)
-            .frame(
-                width: Theme.Settings.Size.statusIcon,
-                height: Theme.Settings.Size.statusIcon
-            )
-            .overlay(
-                Image(systemName: systemImage)
-                    .font(Theme.Typography.iconLargeSemibold)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(tint)
+            FeatureIcon(
+                systemImage: systemImage,
+                tint: tint,
+                size: Theme.Settings.Size.statusIcon
             )
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {

@@ -112,6 +112,8 @@ enum Theme {
         static let menuRow = Font.body
         static let menuShortcut = Font.callout
         static let menuIcon = Font.body
+        static let featureIcon = Font.system(size: 14, weight: .medium)
+        static let featureEmoji = Font.system(size: 16)
     }
 
     enum Settings {
@@ -124,6 +126,7 @@ enum Theme {
             static let controlHeight: CGFloat = 32
             static let headerIcon: CGFloat = 38
             static let controlIcon: CGFloat = 28
+            static let searchResultIcon: CGFloat = 30
             static let statusIcon: CGFloat = 34
             static let modeTileHeight: CGFloat = 92
             static let modePreviewWidth: CGFloat = 74
@@ -227,6 +230,58 @@ enum Theme {
         static let previewUnselected = Color.white.opacity(0.22)
         /// The violet of the app mark. The one non-white hue in the system, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
+        static let featureIconTileOpacity: CGFloat = 0.20
+        static let generalAccent = Color.white.opacity(0.72)
+        static let launcherAccent = Color(red: 0.42, green: 0.65, blue: 1.0)
+        static let clipboardAccent = Color(red: 1.0, green: 0.62, blue: 0.32)
+        static let emojiAccent = Color(red: 1.0, green: 0.76, blue: 0.30)
+        static let calculatorAccent = Color(red: 0.42, green: 0.82, blue: 0.58)
+        static let systemAccent = Color(red: 0.62, green: 0.68, blue: 0.80)
+    }
+}
+
+struct FeatureIcon: View {
+    private let systemImage: String?
+    private let emoji: String?
+    let tint: Color
+    var size: CGFloat = Theme.Size.rowIcon
+
+    init(systemImage: String, tint: Color, size: CGFloat = Theme.Size.rowIcon) {
+        self.systemImage = systemImage
+        self.emoji = nil
+        self.tint = tint
+        self.size = size
+    }
+
+    init(emoji: String, tint: Color, size: CGFloat = Theme.Size.rowIcon) {
+        self.systemImage = nil
+        self.emoji = emoji
+        self.tint = tint
+        self.size = size
+    }
+
+    var body: some View {
+        Group {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(Theme.Typography.featureIcon)
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(tint)
+            } else if let emoji {
+                Text(emoji)
+                    .font(Theme.Typography.featureEmoji)
+            }
+        }
+        .frame(width: size, height: size)
+        .background {
+            let shape = RoundedRectangle(
+                cornerRadius: Theme.Settings.Radius.iconTile,
+                style: .continuous
+            )
+            shape
+                .fill(Color.clear)
+                .featureIconSurface(in: shape, tint: tint)
+        }
     }
 }
 
@@ -271,6 +326,20 @@ extension View {
             background(shape.fill(Theme.Colors.controlSurface))
                 .overlay(shape.stroke(Theme.Colors.border, lineWidth: 1))
                 .tint(.clear)
+        }
+    }
+
+    @ViewBuilder
+    func featureIconSurface<S: Shape>(in shape: S, tint: Color) -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(
+                .regular.tint(tint.opacity(Theme.Colors.featureIconTileOpacity)),
+                in: shape
+            )
+            .tint(.clear)
+        } else {
+            background(shape.fill(tint.opacity(Theme.Colors.featureIconTileOpacity)))
+                .overlay(shape.stroke(Theme.Colors.border, lineWidth: 1))
         }
     }
 }

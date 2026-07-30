@@ -57,6 +57,7 @@ struct ShortcutRecorder: View {
             ShortcutCapturePopoverPresenter(isPresented: recordingBinding) {
                 ShortcutCapturePopover(
                     session: session,
+                    action: action,
                     targetName: hotKeys.displayName(of: action),
                     targetIcon: targetIcon
                 )
@@ -285,6 +286,7 @@ private struct ShortcutCapturePopoverPresenter<PopoverContent: View>: NSViewRepr
 
 private struct ShortcutCapturePopover: View {
     @ObservedObject var session: CaptureSession
+    let action: HotKeyAction
     let targetName: String
     let targetIcon: NSImage
 
@@ -359,12 +361,26 @@ private struct ShortcutCapturePopover: View {
         }
     }
 
-    private var footer: some View {
-        HStack(spacing: Theme.Spacing.md) {
+    @ViewBuilder
+    private var targetIconView: some View {
+        switch action {
+        case .togglePalette:
+            FeatureIcon(systemImage: "magnifyingglass", tint: Theme.Colors.launcherAccent, size: Theme.Size.rowIcon)
+        case .toggleClipboard:
+            FeatureIcon(systemImage: "doc.on.clipboard", tint: Theme.Colors.clipboardAccent, size: Theme.Size.rowIcon)
+        case .toggleEmoji:
+            FeatureIcon(systemImage: "face.smiling", tint: Theme.Colors.emojiAccent, size: Theme.Size.rowIcon)
+        case .app, .settingsPane:
             Image(nsImage: targetIcon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 18, height: 18)
+                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            targetIconView
             Text(targetName)
                 .font(Theme.Typography.calloutSemibold)
             Spacer()

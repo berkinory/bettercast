@@ -48,6 +48,7 @@ enum SettingsDestination: Hashable, Sendable {
 
 enum SettingsSearchIcon {
     case symbol(String)
+    case emoji(String)
 }
 
 struct SettingsSearchItem: Identifiable {
@@ -144,13 +145,14 @@ enum SettingsSearchCatalog {
         item(
             .emojiShortcut, tab: .emoji, title: "Emoji & Symbols Shortcut",
             detail: "Open the emoji and symbols palette.", section: "Shortcut",
-            keywords: ["hotkey", "keyboard", "picker"], image: "face.smiling", tint: .yellow
+            keywords: ["hotkey", "keyboard", "picker"], image: "face.smiling", tint: .yellow,
+            emoji: "😀"
         ),
         item(
             .emojiSkinTone, tab: .emoji, title: "Emoji Skin Tone",
             detail: "Choose the preferred tone for supported emoji.", section: "Appearance",
             keywords: ["hand", "modifier", "color", "paste"], image: "hand.wave",
-            tint: .orange
+            tint: .orange, emoji: "👋"
         ),
         item(
             .accessibility, tab: .permissions, title: "Accessibility Permission",
@@ -182,7 +184,7 @@ enum SettingsSearchCatalog {
                 keywords: []
             ),
             route: SettingsRoute(tab: tab),
-            icon: .symbol(tab.systemImage),
+            icon: tab.emoji.map(SettingsSearchIcon.emoji) ?? .symbol(tab.systemImage),
             tint: tab.tint
         )
     }
@@ -196,6 +198,7 @@ enum SettingsSearchCatalog {
         keywords: [String],
         image: String,
         tint: Color,
+        emoji: String? = nil,
         recordID: String? = nil,
         routeDestination: SettingsDestination? = nil
     ) -> SettingsSearchItem {
@@ -208,7 +211,7 @@ enum SettingsSearchCatalog {
                 keywords: keywords
             ),
             route: SettingsRoute(tab: tab, destination: routeDestination ?? destination),
-            icon: .symbol(image),
+            icon: emoji.map(SettingsSearchIcon.emoji) ?? .symbol(image),
             tint: tint
         )
     }
@@ -294,7 +297,10 @@ private struct SettingsSearchResultRow: View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.lg) {
                 icon
-                    .frame(width: 30, height: 30)
+                    .frame(
+                    width: Theme.Settings.Size.searchResultIcon,
+                    height: Theme.Settings.Size.searchResultIcon
+                )
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
                     Text(item.record.title)
                         .font(Theme.Typography.bodyMedium)
@@ -331,14 +337,17 @@ private struct SettingsSearchResultRow: View {
     private var icon: some View {
         switch item.icon {
         case .symbol(let name):
-            RoundedRectangle(cornerRadius: Theme.Settings.Radius.iconTile, style: .continuous)
-                .fill(Theme.Colors.controlSurface)
-                .overlay(
-                    Image(systemName: name)
-                        .font(Theme.Typography.iconMediumSmall)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(Theme.Colors.textSecondary)
-                )
+            FeatureIcon(
+                systemImage: name,
+                tint: item.tint,
+                size: Theme.Settings.Size.searchResultIcon
+            )
+        case .emoji(let value):
+            FeatureIcon(
+                emoji: value,
+                tint: item.tint,
+                size: Theme.Settings.Size.searchResultIcon
+            )
         }
     }
 }

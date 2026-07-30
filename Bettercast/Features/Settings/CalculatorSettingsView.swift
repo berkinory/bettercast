@@ -151,9 +151,11 @@ private struct CurrencyConsentSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
             HStack(spacing: Theme.Spacing.lg) {
-                Image(systemName: "network")
-                    .font(Theme.Typography.iconXL)
-                    .foregroundStyle(.green)
+                FeatureIcon(
+                    systemImage: "network",
+                    tint: Theme.Colors.calculatorAccent,
+                    size: Theme.Settings.Size.statusIcon
+                )
                 Text("Enable exchange rates?")
                     .font(Theme.Typography.headline)
             }

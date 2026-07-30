@@ -34,7 +34,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Command entries draw an SF Symbol tile; everything else uses its file icon.
+    /// Commands expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
     var isSymbolIcon: Bool { kind == .command }
     var symbolIconName: String { CommandRegistry.command(for: self)?.sfSymbol ?? "questionmark" }
 
@@ -60,9 +60,6 @@ enum IconCache {
 
     /// Cache-only lookups (never decode) so a row can paint an already-warm icon on the same frame.
     static func cached(forFile path: String) -> NSImage? { cache.object(forKey: path as NSString) }
-    static func cachedSymbol(named name: String) -> NSImage? {
-        cache.object(forKey: ("symbol:" + name) as NSString)
-    }
 
     /// A freshly-decoded, thereafter-immutable `NSImage` is safe to move across the actor boundary.
     private struct Decoded: @unchecked Sendable { let image: NSImage? }
@@ -75,13 +72,6 @@ enum IconCache {
             return Decoded(image: icon(forFile: path))
         }.value.image
     }
-    static func loadSymbolAsync(named name: String) async -> NSImage? {
-        if let cached = cachedSymbol(named: name) { return cached }
-        return await Task.detached(priority: .userInitiated) {
-            Decoded(image: symbolIcon(named: name))
-        }.value.image
-    }
-
     static func icon(forFile path: String) -> NSImage {
         let key = path as NSString
         if let cached = cache.object(forKey: key) { return cached }
@@ -90,33 +80,11 @@ enum IconCache {
         return icon
     }
 
-    /// Command "icons": an SF Symbol on a rounded tile, in the same bitmap shape as app icons so rows treat every entry identically.
     static func symbolIcon(named name: String) -> NSImage {
         let key = "symbol:" + name as NSString
         if let cached = cache.object(forKey: key) { return cached }
-
-        let side = displayPoint
-        let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { _ in
-            // Tile inset mirrors the margin macOS app icons carry inside their canvas.
-            let tile = NSRect(x: 0, y: 0, width: side, height: side).insetBy(dx: 4, dy: 4)
-            NSColor.white.withAlphaComponent(0.09).setFill()
-            NSBezierPath(roundedRect: tile, xRadius: 9, yRadius: 9).fill()
-
-            let config = NSImage.SymbolConfiguration(pointSize: 21, weight: .medium)
-                .applying(.init(paletteColors: [.white.withAlphaComponent(0.85)]))
-            guard
-                let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-                    .withSymbolConfiguration(config)
-            else { return true }
-            let size = symbol.size
-            symbol.draw(
-                in: NSRect(
-                    x: (side - size.width) / 2, y: (side - size.height) / 2,
-                    width: size.width, height: size.height))
-            return true
-        }
-        let (icon, cost) = downsampled(image)
-        cache.setObject(icon, forKey: key, cost: cost)
+        let icon = NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage(size: NSSize(width: displayPoint, height: displayPoint))
+        cache.setObject(icon, forKey: key, cost: Int(displayPoint * displayPoint * 4))
         return icon
     }
 
