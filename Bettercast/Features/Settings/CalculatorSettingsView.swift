@@ -1,10 +1,9 @@
 import SwiftUI
 
 struct CalculatorSettingsView: View {
+    @ObservedObject private var settings = AppCore.shared.settings
     @ObservedObject private var currencyRates = AppCore.shared.currencyRates
     @State private var askingConsent = false
-    @State private var refreshing = false
-    @State private var refreshFailed = false
 
     var body: some View {
         SettingsPane(
@@ -19,53 +18,54 @@ struct CalculatorSettingsView: View {
                     subtitle: conversionStatus,
                     systemImage: "dollarsign.arrow.circlepath",
                     tint: .green,
-                    statusDot: currencyRates.isEnabled ? .green : nil,
+                    statusDot: settings.currencyConversionEnabled && currencyRates.isEnabled ? .green : nil,
                     destination: .currencyConversion
                 ) {
-                    if currencyRates.isEnabled {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        if settings.currencyConversionEnabled && !currencyRates.isEnabled {
+                            Button("Enable Rates…") { askingConsent = true }
+                                .controlSize(.small)
+                        }
                         Toggle(
                             "",
                             isOn: Binding(
-                                get: { true },
-                                set: { enabled in
-                                    if !enabled { currencyRates.setEnabled(false) }
-                                }
+                                get: { settings.currencyConversionEnabled },
+                                set: { enabled in setCurrencyConversionEnabled(enabled) }
                             )
                         )
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.small)
-                    } else {
-                        Button("Enable…") { askingConsent = true }
-                            .controlSize(.small)
                     }
                 }
 
-                if currencyRates.isEnabled {
-                    SettingsRowDivider()
-                    SettingsControlRow(
-                        title: "Exchange Rates",
-                        subtitle: ratesStatus,
-                        systemImage: "arrow.triangle.2.circlepath",
-                        tint: .green,
-                        destination: .exchangeRates
-                    ) {
-                        Button(refreshing ? "Updating…" : "Update Now") {
-                            refreshing = true
-                            Task {
-                                let landed = await currencyRates.refreshNow()
-                                refreshFailed = !landed
-                                refreshing = false
-                            }
-                        }
-                        .controlSize(.small)
-                        .disabled(refreshing)
-                    }
+                SettingsRowDivider()
+                SettingsControlRow(
+                    title: "Crypto Conversion",
+                    subtitle: cryptoStatus,
+                    systemImage: "bitcoinsign.circle",
+                    tint: .orange,
+                    statusDot: settings.cryptoConversionEnabled && currencyRates.isEnabled
+                        ? (currencyRates.lastCryptoSync == nil ? .yellow : .green)
+                        : nil,
+                    destination: .cryptoConversion
+                ) {
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { settings.cryptoConversionEnabled },
+                            set: { enabled in setCryptoConversionEnabled(enabled) }
+                        )
+                    )
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .disabled(!settings.currencyConversionEnabled)
                 }
             }
 
             SettingsStatusCard(
-                title: currencyRates.isEnabled ? "Rates stay on this Mac" : "Offline by default",
+                title: currencyRates.isEnabled ? "Rates stay on this Mac" : "Offline until enabled",
                 message: privacyStatus,
                 systemImage: currencyRates.isEnabled ? "internaldrive" : "network.slash",
                 tint: currencyRates.isEnabled ? .green : .secondary
@@ -73,41 +73,78 @@ struct CalculatorSettingsView: View {
         }
         .sheet(isPresented: $askingConsent) {
             CurrencyConsentSheet(
+                includeCrypto: settings.cryptoConversionEnabled,
                 onCancel: { askingConsent = false },
                 onAccept: {
                     askingConsent = false
+                    settings.currencyConversionEnabled = true
                     currencyRates.setEnabled(true)
+                    currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
                 }
             )
         }
     }
 
     private var conversionStatus: String {
-        currencyRates.isEnabled
-            ? "Convert inline: “100 dollars to yen” or “€20 to GBP”."
-            : "Download fiat and crypto rates to enable currency queries."
+        guard settings.currencyConversionEnabled else {
+            return "Off · Last sync: \(syncText(currencyRates.lastFiatSync))"
+        }
+        guard currencyRates.isEnabled else {
+            return "Enable fiat rates · Last sync: Never"
+        }
+        return "Frankfurter · Last sync: \(syncText(currencyRates.lastFiatSync))"
+    }
+
+    private var cryptoStatus: String {
+        guard settings.cryptoConversionEnabled else {
+            return "Off by default · Last sync: Never"
+        }
+        guard currencyRates.isEnabled else { return "Enable currency rates first · Last sync: Never" }
+        return "CoinGecko · Last sync: \(syncText(currencyRates.lastCryptoSync))"
     }
 
     private var privacyStatus: String {
-        if currencyRates.isEnabled {
-            return
-                "Bettercast downloads fiat and crypto rates from \(CurrencyRateStore.provider) every three hours. Nothing you type is sent."
+        guard settings.currencyConversionEnabled else {
+            return "Currency conversion is off. No exchange-rate requests are made."
         }
-        return "No service is contacted until you explicitly enable currency conversion."
+        guard currencyRates.isEnabled else {
+            return "Currency conversion is enabled, but rates remain offline until you approve the provider."
+        }
+        if settings.cryptoConversionEnabled {
+            return
+                "Fiat rates come from Frankfurter and crypto rates from CoinGecko every three hours. Nothing you type is sent."
+        }
+        return
+            "Fiat rates come from Frankfurter every three hours. CoinGecko is disabled, so no crypto request is made."
     }
 
-    private var ratesStatus: String {
-        if refreshing { return "Downloading the latest rates…" }
-        if refreshFailed { return "Couldn't reach \(CurrencyRateStore.provider). Try again." }
-        guard let fetched = currencyRates.rates?.fetchedAt else {
-            return "\(CurrencyRateStore.provider) · not downloaded yet."
+    private func syncText(_ date: Date?) -> String {
+        guard let date else { return "Never" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private func setCurrencyConversionEnabled(_ enabled: Bool) {
+        if enabled {
+            guard currencyRates.isEnabled else {
+                askingConsent = true
+                return
+            }
+            settings.currencyConversionEnabled = true
+            currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
+        } else {
+            settings.currencyConversionEnabled = false
+            currencyRates.stop()
         }
-        let stamp = fetched.formatted(date: .abbreviated, time: .shortened)
-        return "\(CurrencyRateStore.provider) · updated \(stamp)."
+    }
+
+    private func setCryptoConversionEnabled(_ enabled: Bool) {
+        settings.cryptoConversionEnabled = enabled
+        currencyRates.setCryptoEnabled(enabled)
     }
 }
 
 private struct CurrencyConsentSheet: View {
+    let includeCrypto: Bool
     let onCancel: () -> Void
     let onAccept: () -> Void
 
@@ -117,18 +154,14 @@ private struct CurrencyConsentSheet: View {
                 Image(systemName: "network")
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(.green)
-                Text("Turn on currency conversion?")
+                Text("Enable exchange rates?")
                     .font(.headline)
             }
 
-            Text(
-                "Bettercast downloads fiat and crypto rates from \(CurrencyRateStore.provider) every three hours and "
-                    + "keeps a copy on your Mac. No account, no identifiers, nothing you type. "
-                    + "Turning it off deletes the cached rates."
-            )
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+            Text(consentText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: Theme.Spacing.lg) {
                 Link(destination: CurrencyRateStore.providerURL) {
@@ -147,5 +180,13 @@ private struct CurrencyConsentSheet: View {
         }
         .padding(Theme.Spacing.xxl)
         .frame(width: 420)
+    }
+
+    private var consentText: String {
+        let providers =
+            includeCrypto
+            ? "fiat rates from Frankfurter and crypto rates from CoinGecko" : "fiat rates from Frankfurter"
+        return
+            "Bettercast downloads \(providers) every three hours and keeps a copy on your Mac. No account, no identifiers, and nothing you type is sent. Turning it off deletes the cached rates."
     }
 }

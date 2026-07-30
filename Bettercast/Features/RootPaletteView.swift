@@ -68,7 +68,13 @@ struct RootPaletteView: View {
     /// Inline calculator answer for the current query, live in both the launcher and Calculator History search; when present it occupies flat selection index 0 so rows shift by `calcCount`.
     private var calcResult: CalcResult? {
         vm.mode == .launcher || vm.mode == .calculatorHistory
-            ? CalcMemo.evaluate(vm.query, currency: currencyRates.source) : nil
+            ? CalcMemo.evaluate(
+                vm.query,
+                currency: settings.currencyConversionEnabled
+                    ? currencyRates.source(cryptoEnabled: settings.cryptoConversionEnabled)
+                    : .off
+            )
+            : nil
     }
     private var calcCount: Int { calcResult == nil ? 0 : 1 }
 

@@ -34,6 +34,8 @@ final class AppSettings: ObservableObject {
         static let popToRootTimeout = "popToRootTimeout"
         static let compactMode = "compactMode"
         static let showFavoritesInCompactMode = "showFavoritesInCompactMode"
+        static let currencyConversionEnabled = "currencyConversionEnabled"
+        static let cryptoConversionEnabled = "cryptoConversionEnabled"
     }
 
     @Published var clipboardRetention: ClipboardRetention {
@@ -69,6 +71,14 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(showFavoritesInCompactMode, forKey: Key.showFavoritesInCompactMode) }
     }
 
+    @Published var currencyConversionEnabled: Bool {
+        didSet { defaults.set(currencyConversionEnabled, forKey: Key.currencyConversionEnabled) }
+    }
+
+    @Published var cryptoConversionEnabled: Bool {
+        didSet { defaults.set(cryptoConversionEnabled, forKey: Key.cryptoConversionEnabled) }
+    }
+
     init() {
         // integer(forKey:) returns 0 when unset, which no case matches — falls through to 3 Months.
         clipboardRetention =
@@ -89,5 +99,9 @@ final class AppSettings: ObservableObject {
         showFavoritesInCompactMode =
             defaults.object(forKey: Key.showFavoritesInCompactMode) == nil
             || defaults.bool(forKey: Key.showFavoritesInCompactMode)
+        currencyConversionEnabled =
+            defaults.object(forKey: Key.currencyConversionEnabled) == nil
+            || defaults.bool(forKey: Key.currencyConversionEnabled)
+        cryptoConversionEnabled = defaults.bool(forKey: Key.cryptoConversionEnabled)
     }
 }

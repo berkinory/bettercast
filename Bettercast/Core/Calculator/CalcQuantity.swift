@@ -16,19 +16,16 @@ enum CalcQuantity {
         guard parser.dimensionCount > 0 else { return nil }
 
         if parser.usedCurrency {
-            switch currency {
-            case .off:
-                return nil
-            case .on(nil):
+            guard currency.isOn else { return nil }
+            guard let rates = currency.rates else {
                 return CalcResult(
                     expression: query,
                     payload: .error(message: "Exchange rates unavailable — check your connection."))
-            case .on(let rates?):
-                if let code = parser.currencyCodes.first(where: { rates.rate(for: $0) == nil }) {
-                    return CalcResult(
-                        expression: query,
-                        payload: .error(message: "No exchange rate for \(code)."))
-                }
+            }
+            if let code = parser.currencyCodes.first(where: { rates.rate(for: $0) == nil }) {
+                return CalcResult(
+                    expression: query,
+                    payload: .error(message: "No exchange rate for \(code)."))
             }
         }
 
@@ -90,14 +87,16 @@ enum CalcQuantity {
                 guard output.isFinite else { return nil }
                 return measurementResult(output, unit: to, expression: expression, locale: locale)
             }
-            if case .on = currency, CalcCurrency.byName[targetName] != nil {
+            if currency.isOn, CalcCurrency.byName[targetName] != nil {
                 return conversionError(
                     query, from: from.category.displayName, to: CalcCurrency.categoryName)
             }
             return nil
         case .currency(let from):
-            if case .on(let rates) = currency, let to = CalcCurrency.byName[targetName] {
-                guard let rates else {
+            if currency.isOn, let to = CalcCurrency.byName[targetName],
+                currency.cryptoEnabled || (!CalcCurrency.isCryptoCode(from.code) && !CalcCurrency.isCryptoCode(to.code))
+            {
+                guard let rates = currency.rates else {
                     return CalcResult(
                         expression: query,
                         payload: .error(message: "Exchange rates unavailable — check your connection."))
@@ -265,10 +264,9 @@ private struct QuantityParser {
     var issue: String?
 
     private var current: CalcToken? { position < tokens.count ? tokens[position] : nil }
-    private var currencyEnabled: Bool {
-        if case .on = currency { return true }
-        return false
-    }
+    private var currencyEnabled: Bool { currency.isOn }
+
+    private var cryptoEnabled: Bool { currency.cryptoEnabled }
 
     mutating func parse() -> QuantityValue? {
         guard
@@ -453,7 +451,9 @@ private struct QuantityParser {
             return value
         case .ident(let name):
             guard currencyEnabled, CalcUnits.byName[name] == nil,
-                let definition = CalcCurrency.byName[name], let amount = number(at: position + 1)
+                let definition = CalcCurrency.byName[name],
+                cryptoEnabled || !CalcCurrency.isCryptoCode(definition.code),
+                let amount = number(at: position + 1)
             else { return nil }
             position += 2
             recordCurrency(definition.code)
@@ -466,7 +466,9 @@ private struct QuantityParser {
 
     private mutating func dimension(named name: String) -> QuantityValue.Kind? {
         if let unit = CalcUnits.byName[name] { return .unit(unit) }
-        guard currencyEnabled, let definition = CalcCurrency.byName[name] else { return nil }
+        guard currencyEnabled, let definition = CalcCurrency.byName[name],
+            cryptoEnabled || !CalcCurrency.isCryptoCode(definition.code)
+        else { return nil }
         recordCurrency(definition.code)
         return .currency(definition)
     }
@@ -476,8 +478,10 @@ private struct QuantityParser {
     ) -> Double? {
         recordCurrency(from.code)
         recordCurrency(to.code)
-        guard case .on(let rates) = currency else { return nil }
-        guard let rates else {
+        guard currency.isOn,
+            cryptoEnabled || (!CalcCurrency.isCryptoCode(from.code) && !CalcCurrency.isCryptoCode(to.code))
+        else { return nil }
+        guard let rates = currency.rates else {
             issue = "Exchange rates unavailable — check your connection."
             return nil
         }
@@ -507,7 +511,8 @@ private struct QuantityParser {
         case .number, .intLiteral: return true
         case .ident(let name):
             return currencyEnabled && CalcUnits.byName[name] == nil
-                && CalcCurrency.byName[name] != nil && number(at: position + 1) != nil
+                && CalcCurrency.byName[name].map { cryptoEnabled || !CalcCurrency.isCryptoCode($0.code) } == true
+                && number(at: position + 1) != nil
         default: return false
         }
     }

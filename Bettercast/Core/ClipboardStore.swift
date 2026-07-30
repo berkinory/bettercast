@@ -214,6 +214,16 @@ final class ClipboardStore: ObservableObject {
         }
     }
 
+    @discardableResult
+    func importEntries(_ entries: [ClipboardItem]) -> Int {
+        var imported = 0
+        for entry in entries where !items.contains(where: { $0.id == entry.id }) {
+            insert(entry)
+            imported += 1
+        }
+        return imported
+    }
+
     /// Move an item to the top of history (pasting/copying it from the palette re-recencies it, Raycast-style).
     func promote(_ item: ClipboardItem) {
         // A pinned row holds its place in the Pinned section, so re-recencying one would rewrite the row and its FTS entry for no visible change.

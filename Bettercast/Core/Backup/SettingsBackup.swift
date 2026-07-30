@@ -19,6 +19,8 @@ struct SettingsBackup: Codable {
         var popToRootSeconds: Int?
         var compactMode: Bool?
         var showFavoritesInCompactMode: Bool?
+        var currencyConversionEnabled: Bool?
+        var cryptoConversionEnabled: Bool?
     }
 
     struct HotkeyBackup: Codable {
@@ -54,7 +56,9 @@ extension SettingsBackup {
                 ?? true,
             popToRootSeconds: s.popToRootTimeout.rawValue,
             compactMode: s.compactMode,
-            showFavoritesInCompactMode: s.showFavoritesInCompactMode)
+            showFavoritesInCompactMode: s.showFavoritesInCompactMode,
+            currencyConversionEnabled: s.currencyConversionEnabled,
+            cryptoConversionEnabled: s.cryptoConversionEnabled)
 
         let hk = core.hotKeys
         var hotkeys = HotkeyBackup()
@@ -131,6 +135,22 @@ extension SettingsBackup {
         if let flag = s.showFavoritesInCompactMode {
             settings.showFavoritesInCompactMode = flag
             count += 1
+        }
+        if let flag = s.currencyConversionEnabled {
+            settings.currencyConversionEnabled = flag
+            count += 1
+        }
+        if let flag = s.cryptoConversionEnabled {
+            settings.cryptoConversionEnabled = flag
+            core.currencyRates.setCryptoEnabled(flag)
+            count += 1
+        }
+        if let flag = s.currencyConversionEnabled {
+            if flag, core.currencyRates.isEnabled {
+                core.currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
+            } else if !flag {
+                core.currencyRates.stop()
+            }
         }
         return count
     }

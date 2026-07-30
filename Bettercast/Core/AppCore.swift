@@ -129,7 +129,9 @@ final class AppCore: ObservableObject {
 
         Task { await appIndex.refresh() }
         Task { await emojiIndex.load() }
-        currencyRates.start()
+        if settings.currencyConversionEnabled {
+            currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
+        }
 
         hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
         hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }

@@ -36,6 +36,28 @@ struct CurrencyRates: Codable, Equatable, Sendable {
 enum CurrencySource: Equatable, Sendable {
     case off
     case on(CurrencyRates?)
+    case onWithCrypto(CurrencyRates?, cryptoEnabled: Bool)
+
+    var isOn: Bool {
+        switch self {
+        case .off: return false
+        case .on, .onWithCrypto: return true
+        }
+    }
+
+    var rates: CurrencyRates? {
+        switch self {
+        case .off: return nil
+        case .on(let rates), .onWithCrypto(let rates, _): return rates
+        }
+    }
+
+    var cryptoEnabled: Bool {
+        switch self {
+        case .off, .on: return true
+        case .onWithCrypto(_, let enabled): return enabled
+        }
+    }
 }
 
 enum CalcCurrency {
@@ -92,9 +114,14 @@ enum CalcCurrency {
     /// The category label used in the mismatch message, mirroring `UnitCategory.displayName`.
     static let categoryName = "Currency"
 
+    static func isCryptoCode(_ code: String) -> Bool {
+        cryptoAssets.contains { $0.code == code }
+    }
+
     /// Detects a currency conversion with a connector between two currency or unit phrases. Currency names may be multi-word, so `2 US dollars to Turkish lira` is resolved from the phrase boundaries rather than fixed token positions.
     static func parseConversion(_ tokens: [CalcToken], source: CurrencySource) -> ConversionParse? {
-        guard case .on(let rates) = source else { return nil }
+        guard source.isOn else { return nil }
+        let rates = source.rates
         let tokens = amountFirst(tokens)
         guard let connector = tokens.lastIndex(where: { CalcUnits.isConnector($0) }),
             connector > 0, connector + 1 < tokens.count
@@ -115,7 +142,13 @@ enum CalcCurrency {
             } else {
                 return nil
             }
-            return converted(input: input, from: fromMatch.currency, to: to, rates: rates)
+            return converted(
+                input: input,
+                from: fromMatch.currency,
+                to: to,
+                rates: rates,
+                cryptoEnabled: source.cryptoEnabled
+            )
         }
 
         if fromMatch != nil, let unit = unitPhrase(right) {
@@ -131,7 +164,7 @@ enum CalcCurrency {
     static func parseDefaultConversion(
         _ tokens: [CalcToken], source: CurrencySource, targetCode: String
     ) -> ConversionParse? {
-        guard case .on(let rates) = source,
+        guard source.isOn,
             let target = byName[targetCode.lowercased()],
             let fromMatch = currencySuffix(in: amountFirst(tokens)),
             fromMatch.start > 0
@@ -141,12 +174,22 @@ enum CalcCurrency {
         guard let input = CalcParser.evaluate(Array(normalized[..<fromMatch.start])) else {
             return nil
         }
-        return converted(input: input, from: fromMatch.currency, to: target, rates: rates)
+        return converted(
+            input: input,
+            from: fromMatch.currency,
+            to: target,
+            rates: source.rates,
+            cryptoEnabled: source.cryptoEnabled
+        )
     }
 
     private static func converted(
-        input: Double, from: CurrencyDef, to: CurrencyDef, rates: CurrencyRates?
-    ) -> ConversionParse {
+        input: Double, from: CurrencyDef, to: CurrencyDef, rates: CurrencyRates?,
+        cryptoEnabled: Bool
+    ) -> ConversionParse? {
+        guard cryptoEnabled || (!isCryptoCode(from.code) && !isCryptoCode(to.code)) else {
+            return nil
+        }
         guard let rates else { return .unavailable }
         guard rates.rate(for: from.code) != nil else { return .noRate(code: from.code) }
         guard rates.rate(for: to.code) != nil else { return .noRate(code: to.code) }

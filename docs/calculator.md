@@ -74,13 +74,10 @@ and a unit on the other produces the same friendly category error as any other m
 
 ### Consent
 
-Currency and crypto conversion reach the network, so they ship **off** and stay off until the user enables
-currency conversion in Settings → Calculator and accepts a sheet naming both providers, the three-hour
-cadence and what leaves the machine. Declining leaves it off; there is no "remind me later" state. Any future feature
-that needs the network should follow the same shape rather than inventing a second one.
+Currency conversion is available in the calculator by default, but its online rates remain behind an explicit provider-consent sheet. Crypto conversion is a separate optional setting and defaults off; CoinGecko is never contacted while it is off. Enabling rates names the active providers, the three-hour cadence, and what leaves the machine. Declining keeps rates offline. Any future feature that needs the network should follow the same shape rather than inventing a second one.
 
 The gate is a type, not a boolean sprinkled around: `CalcEngine.evaluate` takes a `CurrencySource`
-that is either `.off` or `.on(CurrencyRates?)`, and it **defaults to `.off`**, so a caller that
+that is either `.off`, `.on(CurrencyRates?)`, or `.onWithCrypto(CurrencyRates?, cryptoEnabled:)`, and it **defaults to `.off`**, so a caller that
 forgets to pass one gets the feature disabled rather than silently enabled. `.off` makes
 `CalcCurrency.parseConversion` return nil before it parses anything, so a currency query produces no
 card at all — not even the category-mismatch error, which would leak that the feature exists.
@@ -90,8 +87,7 @@ unavailable" message.
 `CurrencyRateStore` re-checks consent at every entry point rather than trusting a caller: reading the
 cache at init, the `source` the engine is handed, `start()`, each turn of the refresh loop, and twice
 around the network call itself — once before the request and once after the `await`, since consent
-can be withdrawn while a response is in flight. Revoking cancels the loop, drops the snapshot and
-deletes the cached file. The flag lives on the store, deliberately *not* in `AppSettings`:
+can be withdrawn while a response is in flight. Disabling conversion or crypto stops future requests and removes disabled crypto rates. Revoking consent cancels the loop, drops the snapshot and deletes the cached file. The provider-consent flag lives on the store, deliberately *not* in `AppSettings`:
 `SettingsBackup` mirrors that type field-for-field, and importing a config must never be able to
 grant network access.
 
@@ -100,9 +96,12 @@ private **cacheless** `URLSession` (`.ephemeral`, `urlCache = nil`) rather than 
 The provider serves the table `Cache-Control: public, max-age=…`, so the shared session would store a
 second copy in the on-disk `URLCache` that deleting `currency-rates.json` doesn't touch.
 
-Rates come from `CurrencyRateStore` (`Core/`, owned by `AppCore`), which reads
+Settings shows the last fiat and crypto sync independently. Manual rate refresh is not exposed; the store refreshes automatically on its three-hour cadence. When crypto is disabled, its sync remains `Never` and CoinGecko is not contacted.
+
+Rates come from `CurrencyRateStore` (`Core/`, owned by `AppCore`). Fiat rates come from
 [Frankfurter](https://frankfurter.dev) — open source, no key, no account, no quota, rates blended
-from 84 central banks. One `GET api.frankfurter.dev/v2/rates?base=USD`, ~1.4 KB gzipped. v2 answers
+from 84 central banks. Crypto rates are optional and come from [CoinGecko](https://www.coingecko.com).
+When crypto is off, Bettercast does not contact CoinGecko. Fiat uses one `GET api.frankfurter.dev/v2/rates?base=USD`, ~1.4 KB gzipped. v2 answers
 with one flat `{date, base, quote, rate}` row per pair rather than a keyed table, and omits the
 base's own row — the store folds both into the `[code: rate]` shape `CurrencyRates` stores.
 

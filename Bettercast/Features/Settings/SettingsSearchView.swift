@@ -17,6 +17,7 @@ enum SettingsDestination: Hashable, Sendable {
     case emojiSkinTone
     case accessibility
     case currencyConversion
+    case cryptoConversion
     case exchangeRates
     case shortcutEntry(entryID: String, kind: String)
 
@@ -38,6 +39,7 @@ enum SettingsDestination: Hashable, Sendable {
         case .emojiSkinTone: return "emoji-skin-tone"
         case .accessibility: return "accessibility"
         case .currencyConversion: return "currency-conversion"
+        case .cryptoConversion: return "crypto-conversion"
         case .exchangeRates: return "exchange-rates"
         case .shortcutEntry(let entryID, _): return "shortcut-entry:\(entryID)"
         }
@@ -163,11 +165,10 @@ enum SettingsSearchCatalog {
             image: "dollarsign.arrow.circlepath", tint: .green
         ),
         item(
-            .exchangeRates, tab: .calculator, title: "Exchange Rates",
-            detail: "View or refresh the downloaded currency rates.", section: "Currency",
-            keywords: ["update", "provider", "download", "cache", "frankfurter"],
-            image: "clock.arrow.circlepath", tint: .gray,
-            recordID: "search:exchange-rates", routeDestination: .currencyConversion
+            .cryptoConversion, tab: .calculator, title: "Crypto Conversion",
+            detail: "Optionally download crypto rates from CoinGecko.", section: "Currency",
+            keywords: ["bitcoin", "btc", "ethereum", "crypto", "coingecko", "network"],
+            image: "bitcoinsign.circle", tint: .orange
         ),
     ]
 

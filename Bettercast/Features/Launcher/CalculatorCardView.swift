@@ -6,26 +6,27 @@ import SwiftUI
 /// without comparing the rate table itself.
 @MainActor
 enum CalcMemo {
-    private static var cache: (query: String, enabled: Bool, stamp: Date?, result: CalcResult?)?
+    private static var cache:
+        (
+            query: String, enabled: Bool, cryptoEnabled: Bool, stamp: Date?, result: CalcResult?
+        )?
 
     static func evaluate(_ query: String, currency: CurrencySource) -> CalcResult? {
-        let enabled: Bool
-        let stamp: Date?
-        switch currency {
-        case .off:
-            enabled = false
-            stamp = nil
-        case .on(let rates):
-            enabled = true
-            stamp = rates?.fetchedAt
-        }
-        if let cache, cache.query == query, cache.enabled == enabled, cache.stamp == stamp {
+        let enabled = currency.isOn
+        let cryptoEnabled = currency.cryptoEnabled
+        let stamp = currency.rates?.fetchedAt
+        if let cache,
+            cache.query == query,
+            cache.enabled == enabled,
+            cache.cryptoEnabled == cryptoEnabled,
+            cache.stamp == stamp
+        {
             return cache.result
         }
         var calendar = Calendar.current
         calendar.locale = Locale.current
         let result = CalcEngine.evaluate(query, now: Date(), calendar: calendar, currency: currency)
-        cache = (query, enabled, stamp, result)
+        cache = (query, enabled, cryptoEnabled, stamp, result)
         return result
     }
 }

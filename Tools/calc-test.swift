@@ -305,6 +305,7 @@ struct CalcTests {
         expectNil("usd")  // a lone code is still an app search
         expectNil("btc")  // a lone code is still an app search
         expectError("1 btc to usd", "No exchange rate for BTC.")
+        expectNilWithCryptoDisabled("1 btc to usd")
         // The table is generated from the feed's own currency list, so codes nobody hand-typed still
         // resolve — reaching "no rate" (not "no card") is what proves recognition.
         expectError("5 usd to zmw", "No exchange rate for ZMW.")
@@ -475,6 +476,16 @@ struct CalcTests {
             return
         }
         check(query, expected: expected, got: message)
+    }
+
+    static func expectNilWithCryptoDisabled(_ query: String) {
+        if let result = CalcEngine.evaluate(
+            query, currency: .onWithCrypto(fx, cryptoEnabled: false)
+        ) {
+            fail(query, expected: "nil (crypto disabled)", got: "\(result.payload)")
+        } else {
+            passes += 1
+        }
     }
 
     /// No consent: the currency path must not engage. Checks the explicit `.off` source and the
