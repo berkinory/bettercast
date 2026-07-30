@@ -14,7 +14,12 @@ struct CalcTests {
         expectDisplay("5*7", "35")
         expectDisplay("100/4", "25")
         expectDisplay("2^10", "1,024")
+        expectDisplay("2**10", "1,024")
         expectDisplay("2^3^2", "512")  // right-associative
+        expectDisplay("4(2+3)", "20")
+        expectDisplay("(2+3)(2+3)", "25")
+        expectDisplay("2pi", "6.283185307")
+        expectDisplay("2sqrt(9)", "6")
         expectDisplay("(5+2)*3", "21")
         expectDisplay("5!", "120")
         expectDisplay("3!!", "720")  // (3!)! — chained postfix
@@ -22,6 +27,9 @@ struct CalcTests {
         expectDisplay("-2^2", "-4")  // unary minus binds looser than ^
         expectDisplay("10/4", "2.5")
         expectDisplay("1/3", "0.3333333333")
+        expectDisplay("1e6 + 1", "1,000,001")
+        expectDisplay("1.5e-3 * 2", "0.003")
+        expectDisplay("2.5E8 / 2", "125,000,000")
         expectDisplay("2.5 * 4", "10")
         expectDisplay("1,000 + 234", "1,234")  // grouping commas accepted in input
 
@@ -52,6 +60,9 @@ struct CalcTests {
         expectDisplay("450 + 20%", "540")
         expectDisplay("450 - 15%", "382.5")
         expectDisplay("20%", "0.2")
+        expectDisplay("10 % 3", "1")
+        expectDisplay("17 mod 5", "2")
+        expectDisplay("2 + 10 % 3", "3")
 
         // Unit conversion — length / weight / temperature / time / area / volume / storage
         expectDisplay("10km to mi", "6.213711922 mi")
@@ -115,12 +126,18 @@ struct CalcTests {
         expectNil("10km to")  // half-typed conversion
         expectNil("10 to mi")
         expectNil("45+")  // half-typed expression
+        expectNil("1e6")
+        expectNil("10em")
         expectNil("sqrt()")
         expectNil("2.5!")  // factorial needs an integer
         expectNil("")
 
         // Formatting: display grouped, copyText plain
         expectDisplay("1234567*1", "1,234,567")
+        expectDisplay("2^50", "1,125,899,906,842,624")
+        expectCopy("2^50", "1125899906842624")
+        expectDisplay("999999999999999 + 1", "1,000,000,000,000,000")
+        expectDisplay("123456789 * 123456789", "1.524157875E+16")
         expectCopy("1234567*1", "1234567")
         expectCopy("10km to mi", "6.213711922 mi")
         expectDisplay("-1234.5-0.25", "-1,234.75")

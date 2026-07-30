@@ -102,6 +102,7 @@ final class AppCore: ObservableObject {
     let emojiIndex = EmojiIndex()
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
+    let appUninstaller = AppUninstaller()
     let palette = PaletteViewModel()
 
     private lazy var windowController = PaletteWindowController(core: self)
@@ -270,6 +271,97 @@ final class AppCore: ObservableObject {
     }
 
     /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
+    func uninstall(_ app: AppEntry) {
+        guard AppUninstaller.isEligible(app) else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            let plan = await appUninstaller.plan(for: app)
+            hidePalette(restoreFocus: false)
+            guard confirmUninstall(plan) else { return }
+
+            if runningApps.isRunning(app) {
+                _ = AppLauncher.quit(bundleID: app.bundleID ?? "")
+                for _ in 0..<20 {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    if !runningApps.isRunning(app) { break }
+                }
+                guard !runningApps.isRunning(app) else {
+                    showUninstallFailure("\(app.name) is still running. Nothing was removed.")
+                    return
+                }
+            }
+
+            let result = await appUninstaller.execute(plan)
+            guard result.appFailure == nil else {
+                showUninstallFailure(result.appFailure ?? "Could not uninstall \(app.name).")
+                return
+            }
+            if favorites.isFavorite(app) { favorites.toggle(app) }
+            launcherRanking.reset(itemKey: app.preferenceKey)
+            visibility.setItemVisible(true, for: app)
+            if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
+            Task { await appIndex.refresh() }
+            if !result.failedPaths.isEmpty {
+                let count = result.failedPaths.count
+                showUninstallFailure(
+                    "The application was moved to the Trash, but \(count) related \(count == 1 ? "item" : "items") could not be moved."
+                )
+            }
+        }
+    }
+
+    private func confirmUninstall(_ plan: AppUninstallPlan) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Move \(plan.app.name) to Trash?"
+        let userCount = plan.userCandidates.count
+        let systemCount = plan.systemCandidates.count
+        var details =
+            "This will move the application and its related user data to the Trash. You can restore them before emptying it."
+        if userCount == 0 {
+            details += "\n\nNo related user files were found."
+        } else {
+            let itemLabel = userCount == 1 ? "related item" : "related items"
+            let categories = Set(plan.userCandidates.map(\.category)).sorted().joined(separator: ", ")
+            details += "\n\nFound \(userCount) \(itemLabel): \(categories)."
+        }
+        if systemCount > 0 {
+            let itemLabel = systemCount == 1 ? "item" : "items"
+            details +=
+                "\n\n\(systemCount) system \(itemLabel) will stay untouched because administrator access is required."
+        }
+        let totalBytes = ([plan.appSize] + plan.userCandidates.map(\.size)).compactMap { $0 }.reduce(0, +)
+        if totalBytes > 0 {
+            details += "\n\nTotal size: \(uninstallSizeText(totalBytes))"
+        }
+        alert.informativeText = details
+        alert.alertStyle = .warning
+        let uninstallButton = alert.addButton(withTitle: "Move to Trash")
+        uninstallButton.hasDestructiveAction = true
+        uninstallButton.keyEquivalent = ""
+        alert.addButton(withTitle: "Cancel").keyEquivalent = "\r"
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func uninstallSizeText(_ bytes: Int64) -> String {
+        let megabytes = Double(bytes) / 1_048_576
+        if megabytes < 10 {
+            return String(format: "%.1f MB", megabytes)
+        }
+        return String(format: "%.0f MB", megabytes)
+    }
+
+    private func showUninstallFailure(_ message: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Uninstall Incomplete"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
     func quit(_ app: AppEntry) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
         // Unlike `launch`, nothing here takes focus on its own — hand it back to where the user was, unless that's the app now on its way out.
@@ -353,6 +445,11 @@ final class AppCore: ObservableObject {
     func showInFinder(_ app: AppEntry) {
         hidePalette(restoreFocus: false)
         AppLauncher.showInFinder(app.url)
+    }
+
+    func copyPath(_ app: AppEntry) {
+        hidePalette(restoreFocus: false)
+        Paster.copyPlainText(app.url.path)
     }
 
     func paste(_ item: ClipboardItem) {

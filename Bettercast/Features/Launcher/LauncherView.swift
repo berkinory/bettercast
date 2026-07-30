@@ -5,8 +5,8 @@ struct LauncherList: View {
     let selectedID: AppEntry.ID?
     let favoriteCount: Int
     let showSections: Bool
-    /// Changes only when the list should scroll to follow the selection (keyboard nav / reset), so mouse selection never yanks the scroll position.
-    let scrollToken: UUID
+    /// Present only when the list should follow selection or return to its origin.
+    let scrollIntent: ListScrollIntent?
     /// Inline calculator answer; occupies flat selection index 0 when present (requires a non-empty query, so it never coexists with the sectioned view).
     var calc: CalcResult?
     var calcSelected = false
@@ -64,41 +64,47 @@ struct LauncherList: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(rows) { row in
-                                switch row {
-                                case .header(let title):
-                                    SectionHeader(title: title, isFirst: row.id == rows.first?.id)
-                                case .calc(let result):
-                                    CalculatorCard(result: result, selected: calcSelected)
+                        VStack(spacing: 0) {
+                            LazyVStack(spacing: 0) {
+                                ForEach(rows) { row in
+                                    switch row {
+                                    case .header(let title):
+                                        SectionHeader(title: title, isFirst: row.id == rows.first?.id)
+                                    case .calc(let result):
+                                        CalculatorCard(result: result, selected: calcSelected)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture(perform: onActivateCalc)
+                                            .onRightClick(perform: onCalcActions)
+                                            .padding(.bottom, Theme.Spacing.xs)
+                                    case .app(let app):
+                                        AppRow(
+                                            app: app,
+                                            selected: app.id == selectedID,
+                                            running: runningApps.isRunning(app)
+                                        )
                                         .contentShape(Rectangle())
-                                        .onTapGesture(perform: onActivateCalc)
-                                        .onRightClick(perform: onCalcActions)
-                                        .padding(.bottom, Theme.Spacing.xs)
-                                case .app(let app):
-                                    AppRow(
-                                        app: app,
-                                        selected: app.id == selectedID,
-                                        running: runningApps.isRunning(app)
-                                    )
-                                    .contentShape(Rectangle())
-                                    .onTapGesture { onActivate(app) }
-                                    .onRightClick { onActions(app) }
+                                        .onTapGesture { onActivate(app) }
+                                        .onRightClick { onActions(app) }
+                                    }
                                 }
                             }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.top, Theme.Spacing.xs)
+                            .padding(.bottom, Theme.Spacing.md)
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.top, Theme.Spacing.xs)
-                        .padding(.bottom, Theme.Spacing.md)
                         .hideNativeScrollers()
+                        .resetNativeScrollToTop(
+                            id: scrollIntent?.kind == .top ? scrollIntent?.id : nil
+                        )
                     }
                     .edgeDissolve()
                     .thinScrollbar()
-                    .onChange(of: scrollToken) {
+                    .task(id: scrollIntent) {
+                        guard let scrollIntent, scrollIntent.kind == .follow else { return }
                         if calcSelected {
-                            proxy.scrollTo(Self.calcRowID, anchor: .center)
+                            proxy.scrollTo(Self.calcRowID)
                         } else if let selectedID {
-                            proxy.scrollTo(selectedID, anchor: .center)
+                            proxy.scrollTo(selectedID)
                         }
                     }
                 }
@@ -229,12 +235,14 @@ enum AppActionsMenu {
         ]
         if favorites.isFavorite(app) {
             items.append(
-                PopoverMenuItem(title: "Remove from Favorites", systemImage: "star.slash") {
+                PopoverMenuItem(
+                    title: "Remove from Favorites", systemImage: "star.slash", shortcut: "⌘F"
+                ) {
                     favorites.toggle(app)
                 })
         } else {
             items.append(
-                PopoverMenuItem(title: "Add to Favorites", systemImage: "star") {
+                PopoverMenuItem(title: "Add to Favorites", systemImage: "star", shortcut: "⌘F") {
                     favorites.toggle(app)
                 })
         }
@@ -244,10 +252,24 @@ enum AppActionsMenu {
                     onResetRanking()
                 })
         }
+        if app.kind == .application {
+            items.append(
+                PopoverMenuItem(title: "Copy Path", systemImage: "doc.on.doc", shortcut: "⌘⇧C") {
+                    core.copyPath(app)
+                })
+        }
         if app.kind != .command {
             items.append(
                 PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {
                     core.showInFinder(app)
+                })
+        }
+        if AppUninstaller.isEligible(app) {
+            items.append(
+                PopoverMenuItem(
+                    title: "Uninstall Application", systemImage: "trash", isDestructive: true
+                ) {
+                    core.uninstall(app)
                 })
         }
         if running, app.kind == .application {

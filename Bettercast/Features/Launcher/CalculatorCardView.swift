@@ -168,15 +168,45 @@ private struct CalcExpression: View {
         let range = NSRange(location: 0, length: text.utf16.count)
         for match in regex.matches(in: text, range: range) {
             guard let matchRange = Range(match.range, in: text) else { continue }
+            let matchedText = String(text[matchRange])
             let isLeadingPercent =
-                String(text[matchRange]) == "%"
+                matchedText == "%"
                 && text[..<matchRange.lowerBound].trimmingCharacters(in: .whitespaces).isEmpty
             guard !isLeadingPercent else { continue }
+            if matchedText.caseInsensitiveCompare("in") == .orderedSame,
+                !isConversionConnector(text, at: matchRange)
+            {
+                continue
+            }
             output = Text("\(output)\(Text(text[cursor..<matchRange.lowerBound]))")
             output = Text("\(output)\(Text(text[matchRange]).foregroundStyle(Theme.Colors.textTertiary))")
             cursor = matchRange.upperBound
         }
         return Text("\(output)\(Text(text[cursor...]))")
+    }
+
+    private func isConversionConnector(_ text: String, at range: Range<String.Index>) -> Bool {
+        let before = String(text[..<range.lowerBound])
+        let after = String(text[range.upperBound...])
+        guard !after.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        if let afterTokens = CalcTokenizer.tokenize(after),
+            case .ident("to")? = afterTokens.first
+        {
+            return false
+        }
+        if let beforeTokens = CalcTokenizer.tokenize(before),
+            let afterTokens = CalcTokenizer.tokenize(after),
+            !afterTokens.isEmpty,
+            CalcUnits.parseConversion(beforeTokens + [.arrow] + afterTokens) != nil
+        {
+            return true
+        }
+        if let beforeTokens = CalcTokenizer.tokenize(before),
+            case .number? = beforeTokens.last
+        {
+            return false
+        }
+        return true
     }
 }
 

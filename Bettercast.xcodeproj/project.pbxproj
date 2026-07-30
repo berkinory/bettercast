@@ -62,6 +62,7 @@
 		B0117926CB7A3A0F7830B749 /* CalculatorSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7C6CDA619606F08F7A8551 /* CalculatorSettingsView.swift */; };
 		B1BEB7B2984F1501112ED966 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4532B611E46FC4B03AF92D1A /* OnboardingView.swift */; };
 		B274EF4A97CA03A399FC1BF4 /* SettingsPaneScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 923775C70BCE3925DE5CCB42 /* SettingsPaneScanner.swift */; };
+		B43CB63645F4CBF3462C86AE /* AppUninstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DAE1F03988D52499A48F105 /* AppUninstaller.swift */; };
 		B8B59DDD8642E31DE4991207 /* AppCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51996F28EC8A0B1DB1F37D4 /* AppCore.swift */; };
 		BB0D28528A86F4FD0567131C /* VisibilityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 478F9351A825ABC574F67748 /* VisibilityStore.swift */; };
 		BEA874CE3FEE78EA1F1BA5BE /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265BAF7566BAD9205D7DA372 /* LaunchAtLogin.swift */; };
@@ -119,6 +120,7 @@
 		50D59FE8F4ACB2CEBAF069E2 /* CalcFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcFormatter.swift; sourceTree = "<group>"; };
 		51F1F0CFAC79C7BBF5226D61 /* KeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyShortcut.swift; sourceTree = "<group>"; };
 		5A7CA13A67D1F43B530B1DD5 /* BettercastApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BettercastApp.swift; sourceTree = "<group>"; };
+		5DAE1F03988D52499A48F105 /* AppUninstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUninstaller.swift; sourceTree = "<group>"; };
 		5E0FE10714950EC82644EEB5 /* CurrencyRateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyRateStore.swift; sourceTree = "<group>"; };
 		62BF7AD3E7B96E6048FC1EFB /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalog.swift; sourceTree = "<group>"; };
 		68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
@@ -198,6 +200,7 @@
 				FFFD20F5ADAC4FA10AF765C5 /* AppIndex.swift */,
 				9B958BE256565B0B93D47C3A /* AppLauncher.swift */,
 				3714BB0D0102E507DF9174D4 /* AppSettings.swift */,
+				5DAE1F03988D52499A48F105 /* AppUninstaller.swift */,
 				EC44B7DB01BAA4B55129CBC5 /* Bundle+AppName.swift */,
 				2015901F6931A636CF402EC6 /* CalculatorHistoryStore.swift */,
 				828E4F96599556B426BD8DB9 /* ClipboardManager.swift */,
@@ -449,6 +452,7 @@
 				4E86B6CE006858D187EDDA21 /* AppIndex.swift in Sources */,
 				F212ACD48FBECFF74F47A0A6 /* AppLauncher.swift in Sources */,
 				9745871BDB1CB45E7E0FE048 /* AppSettings.swift in Sources */,
+				B43CB63645F4CBF3462C86AE /* AppUninstaller.swift in Sources */,
 				F7781627FD5C8320930A5971 /* BackupActions.swift in Sources */,
 				FB7B61A0D75D54668A40C633 /* BettercastApp.swift in Sources */,
 				4A021DCD2DA1748EEDECE318 /* Bundle+AppName.swift in Sources */,

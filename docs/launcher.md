@@ -28,6 +28,12 @@ paths; see the command in `development.md`.
 
 Icons go through a count-capped `NSCache` (`IconCache`).
 
+## Uninstall Application
+
+Application actions include a guarded uninstall flow. Bettercast identifies the app bundle by its path and bundle ID, checks common per-user remnants in Application Support, Caches, Containers, Group Containers, preferences, saved state, logs, WebKit, HTTP storage, and user launch agents, then shows the exact paths before confirmation. The app and confirmed user files are moved to the Trash, not permanently deleted. Running apps are asked to quit first. System-owned remnants are reported but left untouched when administrator authorization would be required.
+
+Matching is conservative: Bettercast uses exact bundle-ID/name matches and does not recursively sweep arbitrary home-directory data. This avoids the dangerous false positives that generic name-based cleanup can cause.
+
 ## Reveal in Finder
 
 Application and System Settings results expose **Show in Finder** in their ⌘K Actions menu and on

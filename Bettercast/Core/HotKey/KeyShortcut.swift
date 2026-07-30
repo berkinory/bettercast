@@ -43,6 +43,7 @@ struct KeyShortcut: Hashable, Sendable {
         return carbon
     }
 
+    /// Modifier symbols in the fixed ⌃⌥⇧⌘ order every macOS surface uses.
     static func modifierSymbols(from flags: NSEvent.ModifierFlags) -> [String] {
         var symbols: [String] = []
         if flags.contains(.control) { symbols.append("⌃") }
