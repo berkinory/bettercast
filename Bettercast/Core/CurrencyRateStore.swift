@@ -9,17 +9,24 @@ import Foundation
 /// `isEnabled` rather than trusting a caller.
 @MainActor
 final class CurrencyRateStore: ObservableObject {
-    /// Frankfurter (`frankfurter.dev`) — open-source, no key, no account, no quota, rates blended from
-    /// 84 central banks. Unfiltered: `CurrencyData.generated.swift` is generated from this same feed's
-    /// currency list, so every quote it returns is one the calculator can answer for (~1.4 KB gzipped).
-    static let provider = "Frankfurter"
+    /// Frankfurter supplies fiat rates; CoinGecko supplies the small curated crypto set.
+    static let provider = "Frankfurter + CoinGecko"
     static let providerURL = URL(string: "https://frankfurter.dev")!
+    static let cryptoProviderURL = URL(string: "https://www.coingecko.com")!
     private nonisolated static let endpoint = URL(
         string: "https://api.frankfurter.dev/v2/rates?base=USD")!
-    /// Daily. The feed republishes about once a day, so asking more often just costs requests without
-    /// getting newer numbers — and the age is measured from the persisted snapshot, so relaunching
-    /// Bettercast repeatedly doesn't re-fetch.
-    static let refreshInterval: TimeInterval = 24 * 3600
+    private nonisolated static let cryptoEndpoint: URL = {
+        var components = URLComponents(string: "https://api.coingecko.com/api/v3/simple/price")!
+        components.queryItems = [
+            URLQueryItem(
+                name: "ids",
+                value: CalcCurrency.cryptoAssets.map(\.id).joined(separator: ",")),
+            URLQueryItem(name: "vs_currencies", value: "usd"),
+        ]
+        return components.url!
+    }()
+    /// Refresh both fiat and crypto in one lightweight cycle, no more often than every three hours.
+    static let refreshInterval: TimeInterval = 3 * 3600
     /// Shorter retry so a machine that was offline at launch picks rates up soon after it reconnects.
     private static let retryInterval: TimeInterval = 15 * 60
 
@@ -105,10 +112,17 @@ final class CurrencyRateStore: ObservableObject {
     private func fetchAndStore() async -> Bool {
         // Guard 4 — re-checked at the network boundary itself: the pump may have been sleeping when
         // the user revoked consent, and this is the last line before a request goes out.
-        guard isEnabled, let fetched = try? await Self.fetch() else { return false }
-        // Re-check after the await: consent can be withdrawn while the request is in flight, and a
-        // late response must not resurrect the feature or write the cache back to disk.
+        guard isEnabled, let fiat = try? await Self.fetchFiat() else { return false }
         guard isEnabled else { return false }
+        let crypto = try? await Self.fetchCrypto()
+        // Re-check after every await: consent can be withdrawn while either response is in flight.
+        guard isEnabled else { return false }
+
+        var merged = fiat.rates
+        if let crypto {
+            for (code, rate) in crypto { merged[code] = rate }
+        }
+        let fetched = CurrencyRates(base: fiat.base, rates: merged, fetchedAt: Date())
         rates = fetched
         if let data = try? JSONEncoder().encode(fetched) {
             try? data.write(to: fileURL, options: .atomic)
@@ -126,7 +140,7 @@ final class CurrencyRateStore: ObservableObject {
     }()
 
     /// Off-main by way of `URLSession`'s async API; the decoded table is a plain value, so nothing but `CurrencyRates` crosses back.
-    private nonisolated static func fetch() async throws -> CurrencyRates {
+    private nonisolated static func fetchFiat() async throws -> CurrencyRates {
         let request = URLRequest(url: endpoint, timeoutInterval: 20)
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
@@ -147,9 +161,30 @@ final class CurrencyRateStore: ObservableObject {
         return CurrencyRates(base: base, rates: rates, fetchedAt: Date())
     }
 
+    private nonisolated static func fetchCrypto() async throws -> [String: Double] {
+        let request = URLRequest(url: cryptoEndpoint, timeoutInterval: 20)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let payload = try JSONDecoder().decode([String: CryptoQuote].self, from: data)
+        var rates: [String: Double] = [:]
+        for asset in CalcCurrency.cryptoAssets {
+            guard let price = payload[asset.id]?.usd, price > 0, price.isFinite else { continue }
+            rates[asset.code] = 1 / price
+        }
+        guard !rates.isEmpty else { throw URLError(.cannotParseResponse) }
+        return rates
+    }
+
     private struct RateRow: Decodable {
         let base: String
         let quote: String
         let rate: Double
+    }
+
+    private struct CryptoQuote: Decodable {
+        let usd: Double
     }
 }

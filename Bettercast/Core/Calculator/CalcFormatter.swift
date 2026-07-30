@@ -36,13 +36,13 @@ enum CalcFormatter {
     }
 
     static func currencyDisplay(
-        amount: String, code: String, locale: Locale
+        amount: String, code: String, symbol: String? = nil, locale: Locale
     ) -> String {
         let formatter = NumberFormatter()
         formatter.locale = locale
         formatter.numberStyle = .currency
         formatter.currencyCode = code
-        let symbol = formatter.currencySymbol ?? code
+        let symbol = symbol ?? formatter.currencySymbol ?? code
         guard symbol != code else { return "\(amount) \(code)" }
 
         let isNegative = amount.hasPrefix("-")

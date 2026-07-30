@@ -18,8 +18,9 @@ enum CalcDateTime {
         let hasSince = query.contains(" since ")
         let hasAgo = query.hasSuffix(" ago")
         let hasIn = query.hasPrefix("in ") || query.contains(" in ") || query.contains(" from now")
+        let hasTimeZone = query.hasPrefix("time in ") || query.hasPrefix("time diff ") || query.contains(" in ")
         let hasArith = query.contains(" + ") || query.contains(" - ")
-        guard hasUntil || hasSince || hasAgo || hasIn || hasArith else { return nil }
+        guard hasUntil || hasSince || hasAgo || hasTimeZone || hasIn || hasArith else { return nil }
 
         if hasUntil, let result = parseUntil(query, echo: echo, now: now, calendar: calendar) {
             return result
@@ -28,6 +29,9 @@ enum CalcDateTime {
             return result
         }
         if hasAgo, let result = parseAgo(query, echo: echo, now: now, calendar: calendar) {
+            return result
+        }
+        if hasTimeZone, let result = parseTimeZone(query, echo: echo, now: now, calendar: calendar) {
             return result
         }
         if hasIn, let result = parseIn(query, echo: echo, now: now, calendar: calendar) {
@@ -153,6 +157,115 @@ enum CalcDateTime {
         return CalcResult(
             expression: echo, sourceBadge: "Now", targetBadge: "Result",
             payload: .value(display: display, copyText: display))
+    }
+
+    // MARK: - Time zones
+
+    private static func parseTimeZone(
+        _ query: String, echo: String, now: Date, calendar: Calendar
+    ) -> CalcResult? {
+        if query.hasPrefix("time diff ") {
+            let name = String(query.dropFirst("time diff ".count))
+            guard let zone = timeZone(named: name) else { return nil }
+            let currentOffset = calendar.timeZone.secondsFromGMT(for: now)
+            let targetOffset = zone.secondsFromGMT(for: now)
+            let difference = Double(targetOffset - currentOffset) / 3600
+            let locale = calendar.locale ?? Locale.current
+            let display = "\(CalcFormatter.display(difference, locale: locale)) hours"
+            return CalcResult(
+                expression: echo, sourceBadge: calendar.timeZone.identifier,
+                targetBadge: zone.identifier,
+                payload: .value(display: display, copyText: display))
+        }
+
+        guard let connector = query.range(of: " in ") else { return nil }
+        let left = String(query[..<connector.lowerBound])
+        let targetName = String(query[connector.upperBound...])
+        guard let targetZone = timeZone(named: targetName) else { return nil }
+        let targetCalendar = calendarFor(targetZone, base: calendar)
+
+        let sourceCalendar: Calendar
+        let sourceMoment: Moment
+        if left == "time" {
+            sourceCalendar = calendar
+            sourceMoment = Moment(date: now, hasTime: true)
+        } else {
+            let atoms = left.split(whereSeparator: \.isWhitespace).map(String.init)
+            if let parsedZone = atoms.last.flatMap(timeZone(named:)), atoms.count >= 2 {
+                let timePhrase = atoms.dropLast().joined(separator: " ")
+                sourceCalendar = calendarFor(parsedZone, base: calendar)
+                guard
+                    let parsed = clockMomentOnDate(
+                        timePhrase, now: now, calendar: sourceCalendar)
+                else { return nil }
+                sourceMoment = parsed
+            } else {
+                sourceCalendar = calendar
+                guard let parsed = clockMomentOnDate(left, now: now, calendar: sourceCalendar)
+                else { return nil }
+                sourceMoment = parsed
+            }
+        }
+
+        let display = timeString(sourceMoment.date, calendar: targetCalendar)
+        return CalcResult(
+            expression: echo,
+            sourceBadge: timeString(sourceMoment.date, calendar: sourceCalendar),
+            targetBadge: targetZone.identifier,
+            payload: .value(display: display, copyText: display))
+    }
+
+    private static func timeZone(named name: String) -> TimeZone? {
+        let normalized = name.trimmingCharacters(in: .whitespaces).lowercased()
+        if let identifier = timeZoneIdentifiers[normalized] {
+            return TimeZone(identifier: identifier)
+        }
+        if normalized == "utc" || normalized == "gmt" {
+            return TimeZone(secondsFromGMT: 0)
+        }
+        if normalized.hasPrefix("utc") || normalized.hasPrefix("gmt") {
+            return fixedOffsetTimeZone(String(normalized.dropFirst(3)))
+        }
+        return TimeZone(identifier: name.trimmingCharacters(in: .whitespaces))
+    }
+
+    private static func fixedOffsetTimeZone(_ text: String) -> TimeZone? {
+        guard let sign = text.first, sign == "+" || sign == "-" else { return nil }
+        let components = text.dropFirst().split(separator: ":")
+        guard let hours = Int(components[0]), (0...23).contains(hours) else { return nil }
+        let minutes = components.count == 2 ? Int(components[1]) ?? -1 : 0
+        guard (0...59).contains(minutes) else { return nil }
+        let seconds = (hours * 3600 + minutes * 60) * (sign == "+" ? 1 : -1)
+        return TimeZone(secondsFromGMT: seconds)
+    }
+
+    private static func clockMomentOnDate(
+        _ phrase: String, now: Date, calendar: Calendar
+    ) -> Moment? {
+        let atoms = atomize(phrase)
+        let clock: (hour: Int, minute: Int)?
+        if atoms.count == 1 {
+            clock = parseClock(atoms[0])
+        } else if atoms.count == 2, atoms[1] == "am" || atoms[1] == "pm",
+            let parsed = parseClock(atoms[0]), (1...12).contains(parsed.hour)
+        {
+            let hour = atoms[1] == "pm" ? (parsed.hour % 12) + 12 : parsed.hour % 12
+            clock = (hour, parsed.minute)
+        } else {
+            clock = nil
+        }
+        guard let clock,
+            let date = calendar.date(
+                bySettingHour: clock.hour, minute: clock.minute, second: 0,
+                of: calendar.startOfDay(for: now))
+        else { return nil }
+        return Moment(date: date, hasTime: true)
+    }
+
+    private static func calendarFor(_ timeZone: TimeZone, base: Calendar) -> Calendar {
+        var calendar = base
+        calendar.timeZone = timeZone
+        return calendar
     }
 
     // MARK: - Grammar D: future date offsets
@@ -599,6 +712,23 @@ enum CalcDateTime {
         if year >= 100 { return year }
         return year <= 68 ? 2000 + year : 1900 + year
     }
+
+    private static let timeZoneIdentifiers: [String: String] = [
+        "ldn": "Europe/London", "london": "Europe/London",
+        "sf": "America/Los_Angeles", "san francisco": "America/Los_Angeles",
+        "la": "America/Los_Angeles", "nyc": "America/New_York",
+        "pst": "Etc/GMT+8", "pdt": "Etc/GMT+7", "est": "Etc/GMT+5",
+        "edt": "Etc/GMT+4", "cst": "Etc/GMT+6", "cdt": "Etc/GMT+5",
+        "mst": "Etc/GMT+7", "mdt": "Etc/GMT+6", "cet": "Etc/GMT-1", "cest": "Etc/GMT-2",
+        "utc": "UTC", "gmt": "GMT",
+        "new york": "America/New_York", "chicago": "America/Chicago",
+        "toronto": "America/Toronto", "mexico city": "America/Mexico_City",
+        "sao paulo": "America/Sao_Paulo", "são paulo": "America/Sao_Paulo",
+        "paris": "Europe/Paris", "berlin": "Europe/Berlin", "istanbul": "Europe/Istanbul",
+        "dubai": "Asia/Dubai", "mumbai": "Asia/Kolkata", "delhi": "Asia/Kolkata",
+        "singapore": "Asia/Singapore", "beijing": "Asia/Shanghai", "shanghai": "Asia/Shanghai",
+        "tokyo": "Asia/Tokyo", "seoul": "Asia/Seoul", "sydney": "Australia/Sydney",
+    ]
 
     private static let monthByName: [String: Int] = [
         "january": 1, "jan": 1, "february": 2, "feb": 2, "march": 3, "mar": 3, "april": 4,

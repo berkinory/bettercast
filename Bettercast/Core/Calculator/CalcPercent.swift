@@ -5,8 +5,24 @@ enum CalcPercent {
     static func evaluate(
         _ tokens: [CalcToken], query: String, locale: Locale = Locale(identifier: "en_US_POSIX")
     ) -> CalcResult? {
-        parseOff(tokens, query: query, locale: locale)
+        parseLeadingPercentOf(tokens, query: query, locale: locale)
+            ?? parseOff(tokens, query: query, locale: locale)
             ?? parseAsPercentOf(tokens, query: query, locale: locale)
+    }
+
+    /// `%15 of 40` → 6, accepting the percent sign before the number as Raycast does.
+    private static func parseLeadingPercentOf(
+        _ tokens: [CalcToken], query: String, locale: Locale
+    ) -> CalcResult? {
+        guard tokens.first == .op("%"),
+            let of = tokens.firstIndex(of: .ident("of")), of > 1,
+            let pct = CalcParser.evaluate(Array(tokens[1..<of])),
+            let base = CalcParser.evaluate(Array(tokens[(of + 1)...]))
+        else { return nil }
+        let result = base * pct / 100
+        guard result.isFinite else { return nil }
+        return card(
+            query, CalcFormatter.display(result, locale: locale), CalcFormatter.copyText(result))
     }
 
     /// `<pct>% off <value>` → the value reduced by pct percent (`20% off 500` → 400).

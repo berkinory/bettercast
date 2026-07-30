@@ -9,16 +9,18 @@ also **pure**: the one input it can't compute, the FX rate table, is passed in (
 
 `CalcEngine.evaluate` runs:
 
-1. Natural-language date/time (`CalcDateTime`, e.g. `hrs till 9am`, `days until 27 feb`,
-   `years since feb 17 2005`, `35 days ago`, `monday in 3 weeks`, `today + 3 weeks`)
-2. Numeric reject
-3. Tokenize
-4. Base conversion
-5. Explicit unit conversion (`10km to mi`)
-6. **Currency conversion** (`1 euro to dollars`, `€20 to GBP`)
-7. **Bare-unit auto-conversion** (`1m` → feet + inches, `1hr` → 60 min, via
+1. Natural-language date/time and time zones (`days until 27 feb`, `years since feb 17 2005`,
+   `35 days ago`, `monday in 3 weeks`, `time in tokyo`, `5pm ldn in sf`)
+2. Natural-language math (`square root of 625`, `2 power 10`)
+3. Numeric reject
+4. Tokenize
+5. Base conversion
+6. Timespan conversion (`145 mins to timespan`)
+7. Explicit unit conversion (`10km to mi`, `1 nautical mile to km`)
+8. **Currency and crypto conversion** (`1 euro to dollars`, `€20 to GBP`, `0.1 btc to usd`)
+9. **Bare-unit auto-conversion** (`1m` → feet + inches, `1hr` → 60 min, via
    `CalcUnits.parseBareConversion` + the `autoTargets` map)
-8. Plain arithmetic
+10. Plain arithmetic
 
 Date/time depends on the clock, so it takes an injected `now` / `calendar` — the public `evaluate(_:)`
 uses the live clock, and `evaluate(_:now:calendar:)` lets `calc-test.swift` assert exact strings
@@ -28,8 +30,9 @@ against a fixed clock.
 
 `CalcCurrency` mirrors `CalcUnits`' shape: a lookup table plus a `parseConversion` over the same
 `expr from (to|in|->) to` token shape, so `eur to usd` implies an amount of 1 exactly like `m to ft`.
-It also resolves generated full names and plurals, so `2 US dollars to British pounds` works. A leading
-sign is swapped back into amount-first order, so `€20 to GBP` and `20€ to GBP` parse alike.
+It also resolves generated full names and plurals, so `2 US dollars to British pounds` works. Crypto
+supports a curated set of major assets from CoinGecko, including BTC, ETH, SOL, BNB, XRP and ADA. A
+leading sign is swapped back into amount-first order, so `€20 to GBP` and `20€ to GBP` parse alike.
 
 The table is **generated except for the judgement calls**. `node Tools/gen-currencies.js` joins two
 sources on the ISO code and emits `CurrencyData.generated.swift`:
@@ -64,9 +67,9 @@ and a unit on the other produces the same friendly category error as any other m
 
 ### Consent
 
-Currency conversion reaches the network, so it ships **off** and stays off until the user enables it
-in Settings → Calculator and accepts a sheet naming the provider, the request cadence and what
-leaves the machine. Declining leaves it off; there is no "remind me later" state. Any future feature
+Currency and crypto conversion reach the network, so they ship **off** and stay off until the user enables
+currency conversion in Settings → Calculator and accepts a sheet naming both providers, the three-hour
+cadence and what leaves the machine. Declining leaves it off; there is no "remind me later" state. Any future feature
 that needs the network should follow the same shape rather than inventing a second one.
 
 The gate is a type, not a boolean sprinkled around: `CalcEngine.evaluate` takes a `CurrencySource`
@@ -96,11 +99,10 @@ from 84 central banks. One `GET api.frankfurter.dev/v2/rates?base=USD`, ~1.4 KB 
 with one flat `{date, base, quote, rate}` row per pair rather than a keyed table, and omits the
 base's own row — the store folds both into the `[code: rate]` shape `CurrencyRates` stores.
 
-The table is cached at `~/Library/Caches/<bundle-id>/currency-rates.json`, refreshed every 24h with a
-15-minute retry after a failure. The feed republishes about once a day, so a tighter interval would
-cost requests without returning newer numbers. Age is measured from the persisted `fetchedAt`, not
-from launch, so relaunching Bettercast never re-fetches a snapshot that is still fresh — a cold start
-with a same-day cache makes zero requests. Offline, the last snapshot keeps answering; with no snapshot at all
+The merged fiat + crypto table is cached at `~/Library/Caches/<bundle-id>/currency-rates.json`, refreshed
+every three hours with a 15-minute retry after a failure. One small Frankfurter request and one small
+CoinGecko `/simple/price` request update the snapshot. Age is measured from the persisted `fetchedAt`,
+not from launch, so relaunching Bettercast never re-fetches a snapshot that is still fresh. Offline, the last snapshot keeps answering; with no snapshot at all
 the card says so rather than guessing, and a currency the feed doesn't quote reports
 `No exchange rate for <CODE>.` The store hands `CalcEngine.evaluate` a finished `CurrencyRates`
 value — the engine never fetches, which is what keeps it Foundation-only and testable. `CalcMemo`

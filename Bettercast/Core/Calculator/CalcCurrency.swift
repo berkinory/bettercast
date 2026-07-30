@@ -4,6 +4,7 @@ import Foundation
 struct CurrencyDef: Equatable, Sendable {
     let code: String  // "EUR"
     let name: String  // "Euro"
+    let symbol: String?
 }
 
 /// An exchange-rate snapshot: every rate quoted as units of that currency per 1 `base`. Downloaded and persisted by `CurrencyRateStore` and handed to `CalcEngine.evaluate` — the engine never fetches, which is what keeps `Core/Calculator/` Foundation-only and pure.
@@ -38,6 +39,46 @@ enum CurrencySource: Equatable, Sendable {
 }
 
 enum CalcCurrency {
+    struct CryptoAsset: Sendable {
+        let code: String
+        let name: String
+        let id: String
+        let symbol: String
+        let aliases: [String]
+    }
+
+    static let cryptoAssets: [CryptoAsset] = [
+        CryptoAsset(code: "BTC", name: "Bitcoin", id: "bitcoin", symbol: "₿", aliases: ["btc", "bitcoin"]),
+        CryptoAsset(code: "ETH", name: "Ethereum", id: "ethereum", symbol: "Ξ", aliases: ["eth", "ethereum"]),
+        CryptoAsset(code: "SOL", name: "Solana", id: "solana", symbol: "◎", aliases: ["sol", "solana"]),
+        CryptoAsset(code: "BNB", name: "BNB", id: "binancecoin", symbol: "BNB", aliases: ["bnb"]),
+        CryptoAsset(code: "XRP", name: "XRP", id: "ripple", symbol: "XRP", aliases: ["xrp"]),
+        CryptoAsset(code: "ADA", name: "Cardano", id: "cardano", symbol: "ADA", aliases: ["ada", "cardano"]),
+        CryptoAsset(code: "DOGE", name: "Dogecoin", id: "dogecoin", symbol: "Ð", aliases: ["doge", "dogecoin"]),
+        CryptoAsset(code: "DOT", name: "Polkadot", id: "polkadot", symbol: "DOT", aliases: ["dot", "polkadot"]),
+        CryptoAsset(
+            code: "AVAX", name: "Avalanche", id: "avalanche-2", symbol: "AVAX",
+            aliases: ["avax", "avalanche"]),
+        CryptoAsset(
+            code: "LINK", name: "Chainlink", id: "chainlink", symbol: "LINK",
+            aliases: ["link", "chainlink"]),
+        CryptoAsset(
+            code: "LTC", name: "Litecoin", id: "litecoin", symbol: "Ł",
+            aliases: ["ltc", "litecoin"]),
+        CryptoAsset(
+            code: "TRX", name: "TRON", id: "tron", symbol: "TRX",
+            aliases: ["trx", "tron"]),
+        CryptoAsset(
+            code: "TON", name: "Toncoin", id: "the-open-network", symbol: "TON",
+            aliases: ["ton", "toncoin"]),
+        CryptoAsset(
+            code: "UNI", name: "Uniswap", id: "uniswap", symbol: "UNI",
+            aliases: ["uni", "uniswap"]),
+        CryptoAsset(
+            code: "MATIC", name: "Polygon", id: "matic-network", symbol: "MATIC",
+            aliases: ["matic", "polygon"]),
+    ]
+
     enum ConversionParse: Equatable {
         case value(input: Double, from: CurrencyDef, to: CurrencyDef, output: Double)
         /// One side is a currency, the other a measurement unit — `10 usd to kg`.
@@ -186,11 +227,17 @@ enum CalcCurrency {
         defs.reserveCapacity(CurrencyData.all.count)
         table.reserveCapacity(CurrencyData.all.count + CurrencyData.aliases.count)
         for entry in CurrencyData.all {
-            let def = CurrencyDef(code: entry.code, name: entry.name)
+            let def = CurrencyDef(code: entry.code, name: entry.name, symbol: nil)
             defs[entry.code] = def
             table[entry.code.lowercased()] = def
         }
         for (word, code) in CurrencyData.aliases { table[word] = defs[code] }
+        for asset in cryptoAssets {
+            let def = CurrencyDef(code: asset.code, name: asset.name, symbol: asset.symbol)
+            defs[asset.code] = def
+            table[asset.code.lowercased()] = def
+            for alias in asset.aliases { table[alias] = def }
+        }
         for (code, words) in contested {
             guard let def = defs[code] else { continue }
             for word in words { table[word] = def }
@@ -206,7 +253,7 @@ enum CalcCurrency {
     private static let byPhrase: [String: CurrencyDef] = {
         var table = byName
         for entry in CurrencyData.all {
-            let def = CurrencyDef(code: entry.code, name: entry.name)
+            let def = CurrencyDef(code: entry.code, name: entry.name, symbol: nil)
             let name = entry.name.lowercased()
             table[name] = def
             let words = name.split(separator: " ").map(String.init)

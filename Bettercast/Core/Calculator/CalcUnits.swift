@@ -53,16 +53,19 @@ enum CalcUnits {
         let compound: Bool
     }
 
-    /// Detects `expr unit (to|in|->) unit` (connector second-to-last, known unit last), returning `.mismatch` only when both units are known but incompatible; matching the last position lets "in" double as inches. A missing value defaults to 1, so `day to s` reads as `1 day to s`.
+    /// Detects `expr unit (to|in|->) unit`, including multi-word units such as `nautical miles`.
     static func parseConversion(_ tokens: [CalcToken]) -> ConversionParse? {
-        guard tokens.count >= 3, isConnector(tokens[tokens.count - 2]),
-            case .ident(let toName) = tokens[tokens.count - 1],
-            let to = byName[toName],
-            case .ident(let fromName) = tokens[tokens.count - 3],
-            let from = byName[fromName]
+        guard
+            let connector = tokens.indices.reversed().first(where: {
+                isConnector(tokens[$0]) && $0 > 0 && $0 + 1 < tokens.count
+                    && unitPhrase(tokens[($0 + 1)...]) != nil
+            }),
+            let to = unitPhrase(tokens[(connector + 1)...]),
+            let fromMatch = unitSuffix(in: Array(tokens[..<connector]))
         else { return nil }
 
-        let valueTokens = Array(tokens[0..<(tokens.count - 3)])
+        let left = Array(tokens[..<connector])
+        let valueTokens = Array(left[..<fromMatch.start])
         let input: Double
         if valueTokens.isEmpty {
             input = 1
@@ -72,6 +75,7 @@ enum CalcUnits {
             return nil
         }
 
+        let from = fromMatch.unit
         guard from.category == to.category else { return .mismatch(from: from, to: to) }
         let output = (input * from.factor + from.offset - to.offset) / to.factor
         guard output.isFinite else { return nil }
@@ -93,19 +97,41 @@ enum CalcUnits {
 
     /// Detects `expr unit` with no connector (`1m`, `2*3 kg`) and converts to a curated counterpart from `autoTargets`. Single-letter temperature aliases (c/f/k) are excluded so `5k` stays an app search rather than "5 Kelvin".
     static func parseBareConversion(_ tokens: [CalcToken]) -> BareConversion? {
-        guard tokens.count >= 2, case .ident(let fromName) = tokens[tokens.count - 1],
-            !["c", "f", "k"].contains(fromName),
-            let from = byName[fromName],
-            let mapping = autoTargets[from.symbol],
+        guard let fromMatch = unitSuffix(in: tokens), fromMatch.start > 0,
+            let mapping = autoTargets[fromMatch.unit.symbol],
+            !["c", "f", "k"].contains(
+                tokens[fromMatch.start...].compactMap { token in
+                    guard case .ident(let name) = token else { return nil }
+                    return name
+                }.joined(separator: " ")),
             let to = byName[mapping.to]
         else { return nil }
 
-        let valueTokens = Array(tokens[0..<(tokens.count - 1)])
+        let from = fromMatch.unit
+        let valueTokens = Array(tokens[..<fromMatch.start])
         guard let input = CalcParser.evaluate(valueTokens) else { return nil }
 
         let output = (input * from.factor + from.offset - to.offset) / to.factor
         guard output.isFinite else { return nil }
         return BareConversion(input: input, from: from, to: to, output: output, compound: mapping.compound)
+    }
+
+    private static func unitPhrase<C: Collection>(_ tokens: C) -> UnitDef?
+    where C.Element == CalcToken {
+        let names = tokens.map { token -> String? in
+            guard case .ident(let name) = token else { return nil }
+            return name
+        }
+        guard names.allSatisfy({ $0 != nil }) else { return nil }
+        return byName[names.compactMap { $0 }.joined(separator: " ")]
+    }
+
+    private static func unitSuffix(in tokens: [CalcToken]) -> (start: Int, unit: UnitDef)? {
+        guard !tokens.isEmpty else { return nil }
+        for start in 0..<tokens.count {
+            if let unit = unitPhrase(tokens[start...]) { return (start, unit) }
+        }
+        return nil
     }
 
     static func isConnector(_ token: CalcToken) -> Bool {
@@ -174,6 +200,16 @@ enum CalcUnits {
         add(UnitDef("ft", "Feet", .length, 0.3048), ["ft", "foot", "feet"])
         add(UnitDef("yd", "Yards", .length, 0.9144), ["yd", "yard", "yards"])
         add(UnitDef("mi", "Miles", .length, 1609.344), ["mi", "mile", "miles"])
+        add(
+            UnitDef("nmi", "Nautical Miles", .length, 1852),
+            ["nmi", "nauticalmile", "nauticalmiles", "nautical mile", "nautical miles"])
+        add(
+            UnitDef("AU", "Astronomical Units", .length, 149_597_870_700),
+            ["au", "astronomicalunit", "astronomicalunits", "astronomical unit", "astronomical units"])
+        add(
+            UnitDef("ly", "Light Years", .length, 9.460730472e15),
+            ["ly", "lightyear", "lightyears", "light year", "light years"])
+        add(UnitDef("pc", "Parsecs", .length, 3.085677581491367e16), ["pc", "parsec", "parsecs"])
 
         // Weight (base: kilogram)
         add(UnitDef("mg", "Milligrams", .weight, 1e-6), ["mg", "milligram", "milligrams"])

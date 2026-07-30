@@ -53,6 +53,9 @@ enum CalcEngine {
 
         guard let tokens = CalcTokenizer.tokenize(query), !tokens.isEmpty else { return nil }
 
+        if let natural = naturalMath(tokens, query: query, locale: locale) { return natural }
+        if let timespan = timespanConversion(tokens, query: query, locale: locale) { return timespan }
+
         // A lone literal or constant is more likely an app search than a calculation, so no card — except a radix literal ("0xff"), where echoing the decimal is useful.
         if tokens.count == 1 {
             if case .intLiteral(let value, let radix) = tokens[0], radix != 10 {
@@ -96,7 +99,7 @@ enum CalcEngine {
                 let amount = CalcFormatter.currency(output, locale: locale)
                 let display = CalcFormatter.currencyDisplay(
                     amount: CalcFormatter.groupedLocalized(amount, locale: locale),
-                    code: to.code, locale: locale)
+                    code: to.code, symbol: to.symbol, locale: locale)
                 let copyAmount = CalcFormatter.currencyCopyText(output)
                 return CalcResult(
                     expression: query,
@@ -146,7 +149,7 @@ enum CalcEngine {
                 let amount = CalcFormatter.currency(output, locale: locale)
                 let display = CalcFormatter.currencyDisplay(
                     amount: CalcFormatter.groupedLocalized(amount, locale: locale),
-                    code: to.code, locale: locale)
+                    code: to.code, symbol: to.symbol, locale: locale)
                 let copyAmount = CalcFormatter.currencyCopyText(output)
                 return CalcResult(
                     expression: query,
@@ -185,6 +188,94 @@ enum CalcEngine {
             payload: .value(
                 display: CalcFormatter.display(value, locale: locale),
                 copyText: CalcFormatter.copyText(value)))
+    }
+
+    // MARK: - Natural language math and timespans
+
+    private static func naturalMath(
+        _ tokens: [CalcToken], query: String, locale: Locale
+    ) -> CalcResult? {
+        let rootPrefixes: [[CalcToken]] = [
+            [.ident("square"), .ident("root"), .ident("of")],
+            [.ident("cube"), .ident("root"), .ident("of")],
+            [.ident("root"), .ident("of")],
+        ]
+        for prefix in rootPrefixes where tokens.starts(with: prefix) {
+            let valueTokens = Array(tokens.dropFirst(prefix.count))
+            guard let value = CalcParser.evaluate(valueTokens) else { return nil }
+            let root = prefix.first == .ident("cube") ? 3.0 : 2.0
+            let result = pow(value, 1 / root)
+            guard result.isFinite else { return nil }
+            return CalcResult(
+                expression: query, sourceBadge: "Expression", targetBadge: "Result",
+                payload: .value(
+                    display: CalcFormatter.display(result, locale: locale),
+                    copyText: CalcFormatter.copyText(result)))
+        }
+
+        guard let power = tokens.firstIndex(of: .ident("power")) else { return nil }
+        var left = Array(tokens[..<power])
+        if left.last == .ident("to") { left.removeLast() }
+        let right = Array(tokens[(power + 1)...])
+        guard !left.isEmpty, !right.isEmpty,
+            let base = CalcParser.evaluate(left), let exponent = CalcParser.evaluate(right)
+        else { return nil }
+        let result = Foundation.pow(base, exponent)
+        guard result.isFinite else { return nil }
+        return CalcResult(
+            expression: query, sourceBadge: "Expression", targetBadge: "Result",
+            payload: .value(
+                display: CalcFormatter.display(result, locale: locale),
+                copyText: CalcFormatter.copyText(result)))
+    }
+
+    private static func timespanConversion(
+        _ tokens: [CalcToken], query: String, locale: Locale
+    ) -> CalcResult? {
+        guard let connector = tokens.lastIndex(where: CalcUnits.isConnector),
+            connector > 0, connector + 1 < tokens.count,
+            tokens[connector + 1] == .ident("timespan")
+        else { return nil }
+
+        let left = Array(tokens[..<connector])
+        guard
+            let sourceIndex = left.lastIndex(where: { token in
+                guard case .ident(let name) = token else { return false }
+                return CalcUnits.byName[name]?.category == .time
+            }),
+            case .ident(let sourceName) = left[sourceIndex],
+            let source = CalcUnits.byName[sourceName]
+        else { return nil }
+
+        let valueTokens = Array(left[..<sourceIndex])
+        let input = valueTokens.isEmpty ? 1 : CalcParser.evaluate(valueTokens)
+        guard let input else { return nil }
+        let seconds = input * source.factor
+        guard seconds.isFinite else { return nil }
+        let display = formatTimespan(seconds, locale: locale)
+        return CalcResult(
+            expression: query, sourceBadge: source.name, targetBadge: "Timespan",
+            payload: .value(display: display, copyText: display))
+    }
+
+    private static func formatTimespan(_ seconds: Double, locale: Locale) -> String {
+        let sign = seconds < 0 ? "-" : ""
+        var remaining = abs(seconds)
+        var parts: [String] = []
+        let units: [(Double, String, String)] = [
+            (86_400, "day", "days"), (3_600, "hr", "hrs"),
+            (60, "min", "mins"), (1, "sec", "secs"),
+        ]
+        for (size, singular, plural) in units {
+            guard remaining >= size else { continue }
+            let value = floor(remaining / size)
+            remaining -= value * size
+            parts.append("\(CalcFormatter.display(value, locale: locale)) \(value == 1 ? singular : plural)")
+        }
+        if parts.isEmpty {
+            parts.append("\(CalcFormatter.display(seconds, locale: locale)) sec")
+        }
+        return sign + parts.joined(separator: " ")
     }
 
     // MARK: - Number bases

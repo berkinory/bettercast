@@ -9,7 +9,7 @@ struct CalculatorSettingsView: View {
     var body: some View {
         SettingsPane(
             title: "Calculator",
-            subtitle: "Inline calculations and currency conversion.",
+            subtitle: "Inline calculations, currency, crypto, and dates.",
             systemImage: "function",
             tint: .green
         ) {
@@ -85,13 +85,13 @@ struct CalculatorSettingsView: View {
     private var conversionStatus: String {
         currencyRates.isEnabled
             ? "Convert inline: “100 dollars to yen” or “€20 to GBP”."
-            : "Download daily rates to enable currency queries."
+            : "Download fiat and crypto rates to enable currency queries."
     }
 
     private var privacyStatus: String {
         if currencyRates.isEnabled {
             return
-                "Bettercast downloads a daily rate table from \(CurrencyRateStore.provider). Nothing you type is sent."
+                "Bettercast downloads fiat and crypto rates from \(CurrencyRateStore.provider) every three hours. Nothing you type is sent."
         }
         return "No service is contacted until you explicitly enable currency conversion."
     }
@@ -122,7 +122,7 @@ private struct CurrencyConsentSheet: View {
             }
 
             Text(
-                "Bettercast downloads exchange rates from \(CurrencyRateStore.provider) once a day and "
+                "Bettercast downloads fiat and crypto rates from \(CurrencyRateStore.provider) every three hours and "
                     + "keeps a copy on your Mac. No account, no identifiers, nothing you type. "
                     + "Turning it off deletes the cached rates."
             )

@@ -116,8 +116,8 @@ private struct CalcColumn<Content: View>: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .foregroundStyle(.primary)
-                    .padding(.horizontal, Theme.Spacing.sm)
-                    .padding(.vertical, Theme.Spacing.xxs)
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, Theme.Spacing.xs)
                     .background(
                         RoundedRectangle(cornerRadius: Theme.Radius.keyCap, style: .continuous)
                             .fill(Theme.Colors.controlSurface)
@@ -139,7 +139,7 @@ private struct CalcArrowDivider: View {
             Image(systemName: "arrow.right")
                 .font(Theme.Typography.calcArrow)
                 .foregroundStyle(.primary)
-                .padding(.vertical, Theme.Spacing.xs)
+                .padding(.vertical, Theme.Spacing.lg)
             Spacer(minLength: 0)
             Rectangle()
                 .fill(Theme.Colors.separator)
@@ -158,7 +158,7 @@ private struct CalcExpression: View {
     }
 
     private var styledText: Text {
-        let pattern = #"\b(to|in|until|till|til|since)\b"#
+        let pattern = #"\b(to|in|until|till|til|since|from|ago|of|off|as|at|on|between)\b|[+−×÷^*/%]"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return Text(text)
         }
@@ -168,6 +168,10 @@ private struct CalcExpression: View {
         let range = NSRange(location: 0, length: text.utf16.count)
         for match in regex.matches(in: text, range: range) {
             guard let matchRange = Range(match.range, in: text) else { continue }
+            let isLeadingPercent =
+                String(text[matchRange]) == "%"
+                && text[..<matchRange.lowerBound].trimmingCharacters(in: .whitespaces).isEmpty
+            guard !isLeadingPercent else { continue }
             output = Text("\(output)\(Text(text[cursor..<matchRange.lowerBound]))")
             output = Text("\(output)\(Text(text[matchRange]).foregroundStyle(Theme.Colors.textTertiary))")
             cursor = matchRange.upperBound

@@ -70,7 +70,7 @@ enum Theme {
         static let sectionHeader = Font.subheadline.weight(.medium)
         /// The big value line on the calculator answer card (both source and target sides).
         static let calcResult = Font.largeTitle
-        static let calcBadge = Font.footnote.weight(.semibold)
+        static let calcBadge = Font.subheadline.weight(.semibold)
         static let calcArrow = Font.callout.weight(.semibold)
         static let keyCap = Font.caption
         static let bar = Font.callout.weight(.medium)

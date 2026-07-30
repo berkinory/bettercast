@@ -48,12 +48,15 @@ struct CalcTests {
 
         // Percent
         expectDisplay("20% of 450", "90")
+        expectDisplay("%15 of 40", "6")
         expectDisplay("450 + 20%", "540")
         expectDisplay("450 - 15%", "382.5")
         expectDisplay("20%", "0.2")
 
         // Unit conversion — length / weight / temperature / time / area / volume / storage
         expectDisplay("10km to mi", "6.213711922 mi")
+        expectDisplay("1 nautical mile to km", "1.852 km")
+        expectDisplay("145 mins to timespan", "2 hrs 25 mins")
         expectDisplay("20 days in wk", "2.857142857 week")
         expectDisplay("20 days in weeks", "2.857142857 week")
         expectExpression("20 day in wk", "20 day in wk")
@@ -83,6 +86,11 @@ struct CalcTests {
         expectDisplay("1 GB to MiB", "953.6743164 MiB")
         expectDisplay("8 bit to byte", "1 B")
         expectDisplay("2*5 km to mi", "6.213711922 mi")  // expression on the left side
+
+        // Natural-language math
+        expectDisplay("square root of 625", "25")
+        expectDisplay("2 power 10", "1,024")
+        expectDisplay("2 to power 10", "1,024")
 
         // Number bases
         expectDisplay("255 to hex", "0xFF")
@@ -166,6 +174,12 @@ struct CalcTests {
         expectDisplayAt("in 5 months", "Thursday, 24 December")
         expectDisplayAt("3 days from now", "Monday, 27 July")
         expectDisplayAt("monday in 3 weeks", "Monday, 17 August")
+        expectDisplayAt("time in tokyo", "9:18 AM")
+        expectDisplayAt("5pm ldn in sf", "9:00 AM")
+        expectDisplayAt("20:10 in pst", "12:10 PM")
+        expectDisplayAt("12 AM in UTC+3", "3:00 AM")
+        expectDisplayAt("time diff Paris", "2 hours")
+        expectDisplayAt("4 hours from now", "Friday, 24 July at 4:18 AM")
         expectDisplayAt("jul 4 - today", "345 days")
         expectBadgesAt("jul 4 - today", source: "Sunday, 4 July, 2027", target: "Friday, 24 July")
         // Arithmetic with spaced operators must still be plain math, not date math
@@ -268,7 +282,8 @@ struct CalcTests {
             "1 eur to usd", "Exchange rates unavailable — check your connection.")
         expectNil("10 usd to nonsense")
         expectNil("usd")  // a lone code is still an app search
-        expectNil("btc")  // crypto isn't in the table — Frankfurter is central-bank fiat only
+        expectNil("btc")  // a lone code is still an app search
+        expectError("1 btc to usd", "No exchange rate for BTC.")
         // The table is generated from the feed's own currency list, so codes nobody hand-typed still
         // resolve — reaching "no rate" (not "no card") is what proves recognition.
         expectError("5 usd to zmw", "No exchange rate for ZMW.")
