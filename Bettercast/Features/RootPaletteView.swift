@@ -930,14 +930,16 @@ private struct CompactFavoritesRow: View {
             ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
                 switch slot {
                 case .app(let app):
-                    CompactFavoriteButton(help: "\(app.name)  ⌘\(index + 1)") {
-                        onLaunch(app)
-                    } content: {
+                    CompactFavoriteButton(
+                        title: app.name, shortcutIndex: index + 1, action: { onLaunch(app) }
+                    ) {
                         AppIconView(app: app)
                             .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
                     }
                 case .more:
-                    CompactFavoriteButton(help: "Show all  ⌘\(index + 1)", action: onOverflow) {
+                    CompactFavoriteButton(
+                        title: "Show all", shortcutIndex: index + 1, action: onOverflow
+                    ) {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 10))
                             .foregroundStyle(Theme.Colors.textSecondary)
@@ -954,11 +956,13 @@ private struct CompactFavoritesRow: View {
     }
 }
 
-/// A single compact favorite icon: bare icon, native tooltip, click action — no hover chrome, kept tight so the strip reads as one cluster.
+/// A single compact favorite icon with a custom tooltip and its position-based shortcut.
 private struct CompactFavoriteButton<Content: View>: View {
-    let help: String
+    let title: String
+    let shortcutIndex: Int
     let action: () -> Void
     @ViewBuilder let content: Content
+    @State private var hovered = false
 
     var body: some View {
         Button(action: action) {
@@ -966,9 +970,133 @@ private struct CompactFavoriteButton<Content: View>: View {
                 .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous))
         }
         .buttonStyle(.plain)
-        .help(help)
         .onHover { hovering in
+            hovered = hovering
             if hovering { NSCursor.arrow.set() }
         }
+        .background {
+            CompactFavoriteTooltipPresenter(
+                isPresented: hovered, title: title, shortcutIndex: shortcutIndex
+            )
+        }
+    }
+}
+
+private struct CompactFavoriteTooltip: View {
+    let title: String
+    let shortcutIndex: Int
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.xl) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            HStack(spacing: Theme.Spacing.xxs) {
+                KeyCapChip(text: "⌘")
+                KeyCapChip(text: "\(shortcutIndex)")
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.lg)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background {
+            RoundedRectangle(cornerRadius: Theme.Radius.menuPanel, style: .continuous)
+                .fill(Color.black.opacity(0.86))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.Radius.menuPanel, style: .continuous)
+                        .strokeBorder(Theme.Colors.border, lineWidth: 1)
+                }
+        }
+        .fixedSize()
+    }
+}
+
+private struct CompactFavoriteTooltipPresenter: NSViewRepresentable {
+    let isPresented: Bool
+    let title: String
+    let shortcutIndex: Int
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(title: title, shortcutIndex: shortcutIndex)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        TooltipAnchorView()
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.isPresented = isPresented
+        context.coordinator.title = title
+        context.coordinator.shortcutIndex = shortcutIndex
+        if isPresented {
+            DispatchQueue.main.async { context.coordinator.present(from: nsView) }
+        } else {
+            context.coordinator.dismiss()
+        }
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.dismiss()
+    }
+
+    @MainActor final class Coordinator: NSObject {
+        var isPresented = false
+        var title: String
+        var shortcutIndex: Int
+        private let panel: NSPanel
+        private let host: NSHostingView<CompactFavoriteTooltip>
+
+        init(title: String, shortcutIndex: Int) {
+            self.title = title
+            self.shortcutIndex = shortcutIndex
+            host = NSHostingView(
+                rootView: CompactFavoriteTooltip(title: title, shortcutIndex: shortcutIndex))
+            panel = NSPanel(
+                contentRect: .zero,
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            super.init()
+            panel.contentView = host
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = true
+            panel.ignoresMouseEvents = true
+            panel.level = .floating
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.isReleasedWhenClosed = false
+        }
+
+        func present(from anchor: NSView) {
+            guard isPresented, anchor.window != nil else { return }
+            host.rootView = CompactFavoriteTooltip(title: title, shortcutIndex: shortcutIndex)
+            host.layoutSubtreeIfNeeded()
+            let size = host.fittingSize
+            guard size.width > 0, size.height > 0,
+                let screen = anchor.window?.screen ?? NSScreen.main
+            else { return }
+            let anchorRect = anchor.window!.convertToScreen(anchor.convert(anchor.bounds, to: nil))
+            let visible = screen.visibleFrame
+            let gap = Theme.Spacing.sm
+            var origin = NSPoint(
+                x: anchorRect.midX - size.width / 2,
+                y: anchorRect.maxY + gap
+            )
+            if origin.y + size.height > visible.maxY {
+                origin.y = anchorRect.minY - size.height - gap
+            }
+            origin.x = min(max(origin.x, visible.minX + gap), visible.maxX - size.width - gap)
+            panel.setFrame(NSRect(origin: origin, size: size), display: false)
+            panel.orderFrontRegardless()
+        }
+
+        func dismiss() {
+            panel.orderOut(nil)
+        }
+    }
+
+    private final class TooltipAnchorView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
