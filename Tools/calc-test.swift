@@ -14,7 +14,12 @@ struct CalcTests {
         expectDisplay("5*7", "35")
         expectDisplay("100/4", "25")
         expectDisplay("2^10", "1,024")
+        expectDisplay("2**10", "1,024")
         expectDisplay("2^3^2", "512")  // right-associative
+        expectDisplay("4(2+3)", "20")
+        expectDisplay("(2+3)(2+3)", "25")
+        expectDisplay("2pi", "6.283185307")
+        expectDisplay("2sqrt(9)", "6")
         expectDisplay("(5+2)*3", "21")
         expectDisplay("5!", "120")
         expectDisplay("3!!", "720")  // (3!)! — chained postfix
