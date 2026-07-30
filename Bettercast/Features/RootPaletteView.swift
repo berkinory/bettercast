@@ -29,6 +29,7 @@ struct RootPaletteView: View {
     @FocusState private var searchFocused: Bool
     @State private var showActions = false
     @State private var showAppMenu = false
+    @State private var feedback: PaletteFeedback?
     /// The selection's running state, sampled once by `openActions` — an app launching or quitting elsewhere must not add or drop the Quit row while the menu is up. `RunningAppsMonitor` is deliberately not observed here: only `LauncherList` needs live running state, and observing it would re-render the whole palette on every workspace launch/terminate.
     @State private var selectionIsRunning = false
     /// Highlighted row of whichever popover menu is open; reset to the first row on open, moved by ↑/↓ and hover, activated by ↵/click.
@@ -137,7 +138,8 @@ struct RootPaletteView: View {
                         if let index = appResults.firstIndex(of: app) {
                             vm.selection = index + calcCount
                         }
-                    })
+                    },
+                    onToggleFavorite: { toggleFavorite(app) })
             }
             return nil
         case .clipboard:
@@ -263,6 +265,7 @@ struct RootPaletteView: View {
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
             searchFocused = true
+            feedback = nil
             showActions = false
             showAppMenu = false
         }
@@ -273,6 +276,7 @@ struct RootPaletteView: View {
         }
         .onChange(of: vm.mode) {
             vm.selection = 0
+            feedback = nil
             showActions = false
             listScroll = ListScrollIntent(kind: .top)
             emojiScroll = EmojiScrollIntent(kind: .top)
@@ -309,6 +313,12 @@ struct RootPaletteView: View {
             listScroll = ListScrollIntent(kind: .follow)
         }
         .onAppear { searchFocused = true }
+        .task(id: feedback?.id) {
+            guard feedback != nil else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation(Self.feedbackAnimation) { feedback = nil }
+        }
         // Resize first, then reassert the top after compact mode adopts the full frame.
         .onChange(of: core.paletteIsCollapsed) { oldCollapsed, collapsed in
             core.syncPaletteSize()
@@ -413,7 +423,7 @@ struct RootPaletteView: View {
                 press.modifiers.intersection([.shift, .option, .control]).isEmpty,
                 let app = selectedAppEntry
             else { return .ignored }
-            favorites.toggle(app)
+            toggleFavorite(app)
             closeMenus()
             return .handled
         }
@@ -655,18 +665,28 @@ struct RootPaletteView: View {
     private func bottomBar(pillLabel: String, showActionGroup: Bool) -> some View {
         // No bar — just floating glass controls over the list; the edge dissolve ghosts rows passing beneath, so the buttons read clearly without a hard-edged strip.
         HStack(spacing: 0) {
-            appMenuButton
+            footerMenuButton
             Spacer()
             if showActionGroup { actionGroup(pillLabel: pillLabel) }
         }
         .padding(.horizontal, Theme.Spacing.md)
         .frame(height: Theme.Size.bottomBarHeight)
         .frame(maxWidth: .infinity)
+        .animation(Self.feedbackAnimation, value: feedback?.id)
     }
 
-    private var appMenuButton: some View {
-        MenuCircleButton {
-            withAnimation(Self.menuAnimation) { showAppMenu.toggle() }
+    @ViewBuilder
+    private var footerMenuButton: some View {
+        if let feedback {
+            PaletteFeedbackButton(message: feedback.message)
+        } else if vm.mode == .launcher {
+            MenuCircleButton {
+                withAnimation(Self.menuAnimation) { showAppMenu.toggle() }
+            }
+        } else {
+            PaletteModeMenuButton(mode: vm.mode) {
+                withAnimation(Self.menuAnimation) { showAppMenu.toggle() }
+            }
         }
     }
 
@@ -714,6 +734,14 @@ struct RootPaletteView: View {
         }
     }
 
+    private func toggleFavorite(_ app: AppEntry) {
+        let added = !favorites.isFavorite(app)
+        favorites.toggle(app)
+        withAnimation(Self.feedbackAnimation) {
+            feedback = PaletteFeedback(message: added ? "Added to favorites" : "Removed from favorites")
+        }
+    }
+
     /// The single path that opens the Actions menu: samples the state its rows depend on, then shows it. Callers set `vm.selection` first, so the sample matches the row the menu is for.
     private func openActions() {
         // Only the launcher's menu carries a Quit row, so the other modes skip the (unmemoized) `appResults` walk entirely.
@@ -743,6 +771,7 @@ struct RootPaletteView: View {
     /// Inset of the menu panels from the window's bottom corners, kept just inside the rounded corner so the menu's own corner isn't clipped.
     private static let menuInset: CGFloat = 8
     private static let menuAnimation: Animation = .easeOut(duration: 0.14)
+    private static let feedbackAnimation: Animation = .easeOut(duration: 0.14)
 
     private static func menuTransition(_ anchor: UnitPoint) -> AnyTransition {
         .opacity.combined(with: .scale(scale: 0.96, anchor: anchor))
@@ -834,10 +863,95 @@ struct RootPaletteView: View {
     }
 }
 
+private struct PaletteFeedback: Equatable, Identifiable {
+    let id = UUID()
+    let message: String
+}
+
+private struct PaletteFeedbackButton: View {
+    let message: String
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Theme.Colors.feedbackAccent.opacity(0.34),
+                                Theme.Colors.feedbackAccent.opacity(0.12),
+                                .clear,
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: Theme.Size.feedbackHalo / 2
+                        )
+                    )
+                Circle()
+                    .fill(Theme.Colors.feedbackAccent)
+                    .frame(width: Theme.Spacing.sm, height: Theme.Spacing.sm)
+            }
+            .frame(width: Theme.Size.feedbackHalo, height: Theme.Size.feedbackHalo)
+            Text(message)
+                .font(Theme.Typography.bar)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
+        .padding(.leading, Theme.Spacing.xl)
+        .padding(.trailing, Theme.Spacing.xxl)
+        .frame(height: Theme.Size.menuButton)
+        .background {
+            Capsule()
+                .fill(Theme.Colors.feedbackShade)
+                .overlay {
+                    Capsule().fill(Theme.Colors.feedbackFill)
+                }
+                .overlay {
+                    Capsule().strokeBorder(Theme.Colors.feedbackStroke, lineWidth: 1)
+                }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 /// Change key for the clipboard list's follow-the-moved-row handler: the newest stored clip (a capture or promote puts a different row there) plus the token an action bumps when it reorders the list (pin/unpin). Deliberately read from the store, not the filtered results, so typing a query never reads as a row that moved.
 private struct ClipFollowKey: Equatable {
     let id: ClipboardItem.ID?
     let token: UUID
+}
+
+/// The active sub-screen label in the footer; it opens the same app menu as the root footer button.
+private struct PaletteModeMenuButton: View {
+    let mode: PaletteMode
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: mode.systemImage)
+                    .font(Theme.Typography.menuIcon)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .frame(width: Theme.Size.menuIcon, height: Theme.Size.menuIcon)
+                Text(mode.title)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .frame(height: Theme.Size.menuButton)
+            .contentShape(Capsule())
+            .background(
+                Capsule().fill(hovered ? Theme.Colors.rowHover : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            hovered = hovering
+            if hovering { NSCursor.arrow.set() }
+        }
+        .frosted(in: Capsule())
+    }
 }
 
 /// The footer's glass menu circle; hover lives here so a mouse sweep never re-renders the palette body.

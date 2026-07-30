@@ -226,7 +226,7 @@ struct AppIconView: View {
 enum AppActionsMenu {
     static func content(
         app: AppEntry, searchQuery: String, core: AppCore, favorites: FavoritesStore,
-        running: Bool, onResetRanking: @escaping () -> Void
+        running: Bool, onResetRanking: @escaping () -> Void, onToggleFavorite: @escaping () -> Void
     ) -> PopoverMenuContent {
         var items: [PopoverMenuItem] = [
             PopoverMenuItem(
@@ -238,12 +238,12 @@ enum AppActionsMenu {
                 PopoverMenuItem(
                     title: "Remove from Favorites", systemImage: "star.slash", shortcut: "⌘F"
                 ) {
-                    favorites.toggle(app)
+                    onToggleFavorite()
                 })
         } else {
             items.append(
                 PopoverMenuItem(title: "Add to Favorites", systemImage: "star", shortcut: "⌘F") {
-                    favorites.toggle(app)
+                    onToggleFavorite()
                 })
         }
         if core.launcherRanking.hasRanking(for: app.preferenceKey) {

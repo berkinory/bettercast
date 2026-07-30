@@ -50,6 +50,7 @@ enum Theme {
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 16
         static let menuButton: CGFloat = 36
+        static let feedbackHalo: CGFloat = 18
         /// Minimum height for each value column so badges sit near the card's lower edge.
         static let calcCardColumnHeight: CGFloat = 88
         static let clipboardListWidth: CGFloat = 290
@@ -172,6 +173,10 @@ enum Theme {
         static let cardStroke = Color.white.opacity(0.10)
         /// Whitish tint layered into the Liquid Glass floating controls (action group + menu circle) so the glass reads frosted rather than clear.
         static let glassFrost = Color.white.opacity(0.05)
+        static let feedbackFill = Color.green.opacity(0.18)
+        static let feedbackShade = Color.black.opacity(0.40)
+        static let feedbackStroke = Color.white.opacity(0.20)
+        static let feedbackAccent = Color(red: 0.24, green: 0.82, blue: 0.52)
         /// The violet of the app mark. The one non-white hue in the system, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
     }
