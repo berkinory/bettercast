@@ -56,7 +56,6 @@ final class AppSettings: ObservableObject {
         static let appearance = "appearance"
         static let windowManagementEnabled = "windowManagementEnabled"
         static let windowManagementShowInLauncher = "windowManagementShowInLauncher"
-        static let windowCycleOnRepeat = "windowCycleOnRepeat"
         static let windowRespectSystemMargins = "windowRespectSystemMargins"
     }
 
@@ -117,10 +116,6 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(windowManagementShowInLauncher, forKey: Key.windowManagementShowInLauncher) }
     }
 
-    @Published var windowCycleOnRepeat: Bool {
-        didSet { defaults.set(windowCycleOnRepeat, forKey: Key.windowCycleOnRepeat) }
-    }
-
     @Published var windowRespectSystemMargins: Bool {
         didSet { defaults.set(windowRespectSystemMargins, forKey: Key.windowRespectSystemMargins) }
     }
@@ -153,7 +148,6 @@ final class AppSettings: ObservableObject {
         windowManagementShowInLauncher =
             defaults.object(forKey: Key.windowManagementShowInLauncher) == nil
             || defaults.bool(forKey: Key.windowManagementShowInLauncher)
-        windowCycleOnRepeat = defaults.bool(forKey: Key.windowCycleOnRepeat)
         windowRespectSystemMargins =
             defaults.object(forKey: Key.windowRespectSystemMargins) == nil
             || defaults.bool(forKey: Key.windowRespectSystemMargins)

@@ -28,19 +28,6 @@ struct WindowManagementSettingsView: View {
             Group {
                 SettingsSection(header: "Options") {
                     SettingsControlRow(
-                        title: "Cycle sizes on repeat",
-                        subtitle: "Repeat a half command to cycle through half, third, and two thirds.",
-                        systemImage: "arrow.triangle.2.circlepath",
-                        tint: Theme.Colors.launcherAccent
-                    ) {
-                        Toggle("Cycle sizes on repeat", isOn: $settings.windowCycleOnRepeat)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-                    }
-                    SettingsRowDivider()
-                    SettingsControlRow(
                         title: "Respect macOS tile margins",
                         subtitle: "Use the spacing configured in Desktop & Dock when tiling windows.",
                         systemImage: "square.split.2x1",

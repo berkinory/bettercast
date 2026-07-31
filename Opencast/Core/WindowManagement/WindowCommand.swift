@@ -16,13 +16,10 @@ struct WindowCommand: Identifiable, Hashable, Sendable {
         case firstTwoThirds = "first-two-thirds"
         case lastTwoThirds = "last-two-thirds"
         case maximize
-        case almostMaximize = "almost-maximize"
         case maximizeHeight = "maximize-height"
         case maximizeWidth = "maximize-width"
         case center
         case centerHalf = "center-half"
-        case makeLarger = "make-larger"
-        case makeSmaller = "make-smaller"
         case restore
         case moveLeft = "move-left"
         case moveRight = "move-right"
@@ -69,8 +66,6 @@ struct WindowCommand: Identifiable, Hashable, Sendable {
     let sfSymbol: String
     let kind: Kind
     let group: Group
-    /// Only the four halves cycle ½ → ⅓ → ⅔; every other command ignores the step it is handed.
-    let cyclesOnRepeat: Bool
     /// False for the nudges, so the mover never writes `kAXSizeAttribute` for them.
     let resizes: Bool
 
@@ -81,8 +76,7 @@ enum WindowCommandCatalog {
     static let all: [WindowCommand] = WindowCommand.ID.allCases.map { id in
         WindowCommand(
             id: id, name: name(for: id), sfSymbol: symbol(for: id), kind: kind(for: id),
-            group: group(for: id), cyclesOnRepeat: cyclesOnRepeat.contains(id),
-            resizes: !movesOnly.contains(id))
+            group: group(for: id), resizes: !movesOnly.contains(id))
     }
 
     private static let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
@@ -99,10 +93,6 @@ enum WindowCommandCatalog {
             return commands.isEmpty ? nil : (group, commands)
         }
     }
-
-    static let cyclesOnRepeat: Set<WindowCommand.ID> = [
-        .leftHalf, .rightHalf, .topHalf, .bottomHalf,
-    ]
 
     /// Nudges reposition without ever touching the size.
     static let movesOnly: Set<WindowCommand.ID> = [.moveLeft, .moveRight, .moveUp, .moveDown]
@@ -123,13 +113,10 @@ enum WindowCommandCatalog {
         case .firstTwoThirds: return "First Two Thirds"
         case .lastTwoThirds: return "Last Two Thirds"
         case .maximize: return "Maximize"
-        case .almostMaximize: return "Almost Maximize"
         case .maximizeHeight: return "Maximize Height"
         case .maximizeWidth: return "Maximize Width"
         case .center: return "Center"
         case .centerHalf: return "Center Half"
-        case .makeLarger: return "Make Larger"
-        case .makeSmaller: return "Make Smaller"
         case .restore: return "Restore Window"
         case .moveLeft: return "Move Left"
         case .moveRight: return "Move Right"
@@ -155,13 +142,10 @@ enum WindowCommandCatalog {
         case .centerThird: return "rectangle.center.inset.filled"
         case .lastThird, .lastTwoThirds: return "rectangle.trailingthird.inset.filled"
         case .maximize: return "arrow.up.left.and.arrow.down.right"
-        case .almostMaximize: return "rectangle.inset.filled"
         case .maximizeHeight: return "arrow.up.and.down"
         case .maximizeWidth: return "arrow.left.and.right"
         case .center: return "rectangle.center.inset.filled"
         case .centerHalf: return "rectangle.split.3x1"
-        case .makeLarger: return "plus.magnifyingglass"
-        case .makeSmaller: return "minus.magnifyingglass"
         case .restore: return "arrow.uturn.backward"
         case .moveLeft: return "arrow.left"
         case .moveRight: return "arrow.right"
@@ -189,8 +173,7 @@ enum WindowCommandCatalog {
             return .quarters
         case .firstThird, .centerThird, .lastThird, .firstTwoThirds, .lastTwoThirds:
             return .thirds
-        case .maximize, .almostMaximize, .maximizeHeight, .maximizeWidth, .center, .centerHalf,
-            .makeLarger, .makeSmaller, .restore:
+        case .maximize, .maximizeHeight, .maximizeWidth, .center, .centerHalf, .restore:
             return .sizing
         case .moveLeft, .moveRight, .moveUp, .moveDown, .nextDisplay, .previousDisplay:
             return .moving

@@ -18,16 +18,16 @@ registered.
 
 `WindowLayout` and `WindowActionMemory` are Foundation + CoreGraphics-only and pure. The standalone
 `Tools/window-command-test.swift` harness compiles those files directly and covers tiling, sizing,
-restore, cycling, display moves, gaps, and off-screen displays.
+restore, display moves, gaps, and off-screen displays.
 
 `WindowMover` is the AppKit / Accessibility boundary. It reads and writes `AXUIElement` window frames,
 uses a one-second messaging timeout, performs at most one correction when an app rejects a requested
 minimum size, and never partially applies a placement. Frames are converted through the primary display
 anchor between Cocoa and Accessibility coordinates; this remains correct with mixed-size displays.
 
-Restore and repeat-cycling use a bounded LRU keyed by process ID and AX window identity. The mover
-observes app termination and drops records for dead processes. A user move breaks the cycle while
-preserving the restore frame.
+Restore uses a bounded LRU keyed by process ID and AX window identity. The mover observes app
+termination and drops records for dead processes. A user move re-anchors the restore frame and clears
+stale tile state.
 
 ## Margins
 

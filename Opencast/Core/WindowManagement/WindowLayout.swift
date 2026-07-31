@@ -58,8 +58,6 @@ enum WindowLayout {
         var windowFrame: CGRect
         var screens: [Screen]
         var gap: CGFloat
-        /// Cycle position, supplied by `WindowActionMemory` so the geometry itself stays stateless.
-        var step: Int
         /// Read only by `.restore`.
         var restoreFrame: CGRect?
         /// The tile command that last placed this window, when it hasn't been touched since. Lets the
@@ -68,13 +66,12 @@ enum WindowLayout {
 
         init(
             command: WindowCommand.ID, windowFrame: CGRect, screens: [Screen], gap: CGFloat = 0,
-            step: Int = 0, restoreFrame: CGRect? = nil, lastTileCommand: WindowCommand.ID? = nil
+            restoreFrame: CGRect? = nil, lastTileCommand: WindowCommand.ID? = nil
         ) {
             self.command = command
             self.windowFrame = windowFrame
             self.screens = screens
             self.gap = gap
-            self.step = step
             self.restoreFrame = restoreFrame
             self.lastTileCommand = lastTileCommand
         }
@@ -89,9 +86,8 @@ enum WindowLayout {
 
     // MARK: - Tuning
 
-    /// Make Larger / Make Smaller and the four nudges all step by this fraction of the screen.
-    private static let stepFraction: CGFloat = 0.05
-    private static let almostMaximizeFraction: CGFloat = 0.9
+    /// Window nudges move by five percent of the visible canvas.
+    private static let nudgeFraction: CGFloat = 0.05
 
     // MARK: - Entry point
 
@@ -119,10 +115,7 @@ enum WindowLayout {
             break
         }
 
-        // Non-cycling commands ignore the step entirely, so a stale cycle position can never leak in.
-        let step = command.cyclesOnRepeat ? normalizedStep(input.step) : 0
-
-        if let fractions = tileFractions(input.command, step: step) {
+        if let fractions = tileFractions(input.command) {
             let frame = tile(
                 host.visibleFrame, x0: fractions.x0, x1: fractions.x1, y0: fractions.y0,
                 y1: fractions.y1, gap: gap)
@@ -138,14 +131,6 @@ enum WindowLayout {
         case .maximize:
             return Placement(
                 frame: canvas, screenID: host.id, anchor: .topLeading, resizes: true)
-
-        case .almostMaximize:
-            let size = CGSize(
-                width: canvas.width * almostMaximizeFraction,
-                height: canvas.height * almostMaximizeFraction)
-            return Placement(
-                frame: rounded(Anchor.centered.place(size, in: canvas)), screenID: host.id,
-                anchor: .centered, resizes: true)
 
         // Both keep the untouched axis's position, but clamp it: a window sitting off the display would
         // otherwise come back full-height and still entirely off-screen.
@@ -169,11 +154,6 @@ enum WindowLayout {
             return Placement(
                 frame: rounded(Anchor.centered.place(size, in: canvas)), screenID: host.id,
                 anchor: .centered, resizes: true)
-
-        case .makeLarger, .makeSmaller:
-            return Placement(
-                frame: resized(current, in: canvas, larger: input.command == .makeLarger),
-                screenID: host.id, anchor: .centered, resizes: true)
 
         case .moveLeft, .moveRight, .moveUp, .moveDown:
             return Placement(
@@ -232,7 +212,7 @@ enum WindowLayout {
     ) -> CGRect {
         // Exactness beats proportion: a window still sitting where a tile command put it re-derives that
         // same tile on the destination, so thirds and gaps land on the point instead of being scaled.
-        if let lastTile, let fractions = tileFractions(lastTile, step: 0) {
+        if let lastTile, let fractions = tileFractions(lastTile) {
             return tile(
                 to.visibleFrame, x0: fractions.x0, x1: fractions.x1, y0: fractions.y0,
                 y1: fractions.y1, gap: sanitizedGap(gap, in: to.visibleFrame))
@@ -285,12 +265,9 @@ enum WindowLayout {
     private static let oneThird: CGFloat = 1.0 / 3.0
     private static let twoThirds: CGFloat = 2.0 / 3.0
 
-    /// The fractional bounds of a tile command, or `nil` if the command isn't a tile. `step` only ever
-    /// matters for the four halves, which cycle ½ → ⅓ → ⅔. The vertical cycle has no commands of its
-    /// own — Thirds are horizontal — so it is expressed here as fractions rather than other command IDs.
-    private static func tileFractions(_ command: WindowCommand.ID, step: Int) -> Fractions? {
-        let cycle: [CGFloat] = [0.5, oneThird, twoThirds]
-        let position = cycle[normalizedStep(step)]
+    /// The fractional bounds of a tile command.
+    private static func tileFractions(_ command: WindowCommand.ID) -> Fractions? {
+        let position: CGFloat = 0.5
         switch command {
         case .leftHalf:
             return Fractions(x0: 0, x1: position, y0: 0, y1: 1, anchor: .topLeading)
@@ -349,7 +326,7 @@ enum WindowLayout {
     /// Whether the command places the window on the fractional grid — the ones a display move can
     /// re-derive exactly on the destination rather than scaling proportionally.
     static func isTileCommand(_ command: WindowCommand.ID) -> Bool {
-        tileFractions(command, step: 0) != nil
+        tileFractions(command) != nil
     }
 
     /// A tile from fractional bounds of `visible`. An edge sitting on the screen boundary takes the full
@@ -375,40 +352,11 @@ enum WindowLayout {
 
     // MARK: - Sizing
 
-    /// Never let repeated shrinking collapse a window to nothing.
-    private static func minimumSize(in canvas: CGRect) -> CGSize {
-        CGSize(
-            width: min(canvas.width, max(200, canvas.width * 0.15)),
-            height: min(canvas.height, max(150, canvas.height * 0.15)))
-    }
-
-    /// Even so that growing and shrinking move each edge by a whole point, which is what makes the two
-    /// commands exactly invertible instead of drifting by a point per round trip.
-    private static func evenStep(_ dimension: CGFloat) -> CGFloat {
-        max(2, (dimension * stepFraction / 2).rounded() * 2)
-    }
-
-    /// Grows or shrinks about the centre by a fixed fraction of the *screen*, not of the window. A
-    /// screen-relative step is exactly invertible — `size × 0.95 × 1.05 ≠ size`, so a size-relative one
-    /// would shrink a little on every round trip — and it feels the same at any window size.
-    private static func resized(_ frame: CGRect, in canvas: CGRect, larger: Bool) -> CGRect {
-        let direction: CGFloat = larger ? 1 : -1
-        let floorSize = minimumSize(in: canvas)
-        let width = min(
-            canvas.width, max(floorSize.width, frame.width + direction * evenStep(canvas.width)))
-        let height = min(
-            canvas.height, max(floorSize.height, frame.height + direction * evenStep(canvas.height)))
-        let centred = CGRect(
-            x: frame.minX - (width - frame.width) / 2, y: frame.minY - (height - frame.height) / 2,
-            width: width, height: height)
-        return rounded(clamped(centred, into: canvas))
-    }
-
     private static func nudged(_ frame: CGRect, in canvas: CGRect, command: WindowCommand.ID)
         -> CGRect
     {
-        let dx = (canvas.width * stepFraction).rounded()
-        let dy = (canvas.height * stepFraction).rounded()
+        let dx = (canvas.width * nudgeFraction).rounded()
+        let dy = (canvas.height * nudgeFraction).rounded()
         var moved = frame
         switch command {
         case .moveLeft: moved.origin.x -= dx
@@ -446,5 +394,4 @@ enum WindowLayout {
         return min(gap, min(visible.width, visible.height) / 10)
     }
 
-    private static func normalizedStep(_ step: Int) -> Int { ((step % 3) + 3) % 3 }
 }

@@ -71,8 +71,7 @@ final class WindowMover {
     /// Returns whether anything actually changed, so a caller can stay quiet when nothing did.
     @discardableResult
     func perform(
-        _ command: WindowCommand.ID, target: NSRunningApplication?, gap: CGFloat,
-        cycleOnRepeat: Bool
+        _ command: WindowCommand.ID, target: NSRunningApplication?, gap: CGFloat
     ) -> Bool {
         // Invoked from an explicit user gesture, so prompting for the grant is appropriate here.
         guard Permissions.ensureAccessibility() else { return false }
@@ -90,9 +89,7 @@ final class WindowMover {
 
         if catalogued.kind == .fullscreen {
             guard toggleFullScreen(window) else { return false }
-            // The size chain is meaningless now, but the pre-Opencast frame is still the right Restore
-            // target — macOS restores the pre-fullscreen frame itself on the way out.
-            memory.forgetCycle(key: key)
+            // macOS restores the pre-fullscreen frame itself on the way out.
             return true
         }
         // Tiling a natively fullscreen window fights the window server; leave it alone.
@@ -100,16 +97,12 @@ final class WindowMover {
 
         let geometry = AXGeometry(screens: NSScreen.screens)
         let screens = Self.screens(NSScreen.screens, geometry: geometry)
-        guard let host = WindowLayout.screen(containing: current, in: screens) else { return false }
+        guard WindowLayout.screen(containing: current, in: screens) != nil else { return false }
 
-        // One timestamp for the whole command, so the cycle timeout can't straddle two readings.
-        let now = Date()
-        let decision = memory.decide(
-            key: key, command: command, currentFrame: current, currentScreenID: host.id,
-            cycleEnabled: cycleOnRepeat, now: now)
+        let decision = memory.decide(key: key, currentFrame: current)
 
         let input = WindowLayout.Input(
-            command: command, windowFrame: current, screens: screens, gap: gap, step: decision.step,
+            command: command, windowFrame: current, screens: screens, gap: gap,
             restoreFrame: decision.canRestore ? decision.restoreFrame : nil,
             lastTileCommand: decision.lastTileCommand)
         guard let placement = WindowLayout.placement(for: input) else { return false }
@@ -126,11 +119,8 @@ final class WindowMover {
                 canResize: canResize, screens: screens, gap: gap)
         else { return false }
 
-        let landedOn =
-            WindowLayout.screen(containing: applied, in: screens)?.id ?? placement.screenID
         memory.commit(
-            key: key, command: command, decision: decision, appliedFrame: applied,
-            screenID: landedOn, now: now)
+            key: key, command: command, decision: decision, appliedFrame: applied)
         return !applied.equalTo(current)
     }
 

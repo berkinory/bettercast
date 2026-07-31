@@ -532,8 +532,7 @@ final class AppCore: ObservableObject {
         _ = windowMover.perform(
             id,
             target: target,
-            gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins),
-            cycleOnRepeat: settings.windowCycleOnRepeat)
+            gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins))
     }
 
     /// Enter on the inline calculator card: copy the answer and dismiss.
