@@ -1,6 +1,6 @@
 import Foundation
 
-/// Natural-language date/time calculations for the launcher card, kept Foundation-only so `Tools/calc-test.swift` compiles it standalone. `now`/`calendar` are injected so the tests can assert exact strings against a fixed clock. Supported forms include durations until/since a moment, calendar months/years, relative dates (`35 days ago`, `in 5 months`, `monday in 3 weeks`), date arithmetic, and differences between moments.
+/// Natural-language date/time calculations for the launcher card, kept Foundation-only so `Tools/calc-test.swift` compiles it standalone. `now`/`calendar` are injected so the tests can assert exact strings against a fixed clock. Supported forms include durations until/since a moment, calendar months/years, relative dates (`35 days ago`, `2 days later`, `2 days after monday`, `monday in 3 weeks`), date arithmetic, and differences between moments.
 enum CalcDateTime {
     /// Which occurrence of a bare, recurring date/time a phrase resolves to: the upcoming one (`till`) or the most recent past one (`since`). Absolute dates ignore it.
     private enum MomentBias { case future, past }
@@ -20,7 +20,10 @@ enum CalcDateTime {
         let hasIn = query.hasPrefix("in ") || query.contains(" in ") || query.contains(" from now")
         let hasTimeZone = query.hasPrefix("time in ") || query.hasPrefix("time diff ") || query.contains(" in ")
         let hasArith = query.contains(" + ") || query.contains(" - ")
-        guard hasUntil || hasSince || hasAgo || hasTimeZone || hasIn || hasArith else { return nil }
+        let hasRelative =
+            query.hasSuffix(" later") || query.contains(" after ") || query.contains(" before ")
+        guard hasUntil || hasSince || hasAgo || hasTimeZone || hasIn || hasArith || hasRelative
+        else { return nil }
 
         if hasUntil, let result = parseUntil(query, echo: echo, now: now, calendar: calendar) {
             return result
@@ -35,6 +38,9 @@ enum CalcDateTime {
             return result
         }
         if hasIn, let result = parseIn(query, echo: echo, now: now, calendar: calendar) {
+            return result
+        }
+        if hasRelative, let result = parseRelative(query, echo: echo, now: now, calendar: calendar) {
             return result
         }
         if hasArith, let result = parseArithmetic(query, echo: echo, now: now, calendar: calendar) {
@@ -309,7 +315,64 @@ enum CalcDateTime {
             targetBadge: "Result", payload: .value(display: display, copyText: display))
     }
 
-    // MARK: - Grammars E & F: moment ± duration / moment − moment
+    // MARK: - Grammar E: relative date offsets
+
+    private static func parseRelative(
+        _ query: String, echo: String, now: Date, calendar: Calendar
+    ) -> CalcResult? {
+        let base: Moment
+        let baseIsImplicitNow: Bool
+        let durationPhrase: String
+        let sign: Int
+
+        if query.hasSuffix(" later") {
+            base = Moment(date: now, hasTime: true)
+            baseIsImplicitNow = true
+            durationPhrase = String(query.dropLast(" later".count))
+            sign = 1
+        } else if let range = query.range(of: " after ") {
+            durationPhrase = String(query[..<range.lowerBound])
+            let basePhrase = String(query[range.upperBound...])
+            guard !durationPhrase.isEmpty,
+                let parsed = parseMoment(basePhrase, now: now, calendar: calendar)
+            else { return nil }
+            base = parsed
+            baseIsImplicitNow = false
+            sign = 1
+        } else if let range = query.range(of: " before ") {
+            durationPhrase = String(query[..<range.lowerBound])
+            let basePhrase = String(query[range.upperBound...])
+            guard !durationPhrase.isEmpty,
+                let parsed = parseMoment(basePhrase, now: now, calendar: calendar)
+            else { return nil }
+            base = parsed
+            baseIsImplicitNow = false
+            sign = -1
+        } else {
+            return nil
+        }
+
+        guard let duration = parseDurationPhrase(durationPhrase),
+            sign == 1 || duration.count != .min
+        else { return nil }
+        let signed = sign == 1 ? duration.count : -duration.count
+        guard
+            let result = calendar.date(
+                byAdding: duration.component, value: signed, to: base.date)
+        else { return nil }
+
+        let hasTime = (!baseIsImplicitNow && base.hasTime) || duration.subDay
+        return CalcResult(
+            expression: echo,
+            sourceBadge: momentString(
+                base.date, hasTime: base.hasTime, now: now, calendar: calendar),
+            targetBadge: "Result",
+            payload: .value(
+                display: momentString(result, hasTime: hasTime, now: now, calendar: calendar),
+                copyText: momentString(result, hasTime: hasTime, now: now, calendar: calendar)))
+    }
+
+    // MARK: - Grammars F & G: moment ± duration / moment − moment
 
     private static func parseArithmetic(
         _ query: String, echo: String, now: Date, calendar: Calendar

@@ -10,7 +10,8 @@ also **pure**: the one input it can't compute, the FX rate table, is passed in (
 `CalcEngine.evaluate` runs:
 
 1. Natural-language date/time and time zones (`days until 27 feb`, `years since feb 17 2005`,
-   `35 days ago`, `monday in 3 weeks`, `time in tokyo`, `5pm ldn in sf`)
+   `35 days ago`, `2 days later`, `2 days after monday`, `monday in 3 weeks`, `time in tokyo`,
+   `5pm ldn in sf`)
 2. Natural-language math (`square root of 625`, `2 power 10`)
 3. Numeric reject
 4. Tokenize
