@@ -27,6 +27,7 @@ struct CalcTests {
         expectDisplay("-2^2", "-4")  // unary minus binds looser than ^
         expectDisplay("10/4", "2.5")
         expectDisplay("1/3", "0.3333333333")
+        expectDisplay("1e6", "1,000,000")
         expectDisplay("1e6 + 1", "1,000,001")
         expectDisplay("1.5e-3 * 2", "0.003")
         expectDisplay("2.5E8 / 2", "125,000,000")
@@ -126,7 +127,6 @@ struct CalcTests {
         expectNil("10km to")  // half-typed conversion
         expectNil("10 to mi")
         expectNil("45+")  // half-typed expression
-        expectNil("1e6")
         expectNil("10em")
         expectNil("sqrt()")
         expectNil("2.5!")  // factorial needs an integer
@@ -241,6 +241,17 @@ struct CalcTests {
         expectDisplay("60 mph to kmh", "96.56064 km/h")
         expectDisplay("100 mbps to kbps", "100,000 Kbps")
         expectBadges("100 kmh to mph", source: "Kilometers per Hour", target: "Miles per Hour")
+
+        // Bare-unit auto-conversion coverage for pressure and data-rate neighbors.
+        expectDisplay("5 mbar", "0.07251886887 psi")
+        expectDisplay("5 kPa", "0.7251886887 psi")
+        expectDisplay("5 hPa", "0.07251886887 psi")
+        expectDisplay("5 mmHg", "0.0966838873 psi")
+        expectDisplay("5 Torr", "0.09668387352 psi")
+        expectDisplay("100 bps", "0.1 Kbps")
+        expectDisplay("1 Tbps", "1,000 Gbps")
+        expectDisplay("2*128 to hex", "0x100")
+        expectDisplay("10*5 to hex", "0x32")
 
         // Percentage phrasings
         expectDisplay("20% off 500", "400")

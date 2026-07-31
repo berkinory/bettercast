@@ -41,7 +41,7 @@ struct LauncherList: View {
         var rows: [Row] = calcRows
         let favorites = results.prefix(favoriteCount)
         let rest = results.dropFirst(favoriteCount)
-        // `rest` is apps-then-panes-then-commands by the AppIndex sort invariant, so filtering by kind keeps row order identical and the flat selection index valid.
+        // `rest` is apps-then-panes-then-commands by the AppIndex invariant, so filtering by kind keeps row order identical and the flat selection index valid.
         let apps = rest.filter { $0.kind == .application }
         let panes = rest.filter { $0.kind == .systemSettings }
         let commands = rest.filter { $0.kind == .command }
@@ -147,9 +147,9 @@ private struct AppRow: View {
     /// Keycaps for this entry's hotkey, or `nil` if none is bound.
     private var shortcutCaps: [String]? {
         guard let action = app.hotKeyAction,
-            let shortcut = hotKeys.shortcut(for: action)
+            let binding = hotKeys.binding(for: action)
         else { return nil }
-        return shortcut.keycaps
+        return binding.keycaps
     }
 
     var body: some View {
@@ -204,7 +204,7 @@ struct AppIconView: View {
         case .searchEmoji: return Theme.Colors.emojiAccent
         case .clipboardHistory: return Theme.Colors.clipboardAccent
         case .settings: return Theme.Colors.systemAccent
-        case .quitAllApps, .quit: return Theme.Colors.textSecondary
+        case .quit: return Theme.Colors.textSecondary
         case nil: return Theme.Colors.textPrimary
         }
     }
@@ -274,18 +274,21 @@ enum AppActionsMenu {
                     core.copyPath(app)
                 })
         }
-        if app.kind != .command {
+        if app.kind == .application || app.kind == .systemSettings {
             items.append(
                 PopoverMenuItem(title: "Show in Finder", systemImage: "folder", shortcut: "⌘↵") {
                     core.showInFinder(app)
                 })
         }
-        if AppUninstaller.isEligible(app) {
+        if app.kind == .application,
+            app.url.standardizedFileURL.path != Bundle.main.bundleURL.standardizedFileURL.path,
+            AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
+        {
             items.append(
                 PopoverMenuItem(
-                    title: "Uninstall Application", systemImage: "trash", isDestructive: true
+                    title: "Uninstall Application", systemImage: "trash", shortcut: "⌃⌫", isDestructive: true
                 ) {
-                    core.uninstall(app)
+                    core.beginUninstall(app)
                 })
         }
         if running, app.kind == .application {
@@ -303,7 +306,9 @@ enum AppActionsMenu {
         switch app.kind {
         case .application: return "Open Application"
         case .systemSettings: return "Open System Setting"
-        case .command: return "Open Command"
+        case .command:
+            return SystemCommandCatalog.command(forEntryID: app.id) == nil
+                ? "Open Command" : "Run Command"
         }
     }
 }

@@ -45,17 +45,25 @@ unsigned-dmg:
 
 test: tools
 	@mkdir -p $(TEST_BIN_DIR)
-	swift Tools/fuzz-test.swift
+	cp Tools/fuzz-test.swift $(TEST_BIN_DIR)/main.swift
+	swiftc -swift-version 6 Bettercast/Core/Romanization.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/fuzz-test
+	$(TEST_BIN_DIR)/fuzz-test
 	swiftc -swift-version 6 Bettercast/Core/SettingsSearchIndex.swift Tools/settings-search-test.swift -o $(TEST_BIN_DIR)/settings-search-test
 	$(TEST_BIN_DIR)/settings-search-test
 	swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test
 	$(TEST_BIN_DIR)/ranking-test
+	swiftc -swift-version 6 Bettercast/Core/SearchScopes.swift Tools/scopes-test.swift -o $(TEST_BIN_DIR)/scopes-test
+	$(TEST_BIN_DIR)/scopes-test
 	swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift -o $(TEST_BIN_DIR)/calc-test
 	$(TEST_BIN_DIR)/calc-test
 	swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift -o $(TEST_BIN_DIR)/clipboard-test
 	$(TEST_BIN_DIR)/clipboard-test
 	swiftc Bettercast/Core/Emoji/EmojiCatalog.swift Bettercast/Core/Emoji/EmojiGridGeometry.swift Bettercast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o $(TEST_BIN_DIR)/emoji-test
 	$(TEST_BIN_DIR)/emoji-test
+	swiftc -swift-version 6 Bettercast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
+	$(TEST_BIN_DIR)/system-command-test
+	swiftc -swift-version 6 Bettercast/Core/HotKey/DoubleCommandDetector.swift Tools/hotkey-test.swift -o $(TEST_BIN_DIR)/hotkey-test
+	$(TEST_BIN_DIR)/hotkey-test
 
 generate:
 	@command -v xcodegen >/dev/null || { echo "error: xcodegen is required" >&2; exit 1; }

@@ -6,6 +6,7 @@ import SwiftUI
 final class PalettePanel: NSPanel {
     /// Called for a bare backspace before it reaches the field editor (return true to consume); the field editor swallows plain backspace itself, so SwiftUI `onKeyPress` up the hierarchy never sees it.
     var onBareBackspace: (() -> Bool)?
+    var onBareSpace: (() -> Bool)?
     /// Arms the hover highlight from `sendEvent` — the one place both event streams pass through, so a keyboard-driven scroll under a still pointer never fires `.mouseMoved` and hover stays disarmed. Also carries the caret-hide hook fired when a footer menu opens.
     weak var paletteViewModel: PaletteViewModel? {
         didSet {
@@ -22,7 +23,7 @@ final class PalettePanel: NSPanel {
     /// Hide/show the caret on SwiftUI's *own* live field editor (the current first responder) without replacing it — SwiftUI force-casts the field editor to a private subclass, so vending our own crashes; we can only tune the existing one. The field never resigns first responder, so its text/placeholder never reflows.
     private func setSearchCaretHidden(_ hidden: Bool) {
         guard let editor = firstResponder as? NSTextView else { return }
-        editor.insertionPointColor = hidden ? .clear : .white
+        editor.insertionPointColor = hidden ? .clear : NSColor.textColor
         // Force an immediate redraw so the caret vanishes/returns on the menu toggle instead of waiting out the blink timer.
         editor.updateInsertionPointStateAndRestartTimer(!hidden)
     }
@@ -51,11 +52,11 @@ final class PalettePanel: NSPanel {
             return
         }
         if event.type == .keyDown,
-            Int(event.keyCode) == kVK_Delete,
             event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
-            onBareBackspace?() == true
+            paletteViewModel?.menuOpen != true
         {
-            return
+            if Int(event.keyCode) == kVK_Delete, onBareBackspace?() == true { return }
+            if Int(event.keyCode) == kVK_Space, onBareSpace?() == true { return }
         }
         super.sendEvent(event)
     }

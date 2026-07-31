@@ -61,7 +61,7 @@ enum CalcEngine {
             return quantity
         }
 
-        // A lone literal or constant is more likely an app search than a calculation, so no card — except a radix literal ("0xff"), where echoing the decimal is useful.
+        // A lone literal or constant is more likely an app search than a calculation, so no card — except radix and scientific literals, which are explicit numeric expressions.
         if tokens.count == 1 {
             if case .intLiteral(let value, let radix) = tokens[0], radix != 10 {
                 let display = CalcFormatter.grouped(String(value), locale: locale)
@@ -70,7 +70,9 @@ enum CalcEngine {
                     sourceBadge: "Hexadecimal", targetBadge: "Decimal",
                     payload: .value(display: display, copyText: String(value)))
             }
-            return nil
+            guard case .number = tokens[0], query.contains(where: { $0 == "e" || $0 == "E" }) else {
+                return nil
+            }
         }
 
         if let base = baseConversion(tokens, query: query, locale: locale) { return base }
@@ -285,25 +287,40 @@ enum CalcEngine {
 
     // MARK: - Number bases
 
-    /// `255 to hex`, `0xff to decimal`, `0b1010 to binary` — exactly source → connector → target.
+    /// `255 to hex`, `0xff to decimal`, `0b1010 to binary`, `2*128 to hex` — value expression, connector, target.
     private static func baseConversion(
         _ tokens: [CalcToken], query: String, locale: Locale
     ) -> CalcResult? {
-        guard tokens.count == 3, CalcUnits.isConnector(tokens[1]),
-            case .ident(let target) = tokens[2]
+        guard tokens.count >= 3,
+            CalcUnits.isConnector(tokens[tokens.count - 2]),
+            case .ident(let target) = tokens[tokens.count - 1]
         else { return nil }
 
+        let valueTokens = Array(tokens[0..<(tokens.count - 2)])
+        let literalText = query.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? query
         let source: UInt64
         let sourceBadge: String
-        switch tokens[0] {
-        case .intLiteral(let value, let radix):
+        let sourceText: String
+        if valueTokens.count == 1,
+            case .intLiteral(let value, let radix) = valueTokens[0]
+        {
             source = value
             sourceBadge = baseName(forRadix: radix)
-        case .number(let value)
-        where value >= 0 && value.rounded() == value && value <= 9_007_199_254_740_992:
+            sourceText = literalText
+        } else if valueTokens.count == 1,
+            let value = decimalLiteral(valueTokens[0]),
+            value >= 0, value.rounded() == value, value <= 9_007_199_254_740_992
+        {
             source = UInt64(value)
             sourceBadge = "Decimal"
-        default:
+            sourceText = literalText
+        } else if let value = CalcParser.evaluate(valueTokens),
+            value >= 0, value.rounded() == value, value <= 9_007_199_254_740_992
+        {
+            source = UInt64(value)
+            sourceBadge = "Decimal"
+            sourceText = CalcFormatter.grouped(String(source), locale: locale)
+        } else {
             return nil
         }
 
@@ -325,13 +342,19 @@ enum CalcEngine {
         default:
             return nil
         }
-        let sourceText = query.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? query
         return CalcResult(
             expression: sourceText,
             sourceBadge: sourceBadge,
             targetBadge: targetBadge,
             payload: .value(
                 display: output, copyText: output.replacingOccurrences(of: ",", with: "")))
+    }
+
+    private static func decimalLiteral(_ token: CalcToken) -> Double? {
+        switch token {
+        case .number(let value): return value
+        default: return nil
+        }
     }
 
     private static func baseName(forRadix radix: Int) -> String {

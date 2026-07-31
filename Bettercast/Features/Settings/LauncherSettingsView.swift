@@ -12,6 +12,8 @@ struct LauncherSettingsView: View {
             systemImage: "magnifyingglass",
             tint: .blue
         ) {
+            SearchScopesView()
+
             SettingsSection(header: "Shortcut") {
                 SettingsControlRow(
                     title: "App Launcher",

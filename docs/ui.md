@@ -10,18 +10,17 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 
 ## The look, in one paragraph
 
-Bettercast is a **Raycast-style dark command palette**: a borderless floating panel whose surface is
-just the OS behind-window blur under a 40% black scrim — there is no gray chrome. Everything on that
-surface is white at a fixed alpha ramp. The header and bottom bar **float over the list as fully
+Bettercast is a **Raycast-style dark-first command palette**: a borderless floating panel whose surface is
+just the OS behind-window blur under an appearance-aware 40% scrim — there is no gray chrome. Everything on that
+surface uses an appearance-aware neutral ramp. The header and bottom bar **float over the list as fully
 transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
 bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the action pill, the menu circle, popover menus) use **Liquid Glass on macOS 26+**
-and a solid dark fallback on older supported systems. The whole app is locked to dark mode because the
-glass material is tuned for a deep dark surface.
+and an appearance-aware fallback on older supported systems. Dark remains the default, while Light is an explicit user choice.
 
 Five load-bearing ideas, in priority order:
 
-1. **Surface = 40% black over behind-window blur.** No solid backgrounds. Depth comes from the desktop showing through.
-2. **White-alpha ramp, never grays.** Text and surfaces are `Color.white.opacity(…)` at fixed stops.
+1. **Surface = 40% appearance-aware scrim over behind-window blur.** No solid backgrounds. Depth comes from the desktop showing through.
+2. **Appearance-aware neutral ramp, never grays.** Text and surfaces use the selected content/surface base at fixed stops.
 3. **Floating bars, not chrome.** Header/footer are transparent overlays; the list fills the whole panel.
 4. **Edges dissolve, they don't clip.** Scroll-driven mask, no separators between list and bars.
 5. **Glass only on floating controls.** The main surface is never glass; pills/menus/circles are.
@@ -32,8 +31,8 @@ Five load-bearing ideas, in priority order:
 
 These are the things that quietly break the look if changed. Preserve them unless the task is explicitly to change them.
 
-- **Forced dark.** `AppCore.start()` sets `NSApp.appearance = .darkAqua`. All colors are literal white/black alphas, not adaptive `Color`s. Don't introduce semantic/adaptive colors or a light variant.
-- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (white-alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
+- **Dark by default, light by choice.** `AppSettings` persists the selected appearance; `AppCore` applies it globally and `Theme.Colors` resolves neutral tokens from the selected content/surface base. Brand accents remain fixed across both appearances.
+- **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (appearance-aware neutral alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
 - **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
 - **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(black 40%) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the scrim goes _over_ the vibrancy, and the clip is last.
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`.
@@ -81,25 +80,25 @@ System fonts only — **no fixed point sizes in views** (honors Dynamic Type). `
 explicit size (20pt regular). Use `rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
 `rowTrailing`/`bar`/`menuRow`/`keyCap` etc. as named.
 
-### Colors (`Theme.Colors`) — the white-alpha ramp
+### Colors (`Theme.Colors`) — the appearance-aware neutral ramp
 
 | Token            | Value          | Use                                              |
 | ---------------- | -------------- | ------------------------------------------------ |
-| `panelSurface`   | black **0.40** | the panel scrim over vibrancy                    |
-| `selection`      | white 0.10     | selected row fill (keyboard/active selection)    |
-| `rowHover`       | white 0.05     | mouse-hover fill (always fainter than selection) |
-| `menuHover`      | white 0.10     | popover-menu row hover                           |
-| `separator`      | white 0.10     | the clipboard list↔preview hairline              |
-| `controlSurface` | white 0.10     | filled keycaps, glyph tiles                      |
-| `border`         | white 0.20     | outlined keycap borders                          |
-| `textSecondary`  | white 0.60     | secondary labels                                 |
-| `textTertiary`   | white 0.40     | placeholders, trailing kind labels               |
-| `cardFill`       | white 0.05     | settings/calc card fill                          |
-| `cardStroke`     | white 0.10     | settings/calc card border + inset dividers       |
-| `glassFrost`     | white 0.01     | whitish tint layered into the floating glass     |
+| `panelSurface`   | surface base 0.40 | the panel scrim over vibrancy                 |
+| `selection`      | content base 0.10 | selected row fill (keyboard/active selection) |
+| `rowHover`       | content base 0.05 | mouse-hover fill (always fainter than selection) |
+| `menuHover`      | content base 0.10 | popover-menu row hover                        |
+| `separator`      | content base 0.10 | the clipboard list↔preview hairline          |
+| `controlSurface` | content base 0.10 | filled keycaps, glyph tiles                   |
+| `border`         | content base 0.20 | outlined keycap borders                       |
+| `textSecondary`  | content base 0.60 | secondary labels                              |
+| `textTertiary`   | content base 0.40 | placeholders, trailing kind labels            |
+| `cardFill`       | content base 0.05 | settings/calc card fill                       |
+| `cardStroke`     | content base 0.10 | settings/calc card border + inset dividers    |
+| `glassFrost`     | content base 0.05 | appearance-aware tint layered into glass      |
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
-the forced-dark environment). **Selection always beats hover** when a row is both.
+the selected appearance). **Selection always beats hover** when a row is both.
 
 ---
 
@@ -156,9 +155,9 @@ leading gap. Headers are non-selectable display rows, so selection (keyed by id)
 
 Glass is **only** for floating controls, never the main surface.
 
-- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and a solid dark surface with a border below it. Used on the action-group capsule, menu circle, and popover menus; tune the frost amount via the `glassFrost` token, not per call site.
+- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and an appearance-aware solid surface with a border below it. Used on the action-group capsule, menu circle, and popover menus; tune the frost amount via the `glassFrost` token, not per call site.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a bottom corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's.
-- **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback uses the shared dark surface and border.
+- **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback uses the selected appearance's surface and border.
 - `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.
 - The glyph is a `PopoverMenuIcon`: `.symbol` uses the shared `FeatureIcon` tile (primary — or **red** when `isDestructive`) and `.file` uses a real app icon via `IconCache` for paste targets. `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
 - **Both glyph kinds share one square `menuIcon` (20) slot**, which pins one row height. `FeatureIcon` owns the system glass/tile treatment for symbols; `IconCache` supplies the platform app icon for file-backed rows.
@@ -181,7 +180,7 @@ pane use the native `.overlayScroller()`. Don't reintroduce native scrollers on 
 
 ## Settings — `Features/Settings/SettingsComponents.swift`
 
-Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) and uses the palette's own surface language: behind-window blur under the same 40% black scrim, the same white-alpha ramp, and the same row/keycap grammar. Its navigation is specific rather than catch-all: General; Launcher, Clipboard, Emoji & Symbols, Calculator; Shortcuts, Permissions; About. Networked currency conversion lives under Calculator.
+Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) and uses the palette's own surface language: behind-window blur under the same 40% appearance-aware scrim, the same neutral ramp, and the same row/keycap grammar. Its navigation is specific rather than catch-all: General; Launcher, Clipboard, Emoji & Symbols, Calculator; Shortcuts, Permissions; About. Networked currency conversion lives under Calculator.
 
 - **Sidebar** is compact: 14pt monochrome symbols in 24pt rounded feature-icon tiles, 34pt rows inset 8pt from both edges, one `selection` fill, and no scroll container. Feature tabs use muted accent colors; other Settings scrollers disable AppKit elasticity.
 - **`SettingsPane`** owns scrolling, destination jumps, fixed insets, and a compact `SettingsFeatureHeader`: a 28pt feature-icon tile beside a `.title3.semibold` title and one-line subtitle.

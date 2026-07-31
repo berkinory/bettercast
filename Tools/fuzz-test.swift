@@ -1,22 +1,74 @@
-// Standalone test for the launcher matcher (run: swift Tools/fuzz-test.swift); keep in sync with FuzzyMatch in Bettercast/Core/AppIndex.swift.
+// Standalone test for launcher matching and adaptive ordering (run: swift Tools/fuzz-test.swift); keep FuzzyMatch in sync with Bettercast/Core/AppIndex.swift.
 
 import Foundation
 
 enum FuzzyMatch {
-    static func score(query: String, candidate: String) -> Int? {
-        let q = normalized(query)
-        let c = normalized(candidate)
-        guard !q.isEmpty else { return 0 }
+    enum Kind: Int, Sendable {
+        case subsequence
+        case substring
+        case wordStart
+        case prefix
+        case exact
+    }
 
-        if c == q { return 100_000 }
-        if c.hasPrefix(q) { return 90_000 - c.count }
+    struct Result: Sendable {
+        let kind: Kind
+        let detailScore: Int
+        let isAlias: Bool
 
-        if let range = c.range(of: q) {
-            let atWordStart = isWordStart(c, range.lowerBound)
-            return (atWordStart ? 80_000 : 70_000) - c.count
+        init(kind: Kind, detailScore: Int, isAlias: Bool = false) {
+            self.kind = kind
+            self.detailScore = detailScore
+            self.isAlias = isAlias
         }
 
-        return subsequenceScore(Array(q), Array(c))
+        var score: Int {
+            switch kind {
+            case .exact: return 100_000
+            case .prefix: return 90_000 + detailScore
+            case .wordStart: return 80_000 + detailScore
+            case .substring: return 70_000 + detailScore
+            case .subsequence: return detailScore
+            }
+        }
+    }
+
+    static func score(query: String, candidate: String) -> Int? {
+        let q = normalized(query)
+        guard !q.isEmpty else { return 0 }
+        return match(normalizedQuery: q, candidate: normalized(candidate))?.score
+    }
+
+    static func match(query: String, candidate: String) -> Result? {
+        match(query: query, candidate: candidate, aliases: [])
+    }
+
+    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
+        let q = normalized(query)
+        guard !q.isEmpty else { return nil }
+        let literal = match(normalizedQuery: q, candidate: normalized(candidate))
+        let alias = aliases.compactMap {
+            match(normalizedQuery: q, candidate: normalized($0)).map {
+                Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
+            }
+        }.max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
+        return literal ?? alias
+    }
+
+    private static func match(normalizedQuery q: String, candidate c: String) -> Result? {
+        if c == q { return Result(kind: .exact, detailScore: 0) }
+        if c.hasPrefix(q) { return Result(kind: .prefix, detailScore: -c.count) }
+
+        if let range = c.range(of: q) {
+            let kind: Kind = isWordStart(c, range.lowerBound) ? .wordStart : .substring
+            return Result(kind: kind, detailScore: -c.count)
+        }
+
+        guard let score = subsequenceScore(Array(q), Array(c)) else { return nil }
+        return Result(kind: .subsequence, detailScore: score)
     }
 
     private static func normalized(_ value: String) -> String {
@@ -48,8 +100,8 @@ enum FuzzyMatch {
             if ci == 0 {
                 bonus += 12
             } else {
-                let b = c[ci - 1]
-                if !b.isLetter && !b.isNumber { bonus += 8 }
+                let before = c[ci - 1]
+                if !before.isLetter && !before.isNumber { bonus += 8 }
             }
             score += bonus
             prev = ci
@@ -60,27 +112,57 @@ enum FuzzyMatch {
     }
 }
 
-let apps = [
-    "Google Chrome", "Chess", "Time Machine", "Safari", "Bluetooth File Exchange",
-    "Screenshot", "Screen Sharing", "Visual Studio Code", "Photos", "App Store",
-    "System Settings", "Calendar", "Terminal", "WhatsApp", "Wick",
+let apps: [(name: String, aliases: [String])] = [
+    ("Google Chrome", []), ("Chess", []), ("Time Machine", []), ("Safari", []),
+    ("Bluetooth File Exchange", []), ("Screenshot", []), ("Screen Sharing", []),
+    ("Visual Studio Code", []), ("Photos", []), ("App Store", []),
+    ("System Settings", []), ("Calendar", []), ("Terminal", []), ("WhatsApp", []),
+    ("Wick", []),
 ]
 
-func rank(_ query: String, boosts: [String: Int] = [:]) -> [String] {
-    apps.compactMap { name -> (String, Int)? in
-        guard let s = FuzzyMatch.score(query: query, candidate: name) else { return nil }
-        return (name, s + boosts[name, default: 0])
+func promotedTier(_ kind: FuzzyMatch.Kind, affinity: Int) -> Int {
+    guard affinity >= 2_500 else { return kind.rawValue }
+    switch kind {
+    case .substring, .wordStart: return kind.rawValue + 1
+    case .subsequence, .prefix, .exact: return kind.rawValue
     }
-    .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0.count < $1.0.count }
-    .map(\.0)
+}
+
+func rank(
+    _ query: String, affinities: [String: Int] = [:], globalAffinities: [String: Int] = [:]
+) -> [String] {
+    apps.compactMap { app -> (name: String, tier: Int, detail: Int, affinity: Int, global: Int)? in
+        guard
+            let match = FuzzyMatch.match(
+                query: query, candidate: app.name, aliases: app.aliases
+            )
+        else { return nil }
+        let affinity = affinities[app.name, default: 0]
+        let global = globalAffinities[app.name, default: 0]
+        let detail = match.detailScore + affinity / 100 + min(4, global / 2_500)
+        let tier =
+            match.isAlias
+            ? match.kind.rawValue - 5
+            : promotedTier(match.kind, affinity: affinity)
+        return (app.name, tier, detail, affinity, global)
+    }
+    .sorted {
+        if $0.tier != $1.tier { return $0.tier > $1.tier }
+        if $0.detail != $1.detail { return $0.detail > $1.detail }
+        if $0.affinity != $1.affinity { return $0.affinity > $1.affinity }
+        if $0.global != $1.global { return $0.global > $1.global }
+        return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+    }
+    .map(\.name)
 }
 
 var failures = 0
-func check(_ desc: String, _ cond: Bool, _ detail: String = "") {
-    if cond {
-        print("PASS  \(desc)")
+@MainActor
+func check(_ description: String, _ condition: Bool, _ detail: String = "") {
+    if condition {
+        print("PASS  \(description)")
     } else {
-        print("FAIL  \(desc)  \(detail)")
+        print("FAIL  \(description)  \(detail)")
         failures += 1
     }
 }
@@ -92,9 +174,17 @@ check("'chrome' does not include Chess", !chrome.contains("Chess"), "got \(chrom
 let ch = rank("ch")
 check("'ch' includes Google Chrome", ch.contains("Google Chrome"), "got \(ch)")
 check("'ch' includes Chess", ch.contains("Chess"))
+check("prefix beats word-start by default", ch.first == "Chess", "got \(ch)")
 check(
-    "'ch' ranks Chess (prefix) above Chrome",
-    ch.firstIndex(of: "Chess")! < ch.firstIndex(of: "Google Chrome")!, "got \(ch)")
+    "one visit cannot cross a fuzzy tier",
+    rank("ch", affinities: ["Google Chrome": 1_000]).first == "Chess")
+let learnedChrome = rank("ch", affinities: ["Google Chrome": 2_710])
+check(
+    "three recent visits promote Chrome over Chess by one tier",
+    learnedChrome.first == "Google Chrome", "got \(learnedChrome)")
+check(
+    "exact title remains absolute after learning",
+    rank("chess", affinities: ["Google Chrome": 10_000]).first == "Chess")
 
 check("'saf' top is Safari", rank("saf").first == "Safari", "got \(rank("saf"))")
 check("'tm' includes Time Machine", rank("tm").contains("Time Machine"), "got \(rank("tm"))")
@@ -105,24 +195,35 @@ check("'terminal' exact top", rank("terminal").first == "Terminal")
 check("'xyz' matches nothing", rank("xyz").isEmpty, "got \(rank("xyz"))")
 
 let defaultW = rank("w")
+check("shorter Wick wins the default prefix tie", defaultW.first == "Wick", "got \(defaultW)")
+let learnedW = rank("w", affinities: ["WhatsApp": 1_000])
+check("query learning reorders results within a tier", learnedW.first == "WhatsApp")
+
+let xunleiAliases = Romanization.aliases(for: "迅雷")
+check("'xunlei' generates a full romanization alias", xunleiAliases.contains("xunlei"))
+check("'xl' generates initials", xunleiAliases.contains("xl"))
+let qsyyAliases = Romanization.aliases(for: "汽水音乐")
+check("polyphone-aware initials use 'qsyy'", qsyyAliases.contains("qsyy"))
+check("polyphone-aware full reading uses 'qishuiyinyue'", qsyyAliases.contains("qishuiyinyue"))
 check(
-    "shorter Wick wins the default prefix tie",
-    defaultW.firstIndex(of: "Wick")! < defaultW.firstIndex(of: "WhatsApp")!,
-    "got \(defaultW)")
-let learnedW = rank("w", boosts: ["WhatsApp": 2_100])
+    "romanized exact stays below a literal subsequence",
+    FuzzyMatch.match(query: "gc", candidate: "Google Chrome", aliases: ["gc"])?.isAlias == false
+)
+
+let gc = FuzzyMatch.match(query: "gc", candidate: "Google Chrome")
+check("'gc' is a subsequence match", gc?.kind == .subsequence)
 check(
-    "learned boost promotes WhatsApp within the prefix tier",
-    learnedW.firstIndex(of: "WhatsApp")! < learnedW.firstIndex(of: "Wick")!,
-    "got \(learnedW)")
+    "subsequence learning never grants a tier promotion",
+    promotedTier(.subsequence, affinity: 10_000) == FuzzyMatch.Kind.subsequence.rawValue)
+check(
+    "global usage never grants a tier promotion",
+    rank("ch", globalAffinities: ["Google Chrome": 10_000]).first == "Chess")
+
 let markedWhatsApp = "\u{200E}WhatsApp"
 check(
     "invisible format mark does not demote WhatsApp's prefix match",
     FuzzyMatch.score(query: "w", candidate: markedWhatsApp)
         == FuzzyMatch.score(query: "w", candidate: "WhatsApp"))
-check(
-    "learned marked WhatsApp can outrank Wick",
-    FuzzyMatch.score(query: "w", candidate: markedWhatsApp)! + 2_100
-        > FuzzyMatch.score(query: "w", candidate: "Wick")!)
 
 print(failures == 0 ? "\nALL PASSED" : "\n\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

@@ -4,9 +4,9 @@ import SwiftUI
 
 private enum ShortcutCaptureState: Equatable {
     case recording
-    case editing(KeyShortcut)
-    case conflict(owner: String, shortcut: KeyShortcut)
-    case success(KeyShortcut)
+    case editing(HotKeyBinding)
+    case conflict(owner: String, binding: HotKeyBinding)
+    case success(HotKeyBinding)
 
     var isConflict: Bool {
         if case .conflict = self { return true }
@@ -34,12 +34,12 @@ struct ShortcutRecorder: View {
     @FocusState private var focusedControl: FocusedControl?
 
     private var isRecording: Bool { hotKeys.recordingAction == action }
-    private var shortcut: KeyShortcut? { hotKeys.shortcut(for: action) }
+    private var binding: HotKeyBinding? { hotKeys.binding(for: action) }
 
     var body: some View {
         ZStack(alignment: .trailing) {
             recorderButton
-            if shortcut != nil && !isRecording {
+            if binding != nil && !isRecording {
                 HStack(spacing: 0) {
                     divider
                     clearButton
@@ -83,7 +83,7 @@ struct ShortcutRecorder: View {
                 .padding(.leading, Theme.Spacing.md)
                 .padding(
                     .trailing,
-                    shortcut == nil || isRecording
+                    binding == nil || isRecording
                         ? Theme.Spacing.md : Theme.Settings.Size.shortcutRecorderClearWidth
                 )
                 .frame(
@@ -100,7 +100,7 @@ struct ShortcutRecorder: View {
             startRecording()
             return .handled
         }
-        .help(shortcut == nil ? "Record hotkey" : "Change hotkey")
+        .help(binding == nil ? "Record hotkey" : "Change hotkey")
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Press Space or Return to record a hotkey")
     }
@@ -172,8 +172,8 @@ struct ShortcutRecorder: View {
     }
 
     private var accessibilityLabel: String {
-        guard let shortcut else { return "Record hotkey" }
-        return "Change hotkey, currently \(shortcut.keycaps.joined())"
+        guard let binding else { return "Record hotkey" }
+        return "Change hotkey, currently \(binding.keycaps.joined())"
     }
 
     private func startRecording() {
@@ -188,7 +188,7 @@ struct ShortcutRecorder: View {
 
     @ViewBuilder
     private var recorderContent: some View {
-        if isRecording, let captured = session.capturedShortcut {
+        if isRecording, let captured = session.capturedBinding {
             HotkeyInlineValue(caps: captured.keycaps)
         } else if isRecording {
             let caps = KeyShortcut.modifierSymbols(from: session.heldModifiers)
@@ -199,8 +199,8 @@ struct ShortcutRecorder: View {
             } else {
                 HotkeyInlineValue(caps: caps)
             }
-        } else if let shortcut {
-            HotkeyInlineValue(caps: shortcut.keycaps)
+        } else if let binding {
+            HotkeyInlineValue(caps: binding.keycaps)
         } else {
             Text("Record Hotkey")
                 .font(Theme.Typography.calloutMedium)
@@ -326,14 +326,14 @@ private struct ShortcutCapturePopover: View {
                     CaptureKeycaps(caps: captureCaps)
                 }
             }
-        case .editing(let shortcut), .success(let shortcut):
-            CaptureKeycaps(caps: shortcut.keycaps)
-        case .conflict(let owner, let shortcut):
+        case .editing(let binding), .success(let binding):
+            CaptureKeycaps(caps: binding.keycaps)
+        case .conflict(let owner, let binding):
             VStack(spacing: Theme.Spacing.xl) {
                 Text("Already used by \(owner)")
                     .font(Theme.Typography.headline)
                     .foregroundStyle(Theme.Settings.Colors.captureConflict)
-                CaptureKeycaps(caps: shortcut.keycaps)
+                CaptureKeycaps(caps: binding.keycaps)
                 Text("Discard or record a new hotkey")
                     .font(Theme.Typography.calloutMedium)
                     .foregroundStyle(Theme.Colors.textSecondary)
@@ -440,9 +440,9 @@ private final class CaptureSession: ObservableObject {
     @Published var heldModifiers: NSEvent.ModifierFlags = []
     @Published var state: ShortcutCaptureState = .recording
 
-    var capturedShortcut: KeyShortcut? {
+    var capturedBinding: HotKeyBinding? {
         switch state {
-        case .editing(let shortcut), .success(let shortcut): shortcut
+        case .editing(let binding), .success(let binding): binding
         case .recording, .conflict: nil
         }
     }
@@ -450,10 +450,12 @@ private final class CaptureSession: ObservableObject {
     private var monitors: [Any] = []
     private var resignObserver: NSObjectProtocol?
     private var successResolutionTask: Task<Void, Never>?
+    private var doubleCommandDetector = DoubleCommandDetector()
 
     func start(action: HotKeyAction, hotKeys: HotKeyManager) {
         stop()
         state = .recording
+        doubleCommandDetector.reset()
         heldModifiers = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
 
         if let monitor = NSEvent.addLocalMonitorForEvents(
@@ -480,6 +482,11 @@ private final class CaptureSession: ObservableObject {
                 let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
                 MainActor.assumeIsolated {
                     guard let self else { return }
+                    let recognized = self.doubleCommandDetector.flagsChanged(
+                        commandIsDown: flags.contains(.command),
+                        otherModifierIsDown: !flags.intersection([.option, .control, .shift]).isEmpty,
+                        at: ProcessInfo.processInfo.systemUptime
+                    )
                     self.heldModifiers = flags
                     switch self.state {
                     case .editing where !flags.isEmpty:
@@ -488,6 +495,10 @@ private final class CaptureSession: ObservableObject {
                         self.state = .recording
                     case .recording, .editing, .conflict, .success:
                         break
+                    }
+                    if recognized {
+                        self.accept(
+                            .doubleCommand, action: action, hotKeys: AppCore.shared.hotKeys)
                     }
                 }
                 return event
@@ -522,6 +533,7 @@ private final class CaptureSession: ObservableObject {
         }
         successResolutionTask?.cancel()
         successResolutionTask = nil
+        doubleCommandDetector.reset()
         heldModifiers = []
         state = .recording
     }
@@ -529,6 +541,7 @@ private final class CaptureSession: ObservableObject {
     private func handleKeyDown(
         keyCode: Int, flags: NSEvent.ModifierFlags, action: HotKeyAction, hotKeys: HotKeyManager
     ) {
+        doubleCommandDetector.keyDown()
         let bareKey = flags.intersection([.command, .option, .control, .shift]).isEmpty
 
         successResolutionTask?.cancel()
@@ -553,18 +566,30 @@ private final class CaptureSession: ObservableObject {
 
         heldModifiers = flags.intersection([.command, .option, .control, .shift])
         guard let shortcut = KeyShortcut(keyCode: keyCode, modifierFlags: flags) else { return }
+        accept(.key(shortcut), action: action, hotKeys: hotKeys)
+    }
 
-        if let owner = hotKeys.conflictOwner(of: shortcut, excluding: action) {
-            state = .conflict(owner: owner, shortcut: shortcut)
+    private func accept(
+        _ binding: HotKeyBinding, action: HotKeyAction, hotKeys: HotKeyManager
+    ) {
+        switch state {
+        case .conflict, .editing, .success:
+            state = .recording
+        case .recording:
+            break
+        }
+
+        if let owner = hotKeys.conflictOwner(of: binding, excluding: action) {
+            state = .conflict(owner: owner, binding: binding)
             return
         }
 
-        hotKeys.setShortcut(shortcut, for: action)
-        state = .success(shortcut)
+        hotKeys.setBinding(binding, for: action)
+        state = .success(binding)
         successResolutionTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(1_050))
             guard !Task.isCancelled, let self else { return }
-            self.state = .editing(shortcut)
+            self.state = .editing(binding)
             self.successResolutionTask = nil
         }
     }

@@ -13,7 +13,9 @@ struct BettercastApp: App {
         MenuBarExtra(
             appName, systemImage: "macwindow.on.rectangle", isInserted: $showInMenuBar
         ) {
-            Button("Open \(appName)") { AppCore.shared.showPalette(mode: .launcher) }
+            Button("Open \(appName)") {
+                AppCore.shared.showPalette(mode: .launcher, restoreAnyMode: true)
+            }
             Button("Clipboard History") { AppCore.shared.showPalette(mode: .clipboard) }
             Divider()
             Button("Settings...") { AppCore.shared.showSettings() }

@@ -1,10 +1,12 @@
 import AppKit
+import Combine
 import SwiftUI
 
 enum PaletteMode: String, CaseIterable, Identifiable {
     case launcher
     case clipboard
     case emoji
+    case uninstall
 
     var id: String { rawValue }
     var title: String {
@@ -12,6 +14,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "Apps"
         case .clipboard: return "Clipboard History"
         case .emoji: return "Emoji & Symbols"
+        case .uninstall: return "Uninstall"
         }
     }
     var systemImage: String {
@@ -19,6 +22,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
+        case .uninstall: return "trash"
         }
     }
     var placeholder: String {
@@ -26,6 +30,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "Search for apps and commands…"
         case .clipboard: return "Type to filter entries…"
         case .emoji: return "Search emoji and symbols…"
+        case .uninstall: return "Filter files and folders by name…"
         }
     }
 }
@@ -107,11 +112,13 @@ final class AppCore: ObservableObject {
     let emojiIndex = EmojiIndex()
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
-    let appUninstaller = AppUninstaller()
+    let uninstall = UninstallSession()
     let palette = PaletteViewModel()
 
     private lazy var windowController = PaletteWindowController(core: self)
     private let auxWindows = AuxWindowController()
+    private var systemCommandState = SystemCommandRunner.State()
+    private var cancellables = Set<AnyCancellable>()
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -124,14 +131,22 @@ final class AppCore: ObservableObject {
         // AppKit's default tooltip delay is ~2–3s; shorten it (in ms) so the compact-bar favorite tooltips appear promptly. Registration domain — never overrides a user default.
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
         NSApp.setActivationPolicy(.accessory)
-        // Force dark: the Liquid Glass material is tuned for a deep dark surface and renders washed-out in Light mode.
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        applyAppearance(settings.appearance)
+        settings.$appearance
+            .dropFirst()
+            .sink { [weak self] appearance in
+                MainActor.assumeIsolated {
+                    self?.applyAppearance(appearance)
+                }
+            }
+            .store(in: &cancellables)
 
         clipboardStore.maxAge = settings.clipboardRetention.maxAge
         // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
         Task { clipboardStore.load() }
         clipboardManager.start()
 
+        appIndex.start(settings: settings)
         Task { await appIndex.refresh() }
         Task { await emojiIndex.load() }
         if settings.currencyConversionEnabled {
@@ -147,6 +162,13 @@ final class AppCore: ObservableObject {
         if !OnboardingState.hasOnboarded {
             OnboardingState.markShown()
             showOnboarding()
+        }
+    }
+
+    private func applyAppearance(_ appearance: AppAppearance) {
+        NSApp.appearance = appearance.nsAppearance
+        for window in NSApp.windows {
+            window.appearance = appearance.nsAppearance
         }
     }
 
@@ -178,6 +200,15 @@ final class AppCore: ObservableObject {
 
     /// Shows the palette, honoring Pop to Root Search: a reopen within the timeout restores the pre-close state — any mode for the generic summon (`restoreAnyMode`), else only when the preserved mode already matches the requested one.
     func showPalette(mode: PaletteMode, restoreAnyMode: Bool = false) {
+        if uninstall.target != nil {
+            if restoreAnyMode || mode == .uninstall {
+                _ = windowController.consumePreservedState()
+                palette.mode = .uninstall
+                windowController.show()
+                return
+            }
+            uninstall.end()
+        }
         let preserved = windowController.consumePreservedState()
         if !(preserved && (restoreAnyMode || palette.mode == mode)) {
             palette.prepare(mode: mode)
@@ -266,9 +297,8 @@ final class AppCore: ObservableObject {
     // MARK: - Actions invoked from the palette UI
 
     func launch(_ app: AppEntry, searchQuery: String? = nil) {
-        if let searchQuery {
-            launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery)
-        }
+        // Every palette launch teaches weak global usage; typed launches additionally teach the submitted query and each of its prefixes.
+        launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery ?? "")
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
             runCommand(app)
@@ -290,90 +320,80 @@ final class AppCore: ObservableObject {
         launcherRanking.reset(itemKey: app.preferenceKey)
     }
 
-    /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
-    func uninstall(_ app: AppEntry) {
-        guard AppUninstaller.isEligible(app) else { return }
+    // MARK: - Uninstall
+
+    func beginUninstall(_ app: AppEntry) {
+        guard app.kind == .application,
+            app.url.standardizedFileURL.path != Bundle.main.bundleURL.standardizedFileURL.path,
+            AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
+        else { return }
+        uninstall.begin(app: app)
+        palette.mode = .uninstall
+        palette.query = ""
+        palette.selection = 0
+    }
+
+    func cancelUninstall() {
+        uninstall.end()
+        palette.prepare(mode: .launcher)
+    }
+
+    func confirmUninstall(permanently: Bool = false) {
+        guard let app = uninstall.target, !uninstall.checkedItems.isEmpty,
+            uninstall.phase == .selecting
+        else { return }
+        let targets = uninstall.checkedItems
+        let bundlePath = app.url.resolvingSymlinksInPath().path
+        let removesBundle = targets.contains { $0.url.path == bundlePath }
+        if permanently {
+            let confirmed = windowController.presentConfirmation(
+                message: targets.count == 1
+                    ? "Permanently delete 1 item?"
+                    : "Permanently delete \(targets.count) items?",
+                informativeText:
+                    "“\(app.name)” and the files you checked will be erased immediately. This can’t be undone.",
+                confirmTitle: "Delete"
+            )
+            guard confirmed else { return }
+        }
         Task { [weak self] in
             guard let self else { return }
-            let plan = await appUninstaller.plan(for: app)
-            guard confirmUninstall(plan) else { return }
-
-            if runningApps.isRunning(app) {
-                _ = AppLauncher.quit(bundleID: app.bundleID ?? "")
-                for _ in 0..<20 {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    if !runningApps.isRunning(app) { break }
-                }
-                guard !runningApps.isRunning(app) else {
-                    showUninstallFailure("\(app.name) is still running. Nothing was removed.")
-                    return
-                }
+            let outcome = await uninstall.remove(permanently: permanently)
+            if removesBundle, !outcome.failures.contains(where: { $0.url.path == bundlePath }) {
+                forgetUninstalledApp(app)
             }
-
-            let result = await appUninstaller.execute(plan)
-            guard result.appFailure == nil else {
-                showUninstallFailure(result.appFailure ?? "Could not uninstall \(app.name).")
-                return
-            }
-            if favorites.isFavorite(app) { favorites.toggle(app) }
-            launcherRanking.reset(itemKey: app.preferenceKey)
-            visibility.setItemVisible(true, for: app)
-            if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
-            palette.postFeedback("Moved \(app.name) to Trash")
-            Task { await appIndex.refresh() }
-            if !result.failedPaths.isEmpty {
-                let count = result.failedPaths.count
-                showUninstallFailure(
-                    "The application was moved to the Trash, but \(count) related \(count == 1 ? "item" : "items") could not be moved."
-                )
-            }
+            await appIndex.refresh()
         }
     }
 
-    private func confirmUninstall(_ plan: AppUninstallPlan) -> Bool {
-        let userCount = plan.userCandidates.count
-        let systemCount = plan.systemCandidates.count
-        var details =
-            "This will move the application and its related user data to the Trash. You can restore them before emptying it."
-        if userCount == 0 {
-            details += "\n\nNo related user files were found."
-        } else {
-            let itemLabel = userCount == 1 ? "related item" : "related items"
-            let categories = Set(plan.userCandidates.map(\.category)).sorted().joined(separator: ", ")
-            details += "\n\nFound \(userCount) \(itemLabel): \(categories)."
+    func exitUninstall() {
+        switch uninstall.phase {
+        case .selecting: cancelUninstall()
+        case .removing: break
+        case .done: finishUninstall()
         }
-        if systemCount > 0 {
-            let itemLabel = systemCount == 1 ? "item" : "items"
-            details +=
-                "\n\n\(systemCount) system \(itemLabel) will stay untouched because administrator access is required."
-        }
-        let totalBytes = ([plan.appSize] + plan.userCandidates.map(\.size)).compactMap { $0 }.reduce(0, +)
-        if totalBytes > 0 {
-            details += "\n\nTotal size: \(uninstallSizeText(totalBytes))"
-        }
-        return windowController.presentConfirmation(
-            message: "Move \(plan.app.name) to Trash?",
-            informativeText: details,
-            confirmTitle: "Move to Trash"
-        )
     }
 
-    private func uninstallSizeText(_ bytes: Int64) -> String {
-        let megabytes = Double(bytes) / 1_048_576
-        if megabytes < 10 {
-            return String(format: "%.1f MB", megabytes)
-        }
-        return String(format: "%.0f MB", megabytes)
+    func finishUninstall() {
+        uninstall.end()
+        palette.prepare(mode: .launcher)
     }
 
-    private func showUninstallFailure(_ message: String) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Uninstall Incomplete"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+    func setUninstallSort(_ sort: UninstallSort) {
+        uninstall.setSort(sort)
+        palette.selection = 0
+    }
+
+    func showLeftoverInFinder(_ item: LeftoverItem) {
+        hidePalette(restoreFocus: false)
+        AppLauncher.showInFinder(item.url)
+    }
+
+    private func forgetUninstalledApp(_ app: AppEntry) {
+        if favorites.isFavorite(app) { favorites.toggle(app) }
+        visibility.setItemVisible(true, for: app)
+        launcherRanking.reset(itemKey: app.preferenceKey)
+        if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
     }
 
     /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
@@ -400,7 +420,60 @@ final class AppCore: ObservableObject {
         )
     }
 
+    private func runSystemCommand(_ entry: AppEntry) {
+        guard let command = SystemCommandCatalog.command(forEntryID: entry.id) else { return }
+        let previousApp = windowController.previousApp
+        hidePalette(restoreFocus: false)
+        Task { [weak self] in
+            guard let self else { return }
+            if command.id == .quitAllApps {
+                quitAllApps()
+                return
+            }
+            do {
+                systemCommandState = try await SystemCommandRunner.run(
+                    command.id, previousApp: previousApp, state: systemCommandState)
+            } catch let failure as SystemCommandFailure {
+                presentSystemCommandFailure(name: command.name, failure: failure)
+            } catch {
+                presentSystemCommandFailure(
+                    name: command.name,
+                    failure: SystemCommandFailure(error.localizedDescription))
+            }
+        }
+    }
+
+    private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "“\(name)” Failed"
+        alert.informativeText = failure.message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        if let settings = failure.settings {
+            alert.addButton(
+                withTitle: settings == .accessibility
+                    ? "Open Accessibility Settings…" : "Open Automation Settings…")
+        }
+        let response = alert.runModal()
+        guard response == .alertSecondButtonReturn, let settings = failure.settings else { return }
+        switch settings {
+        case .accessibility:
+            Permissions.openAccessibilitySettings()
+        case .automation:
+            if let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+            {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
     private func runCommand(_ entry: AppEntry) {
+        if SystemCommandCatalog.command(forEntryID: entry.id) != nil {
+            runSystemCommand(entry)
+            return
+        }
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
             showPalette(mode: .clipboard)
@@ -409,8 +482,6 @@ final class AppCore: ObservableObject {
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()
-        case .quitAllApps:
-            quitAllApps()
         case .quit:
             NSApp.terminate(nil)
         case nil:

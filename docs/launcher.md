@@ -1,23 +1,47 @@
 # App launcher & fuzzy match
 
-`AppIndex.scan()` runs off-main, enumerates the standard `/Applications` dirs, and dedups by bundle ID
-(first dir wins).
+`AppIndex.scan()` runs off-main, enumerates the user-editable search scopes, and dedups by bundle ID
+(the earliest scope wins).
 
-`FuzzyMatch.score` is a tiered scorer: exact → prefix → substring / word-start → subsequence with
-consecutive / word-boundary bonuses. `LauncherRankingStore` then adds a bounded, query-specific
-frecency boost (frequency plus decaying recency). The boost can reorder results within a relevance
-tier but cannot make a weaker match kind beat a stronger one. Matching strips invisible Unicode
-format scalars first, since app metadata can contain bidi/zero-width markers before the visible name.
+## Search scopes
+
+`SearchScopes` owns the folders and individual `.app` bundles Bettercast indexes. The list is editable
+under Settings → Launcher → Search and stored as tilde-abbreviated paths in `AppSettings`.
+
+Enumeration is flat: one directory listing per scope, with no recursive walk. Add a nested folder as its
+own scope. This keeps the Settings list honest and avoids scanning unrelated application bundles.
+
+The defaults cover the standard Applications folders, system Utilities, the cryptex-delivered system
+applications, the user's `~/Applications`, and Finder as an individual bundle. Finder is not exposed by
+scanning all of `/System/Library/CoreServices`, because that directory also contains many background
+agents and there is no safe metadata filter that keeps every launchable app.
+
+A missing scope is skipped and shown as a warning. Editing the list triggers a re-index immediately;
+overlapping refreshes collapse into one trailing scan.
+
+`FuzzyMatch` classifies matches as exact → prefix → word-start → substring → subsequence, with
+consecutive / word-boundary detail scoring inside each class. `LauncherRankingStore` learns an
+adaptive query affinity: one choice nudges results within the same class, while three recent choices
+may promote a word-start or substring match by exactly one class. Exact matches remain absolute,
+prefixes never become exact, and weak subsequences never receive a class promotion. This lets a
+repeated `ch` → Google Chrome choice overtake the default prefix match Chess without allowing an
+unrelated frequent app to surface. Matching strips invisible Unicode format scalars first, since app
+metadata can contain bidi/zero-width markers before the visible name. App names with Han characters also get
+precomputed pinyin aliases for full readings and per-character initials; literal matches always rank above
+romanized aliases.
 
 Selecting a launcher result records every prefix of the submitted query, so choosing WhatsApp for
-`wha` also teaches `w` and `wh`. Direct hotkeys and empty-query favorites do not affect learned
-ranking. Learned data stays on device in `launcher-ranking.json`; a result that has learned ranking
-offers a per-item reset in its Actions menu, and users can clear all learned ranking in General
-Settings.
+`wha` also teaches `w`, `wh`, and `wha`. Every palette launch also records weak item-wide usage,
+including empty-query favorites; it is only a final tie-break and can never change a fuzzy match
+class. Direct hotkeys remain excluded because toggling an app outside Root Search provides no query
+intent. Query affinity has a 30-day half-life, global usage a 60-day half-life, and repeated visits
+approach a ceiling with diminishing returns, so stale habits yield quickly instead of becoming permanent. Learned
+data stays on device in `launcher-ranking.json`; a ranked result offers a per-item reset in its
+Actions menu, and users can clear all learned ranking in General Settings.
 
 Rankings are memoized one query deep and keyed by the ranking store's revision, so a launch or reset
-invalidates the cached order. `rank` resolves the whole learned table for a query up front via
-`boosts(query:)` — one fold and one clock read per pass, not per candidate.
+invalidates the cached order. `rank` resolves the query and global affinity tables once per pass — one
+fold and one clock read per table, not per candidate.
 
 > **Invariant:** `Tools/fuzz-test.swift` contains a **copy** of `FuzzyMatch` from
 > `Bettercast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test
@@ -49,11 +73,19 @@ running dot and the availability of the quit actions:
   running. `AppLauncher.quit(bundleID:)` terminates every instance of the bundle and reports whether
   anything was running; the palette only dismisses when something was, and it restores focus unless
   the app it just quit *was* `previousApp`.
-- **Quit All Applications** — a `CommandRegistry` command. `AppLauncher.quitAllTargets()` is the
-  policy (every `.regular` app except Finder — `terminate()` only relaunches it — and Bettercast,
-  excluded by PID because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()`
-  resolves that list **once**, confirms it with an `NSAlert`, then terminates exactly what was
-  confirmed. The palette hides before the alert — it is a floating panel and would sit above it.
+- **Quit All Applications** — a Command. `AppLauncher.quitAllTargets()` is the policy (every
+  `.regular` app except Finder — `terminate()` only relaunches it — and Bettercast, excluded by PID
+  because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()` resolves that
+  list **once**, confirms it with an `NSAlert`, then terminates exactly what was confirmed. The palette
+  hides before the alert — it is a floating panel and would sit above it.
+
+## Commands
+
+Commands include Sleep, Sleep Displays, Restart, Shut Down, Log Out, Show Screen Saver,
+Play / Pause, Next Track, Previous Track, volume controls, Show Desktop, Toggle System Appearance,
+Open Trash, Empty Trash, Toggle Hidden Files, Hide All Apps Except Frontmost, and Unhide All Hidden
+Apps. Keyboard-event commands require Accessibility permission; automation commands require
+Automation permission. The Commands settings category controls both built-in and system actions.
 
 Both quits are graceful `NSRunningApplication.terminate()`, so an app with unsaved work still puts up
 its own save sheet.

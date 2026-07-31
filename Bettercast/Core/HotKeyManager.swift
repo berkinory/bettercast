@@ -9,10 +9,15 @@ final class HotKeyManager: ObservableObject {
 
     /// The recorder currently capturing keystrokes, or `nil`; keeping this as plain app state makes recorders glitch-free, and any active recorder pauses Carbon so the typed combo can't fire a hotkey.
     @Published var recordingAction: HotKeyAction? {
-        didSet { center.isPaused = recordingAction != nil }
+        didSet {
+            let paused = recordingAction != nil
+            center.isPaused = paused
+            doubleCommandMonitor.isPaused = paused
+        }
     }
 
     private let center = HotKeyCenter()
+    private let doubleCommandMonitor = DoubleCommandMonitor()
     private let boundKey = "boundAppBundleIDs"
     private let boundPaneKey = "boundPaneBundleIDs"
 
@@ -22,6 +27,8 @@ final class HotKeyManager: ObservableObject {
         register(.toggleEmoji)
         for bundleID in boundBundleIDs { register(.app(bundleID: bundleID)) }
         for bundleID in boundPaneBundleIDs { register(.settingsPane(bundleID: bundleID)) }
+        doubleCommandMonitor.onDoubleCommand = { [weak self] in self?.performDoubleCommand() }
+        doubleCommandMonitor.start()
     }
 
     /// Bundle IDs that currently have a per-app hotkey — lets `start()` know which records to load and lets launcher rows show keycaps.
@@ -34,35 +41,45 @@ final class HotKeyManager: ObservableObject {
         UserDefaults.standard.stringArray(forKey: boundPaneKey) ?? []
     }
 
-    func shortcut(for action: HotKeyAction) -> KeyShortcut? {
-        // The stored value is a JSON *string* (a legacy package format); anything else reads as unbound.
-        guard
-            let json = UserDefaults.standard.string(forKey: action.defaultsKey),
-            let data = json.data(using: .utf8)
+    func binding(for action: HotKeyAction) -> HotKeyBinding? {
+        guard let json = UserDefaults.standard.string(forKey: action.defaultsKey) else { return nil }
+        if json == "doubleCommand" { return .doubleCommand }
+        guard let data = json.data(using: .utf8),
+            let shortcut = try? JSONDecoder().decode(KeyShortcut.self, from: data)
         else { return nil }
-        return try? JSONDecoder().decode(KeyShortcut.self, from: data)
+        return .key(shortcut)
     }
 
-    /// Persists (or clears, when `nil`) the binding, swaps the live Carbon registration, and publishes so the launcher and recorders re-render.
-    func setShortcut(_ shortcut: KeyShortcut?, for action: HotKeyAction) {
-        if let shortcut,
-            let data = try? JSONEncoder().encode(shortcut),
-            let json = String(data: data, encoding: .utf8)
-        {
+    func shortcut(for action: HotKeyAction) -> KeyShortcut? {
+        guard case .key(let shortcut) = binding(for: action) else { return nil }
+        return shortcut
+    }
+
+    /// Persists (or clears, when `nil`) the binding, swaps the live registration, and publishes so the launcher and recorders re-render.
+    func setBinding(_ binding: HotKeyBinding?, for action: HotKeyAction) {
+        switch binding {
+        case .key(let shortcut):
+            guard
+                let data = try? JSONEncoder().encode(shortcut),
+                let json = String(data: data, encoding: .utf8)
+            else { return }
             UserDefaults.standard.set(json, forKey: action.defaultsKey)
             register(action)
-        } else {
+        case .doubleCommand:
+            UserDefaults.standard.set("doubleCommand", forKey: action.defaultsKey)
+            center.unregister(id: action.defaultsKey)
+        case nil:
             UserDefaults.standard.removeObject(forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         }
         switch action {
         case .app(let bundleID):
             var set = Set(boundBundleIDs)
-            if shortcut == nil { set.remove(bundleID) } else { set.insert(bundleID) }
+            if binding == nil { set.remove(bundleID) } else { set.insert(bundleID) }
             UserDefaults.standard.set(Array(set), forKey: boundKey)
         case .settingsPane(let bundleID):
             var set = Set(boundPaneBundleIDs)
-            if shortcut == nil { set.remove(bundleID) } else { set.insert(bundleID) }
+            if binding == nil { set.remove(bundleID) } else { set.insert(bundleID) }
             UserDefaults.standard.set(Array(set), forKey: boundPaneKey)
         case .togglePalette, .toggleClipboard, .toggleEmoji:
             break
@@ -70,16 +87,24 @@ final class HotKeyManager: ObservableObject {
         objectWillChange.send()
     }
 
-    /// The display name of whatever else `shortcut` is bound to (or `nil` if free), driving the recorder's "Used by …" message.
-    func conflictOwner(of shortcut: KeyShortcut, excluding action: HotKeyAction) -> String? {
+    func setShortcut(_ shortcut: KeyShortcut?, for action: HotKeyAction) {
+        setBinding(shortcut.map(HotKeyBinding.key), for: action)
+    }
+
+    /// The display name of whatever else `binding` is bound to (or `nil` if free), driving the recorder's "Used by …" message.
+    func conflictOwner(of binding: HotKeyBinding, excluding action: HotKeyAction) -> String? {
         var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
         candidates += boundBundleIDs.map { .app(bundleID: $0) }
         candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
         for candidate in candidates
-        where candidate != action && self.shortcut(for: candidate) == shortcut {
+        where candidate != action && self.binding(for: candidate) == binding {
             return displayName(of: candidate)
         }
         return nil
+    }
+
+    func conflictOwner(of shortcut: KeyShortcut, excluding action: HotKeyAction) -> String? {
+        conflictOwner(of: .key(shortcut), excluding: action)
     }
 
     func displayName(of action: HotKeyAction) -> String {
@@ -102,10 +127,19 @@ final class HotKeyManager: ObservableObject {
     }
 
     private func register(_ action: HotKeyAction) {
-        guard let shortcut = shortcut(for: action) else { return }
+        center.unregister(id: action.defaultsKey)
+        guard case .key(let shortcut) = binding(for: action) else { return }
         center.register(id: action.defaultsKey, shortcut: shortcut) { [weak self] in
             self?.perform(action)
         }
+    }
+
+    private func performDoubleCommand() {
+        var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
+        candidates += boundBundleIDs.map { .app(bundleID: $0) }
+        candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
+        guard let action = candidates.first(where: { binding(for: $0) == .doubleCommand }) else { return }
+        perform(action)
     }
 
     private func perform(_ action: HotKeyAction) {

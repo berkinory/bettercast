@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// UserDefaults keys shared between `@AppStorage` call sites so the App and the Settings UI bind to the same key.
@@ -7,6 +8,21 @@ enum SettingsKey {
 }
 
 /// Delay before a closed palette resets to the root launcher; raw value is seconds in UserDefaults, so an unset key (0) reads as `.immediately`, the default.
+enum AppAppearance: String, CaseIterable, Identifiable, Sendable {
+    case dark
+    case light
+
+    var id: String { rawValue }
+
+    var title: String {
+        rawValue.capitalized
+    }
+
+    var nsAppearance: NSAppearance {
+        NSAppearance(named: self == .dark ? .darkAqua : .aqua)!
+    }
+}
+
 enum PopToRootTimeout: Int, CaseIterable, Identifiable, Sendable {
     case immediately = 0
     case afterFive = 5
@@ -36,6 +52,16 @@ final class AppSettings: ObservableObject {
         static let showFavoritesInCompactMode = "showFavoritesInCompactMode"
         static let currencyConversionEnabled = "currencyConversionEnabled"
         static let cryptoConversionEnabled = "cryptoConversionEnabled"
+        static let searchScopes = "launcherSearchScopes"
+        static let appearance = "appearance"
+    }
+
+    @Published var appearance: AppAppearance {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+    }
+
+    @Published var searchScopes: [String] {
+        didSet { defaults.set(searchScopes, forKey: Key.searchScopes) }
     }
 
     @Published var clipboardRetention: ClipboardRetention {
@@ -103,5 +129,8 @@ final class AppSettings: ObservableObject {
             defaults.object(forKey: Key.currencyConversionEnabled) == nil
             || defaults.bool(forKey: Key.currencyConversionEnabled)
         cryptoConversionEnabled = defaults.bool(forKey: Key.cryptoConversionEnabled)
+        appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init) ?? .dark
+        searchScopes = SearchScopes.normalize(
+            defaults.stringArray(forKey: Key.searchScopes) ?? SearchScopes.defaults)
     }
 }

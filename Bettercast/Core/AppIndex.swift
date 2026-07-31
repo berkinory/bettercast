@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 struct AppEntry: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
@@ -12,6 +13,23 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     let url: URL
     let bundleID: String?
     let kind: Kind
+    let searchAliases: [String]
+
+    init(
+        id: String,
+        name: String,
+        url: URL,
+        bundleID: String?,
+        kind: Kind,
+        searchAliases: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.bundleID = bundleID
+        self.kind = kind
+        self.searchAliases = searchAliases
+    }
 
     /// Stable identity for learned ranking, favorites, and other per-entry preferences.
     var preferenceKey: String { bundleID ?? id }
@@ -34,9 +52,13 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Commands expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
+    /// Synthetic command entries expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
     var isSymbolIcon: Bool { kind == .command }
-    var symbolIconName: String { CommandRegistry.command(for: self)?.sfSymbol ?? "questionmark" }
+    var symbolIconName: String {
+        SystemCommandCatalog.command(forEntryID: id)?.sfSymbol
+            ?? CommandRegistry.command(for: self)?.sfSymbol
+            ?? "questionmark"
+    }
 
     var icon: NSImage {
         isSymbolIcon
@@ -126,74 +148,78 @@ final class AppIndex: ObservableObject {
     private var matchCache: (query: String, rankingRevision: Int, result: [AppEntry])?
 
     private var isRefreshing = false
+    private var refreshPending = false
     private let ranking: LauncherRankingStore
+    private weak var settings: AppSettings?
+    private var cancellables = Set<AnyCancellable>()
 
     init(ranking: LauncherRankingStore) {
         self.ranking = ranking
     }
 
-    /// Re-scan (called on every launcher open); the in-flight guard drops overlapping reopens and `apps` is only re-published when the set changed, so an unchanged reopen does no UI work.
-    func refresh() async {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
-        let found = await Task.detached(priority: .utility) { AppIndex.scan() }.value
-        guard found != apps else { return }
-        apps = found
-        matchCache = nil
+    func start(settings: AppSettings) {
+        self.settings = settings
+        settings.$searchScopes
+            .dropFirst()
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    Task { await self.refresh() }
+                }
+            }
+            .store(in: &cancellables)
     }
 
-    nonisolated private static func scan() -> [AppEntry] {
-        let fm = FileManager.default
-        var searchDirs = [
-            "/Applications",
-            "/Applications/Utilities",
-            "/System/Applications",
-            "/System/Applications/Utilities",
-        ].map { URL(fileURLWithPath: $0) }
-        searchDirs.append(fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications"))
+    /// Re-scan (called on every launcher open); overlapping scans collapse into one trailing scan and an unchanged result does no UI work.
+    func refresh() async {
+        guard !isRefreshing else {
+            refreshPending = true
+            return
+        }
+        isRefreshing = true
+        defer { isRefreshing = false }
 
+        repeat {
+            refreshPending = false
+            let scopes = settings?.searchScopes ?? SearchScopes.defaults
+            let found = await Task.detached(priority: .utility) {
+                AppIndex.scan(scopes: scopes)
+            }.value
+            guard found != apps else { continue }
+            apps = found
+            matchCache = nil
+        } while refreshPending
+    }
+
+    nonisolated private static func scan(scopes: [String]) -> [AppEntry] {
         var seenBundleIDs = Set<String>()
         var result: [AppEntry] = []
-        for dir in searchDirs {
-            guard
-                let items = try? fm.contentsOfDirectory(
-                    at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
-                )
-            else { continue }
-            for url in items where url.pathExtension == "app" {
-                let bundle = Bundle(url: url)
-                let bundleID = bundle?.bundleIdentifier
-                // Dedup by bundle id; first directory (/Applications) wins.
-                if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
+        for url in SearchScopes.appBundles(in: scopes) {
+            let bundle = Bundle(url: url)
+            let bundleID = bundle?.bundleIdentifier
+            // Dedup by bundle ID; the earliest scope wins.
+            if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
 
-                let name = appName(bundle: bundle, url: url)
-                result.append(
-                    AppEntry(
-                        id: url.path, name: name, url: url, bundleID: bundleID,
-                        kind: .application))
-            }
-        }
-
-        let finderURL = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
-        if let bundle = Bundle(url: finderURL),
-            let bundleID = bundle.bundleIdentifier,
-            seenBundleIDs.insert(bundleID).inserted
-        {
+            let name = appName(bundle: bundle, url: url)
             result.append(
                 AppEntry(
-                    id: finderURL.path,
-                    name: appName(bundle: bundle, url: finderURL),
-                    url: finderURL,
-                    bundleID: bundleID,
-                    kind: .application))
+                    id: url.path, name: name, url: url, bundleID: bundleID,
+                    kind: .application, searchAliases: Romanization.aliases(for: name)))
         }
 
-        // Apps, then Settings panes, then Commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
+        // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
         let apps = result.sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
-        return apps + SettingsPaneScanner.scan() + CommandRegistry.all
+        let systemCommands = SystemCommandCatalog.all.map { command in
+            AppEntry(
+                id: command.entryID,
+                name: command.name,
+                url: URL(string: "bettercast://system-command/" + command.id.rawValue)!,
+                bundleID: nil,
+                kind: .command)
+        }
+        return apps + SettingsPaneScanner.scan() + systemCommands + CommandRegistry.all
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {
@@ -224,40 +250,133 @@ final class AppIndex: ObservableObject {
     }
 
     private func rank(_ q: String, limit: Int) -> [AppEntry] {
-        let learned = ranking.boosts(query: q)
-        let scored = apps.compactMap { app -> (AppEntry, Int)? in
-            guard let score = FuzzyMatch.score(query: q, candidate: app.name) else { return nil }
-            return (app, score + (learned[app.preferenceKey] ?? 0))
+        let learned = ranking.affinities(query: q)
+        let global = ranking.globalAffinities()
+        let scored = apps.compactMap { app -> RankedApp? in
+            guard
+                let match = FuzzyMatch.match(
+                    query: q, candidate: app.name, aliases: app.searchAliases
+                )
+            else { return nil }
+            let affinity = learned[app.preferenceKey] ?? 0
+            let globalAffinity = global[app.preferenceKey] ?? 0
+            let promotedTier =
+                match.isAlias
+                ? match.kind.rawValue - 5
+                : Self.promotedTier(for: match.kind, affinity: affinity)
+            // Query learning can overcome small within-tier shape differences; global usage stays a tiny tie-break and can never change tiers.
+            let adaptiveDetail =
+                match.detailScore + affinity / 100 + min(4, globalAffinity / 2_500)
+            return RankedApp(
+                app: app, tier: promotedTier, detail: adaptiveDetail,
+                affinity: affinity, globalAffinity: globalAffinity)
         }
         return
             scored
             .sorted {
-                $0.1 != $1.1
-                    ? $0.1 > $1.1
-                    : $0.0.name.localizedCaseInsensitiveCompare($1.0.name) == .orderedAscending
+                if $0.tier != $1.tier { return $0.tier > $1.tier }
+                if $0.detail != $1.detail { return $0.detail > $1.detail }
+                if $0.affinity != $1.affinity { return $0.affinity > $1.affinity }
+                if $0.globalAffinity != $1.globalAffinity {
+                    return $0.globalAffinity > $1.globalAffinity
+                }
+                return $0.app.name.localizedCaseInsensitiveCompare($1.app.name)
+                    == .orderedAscending
             }
             .prefix(limit)
-            .map(\.0)
+            .map(\.app)
+    }
+
+    private struct RankedApp {
+        let app: AppEntry
+        let tier: Int
+        let detail: Int
+        let affinity: Int
+        let globalAffinity: Int
+    }
+
+    /// A repeated, recent query choice may cross one adjacent quality boundary. Exact matches stay absolute, prefixes cannot become exact, and weak subsequences never receive a tier promotion.
+    private static func promotedTier(for kind: FuzzyMatch.Kind, affinity: Int) -> Int {
+        guard affinity >= 2_500 else { return kind.rawValue }
+        switch kind {
+        case .substring, .wordStart:
+            return kind.rawValue + 1
+        case .subsequence, .prefix, .exact:
+            return kind.rawValue
+        }
     }
 }
 
 enum FuzzyMatch {
-    /// Tiered relevance score (higher is better), or nil when the query doesn't match; tiers are spaced so a better kind always wins.
-    static func score(query: String, candidate: String) -> Int? {
-        let q = normalized(query)
-        let c = normalized(candidate)
-        guard !q.isEmpty else { return 0 }
+    enum Kind: Int, Sendable {
+        case subsequence
+        case substring
+        case wordStart
+        case prefix
+        case exact
+    }
 
-        if c == q { return 100_000 }
-        if c.hasPrefix(q) { return 90_000 - c.count }
+    struct Result: Sendable {
+        let kind: Kind
+        /// Quality within a match kind. Ranking compares the kind separately so adaptive history can safely promote by one tier without inheriting the old artificial 10k walls.
+        let detailScore: Int
+        let isAlias: Bool
 
-        if let range = c.range(of: q) {
-            let atWordStart = isWordStart(c, range.lowerBound)
-            return (atWordStart ? 80_000 : 70_000) - c.count
+        init(kind: Kind, detailScore: Int, isAlias: Bool = false) {
+            self.kind = kind
+            self.detailScore = detailScore
+            self.isAlias = isAlias
         }
 
-        guard let sub = subsequenceScore(Array(q), Array(c)) else { return nil }
-        return sub
+        var score: Int {
+            switch kind {
+            case .exact: return 100_000
+            case .prefix: return 90_000 + detailScore
+            case .wordStart: return 80_000 + detailScore
+            case .substring: return 70_000 + detailScore
+            case .subsequence: return detailScore
+            }
+        }
+    }
+
+    /// Tiered relevance score retained for callers and the standalone matcher harness.
+    static func score(query: String, candidate: String) -> Int? {
+        let q = normalized(query)
+        guard !q.isEmpty else { return 0 }
+        return match(normalizedQuery: q, candidate: normalized(candidate))?.score
+    }
+
+    static func match(query: String, candidate: String) -> Result? {
+        match(query: query, candidate: candidate, aliases: [])
+    }
+
+    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
+        let q = normalized(query)
+        guard !q.isEmpty else { return nil }
+        let literal = match(normalizedQuery: q, candidate: normalized(candidate))
+        let alias = aliases.compactMap {
+            match(normalizedQuery: q, candidate: normalized($0)).map {
+                Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
+            }
+        }.max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
+        return literal ?? alias
+    }
+
+    private static func match(normalizedQuery q: String, candidate c: String) -> Result? {
+
+        if c == q { return Result(kind: .exact, detailScore: 0) }
+        if c.hasPrefix(q) { return Result(kind: .prefix, detailScore: -c.count) }
+
+        if let range = c.range(of: q) {
+            let kind: Kind = isWordStart(c, range.lowerBound) ? .wordStart : .substring
+            return Result(kind: kind, detailScore: -c.count)
+        }
+
+        guard let score = subsequenceScore(Array(q), Array(c)) else { return nil }
+        return Result(kind: .subsequence, detailScore: score)
     }
 
     /// App metadata can contain invisible bidirectional/zero-width format scalars (WhatsApp's display name starts with U+200E); they must not demote an otherwise-visible prefix match.

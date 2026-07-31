@@ -57,6 +57,10 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Pop to Root Search: reset immediately (also releases heavy sub-screens — a fully scrolled emoji grid is ~2k realized views), or keep state and reset after the configured delay unless a reopen consumes it first.
     private func schedulePopToRoot() {
         popToRootTimer?.invalidate()
+        guard core.uninstall.target == nil else {
+            popToRootTimer = nil
+            return
+        }
         let timeout = core.settings.popToRootTimeout
         guard timeout != .immediately else {
             core.palette.prepare(mode: .launcher)
@@ -81,11 +85,13 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     /// Present a native confirmation dialog while keeping the floating palette visible.
     func confirmDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
-        guard presentConfirmation(
-            message: "Delete all clipboard entries?",
-            informativeText: "This can't be undone.",
-            confirmTitle: "Delete All Entries"
-        ) else { return }
+        guard
+            presentConfirmation(
+                message: "Delete all clipboard entries?",
+                informativeText: "This can't be undone.",
+                confirmTitle: "Delete All Entries"
+            )
+        else { return }
         onConfirmed()
     }
 
@@ -140,15 +146,30 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             .environmentObject(core.frequentEmoji)
             .environmentObject(core.runningApps)
             .environmentObject(core.hotKeys)
+            .environmentObject(core.uninstall)
         let panel = PalettePanel(rootView: root)
         panel.delegate = self
         panel.paletteViewModel = core.palette
         // Backspace in an already-empty search backs out of a sub-screen to a fresh root launcher; `prepare` clears state and re-focuses the field.
         panel.onBareBackspace = { [weak self] in
-            guard let vm = self?.core.palette, vm.mode != .launcher, vm.query.isEmpty else {
+            guard let self, core.palette.mode != .launcher, core.palette.query.isEmpty else {
                 return false
             }
-            vm.prepare(mode: .launcher)
+            if core.palette.mode == .uninstall {
+                core.exitUninstall()
+            } else {
+                core.handlePaletteEscape()
+            }
+            return true
+        }
+        panel.onBareSpace = { [weak self] in
+            guard let self, core.palette.mode == .uninstall,
+                core.uninstall.phase == .selecting
+            else { return false }
+            let items = core.uninstall.filtered(core.palette.query)
+            guard !items.isEmpty else { return true }
+            let selection = min(max(core.palette.selection, 0), items.count - 1)
+            core.uninstall.toggle(items[selection])
             return true
         }
         self.panel = panel

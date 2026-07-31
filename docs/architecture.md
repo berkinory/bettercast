@@ -9,7 +9,7 @@ How Bettercast is wired together. See the per-subsystem docs for internals:
 `AppCore.shared` (`Core/AppCore.swift`) is a `@MainActor` singleton that owns every long-lived
 manager — `AppIndex`, `ClipboardStore`, `ClipboardManager`, `HotKeyManager`, `AppSettings`,
 `FavoritesStore`, `VisibilityStore`, `LauncherRankingStore`, `CurrencyRateStore`,
-`RunningAppsMonitor`, `PaletteViewModel` — plus the window controllers.
+`RunningAppsMonitor`, `PaletteViewModel`, and system-command state — plus the window controllers.
 `AppDelegate.applicationDidFinishLaunching` calls
 `AppCore.shared.start()` and nothing else; that is the single wiring point. All palette / paste /
 launch actions are methods on `AppCore` that the SwiftUI views call.
@@ -30,8 +30,8 @@ imperatively from AppKit.
   `Features/About/AboutView.swift`). SwiftUI `Settings` / `Window` scenes are unreliable for accessory
   apps, so this is deliberate.
 
-The app forces `.darkAqua` appearance globally; the Liquid Glass material is tuned for a dark surface
-only.
+The app uses a dark-first appearance globally; users can opt into the light appearance from General
+Settings. Liquid Glass and neutral theme tokens adapt with the selected appearance.
 
 ## Concurrency
 

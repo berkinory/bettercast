@@ -93,6 +93,8 @@ There's no XCTest target. Standalone harnesses:
 swift Tools/fuzz-test.swift                                        # launcher fuzzy matcher
 swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift \
     -o /tmp/ranking-test && /tmp/ranking-test                      # learned launcher ranking
+swiftc -swift-version 6 Bettercast/Core/SearchScopes.swift Tools/scopes-test.swift \
+    -o /tmp/scopes-test && /tmp/scopes-test                       # launcher search scopes
 swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift \
     -o /tmp/calc-test && /tmp/calc-test                           # calculator engine
 swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
