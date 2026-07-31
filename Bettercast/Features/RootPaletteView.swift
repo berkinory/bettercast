@@ -748,7 +748,7 @@ struct RootPaletteView: View {
         pillLabel: String, destructive: Bool = false, showActionsToggle: Bool = true
     ) -> some View {
         HStack(spacing: 2) {
-            BarButton(action: activateSelection) {
+            PaletteBarButton(action: activateSelection) {
                 HStack(spacing: Theme.Spacing.sm) {
                     Text(pillLabel)
                         .font(Theme.Typography.bar)
@@ -757,7 +757,7 @@ struct RootPaletteView: View {
                 }
             }
             if showActionsToggle {
-                BarButton(action: toggleActions) {
+                PaletteBarButton(action: toggleActions) {
                     HStack(spacing: Theme.Spacing.sm) {
                         Text("Actions")
                             .font(Theme.Typography.bar)
@@ -1079,25 +1079,6 @@ private struct MenuCircleButton: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .frosted(in: Circle())
-    }
-}
-
-/// Footer button: bare label at rest, a faint capsule fill on hover.
-private struct BarButton<Label: View>: View {
-    let action: () -> Void
-    @ViewBuilder let label: Label
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            label
-                .padding(.horizontal, Theme.Spacing.md)
-                .frame(height: 28)
-                .contentShape(Capsule())
-                .background(Capsule().fill(hovered ? Theme.Colors.rowHover : Color.clear))
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
     }
 }
 

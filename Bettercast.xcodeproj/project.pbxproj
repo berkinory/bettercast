@@ -76,6 +76,7 @@
 		CE7CD295074E624920B8D921 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414EEC6C3328BEF5B7853844 /* HotKeyManager.swift */; };
 		D2C3EF7C6B2FA90F729F968D /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5FCCFFE79A086A53A5241C /* SettingsRootView.swift */; };
 		D463C910B3303EEB1ED488C2 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F40FDC7CCBCC56E63FC61 /* VisualEffectView.swift */; };
+		D4CAF1939352375AF0986686 /* PaletteFooterControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 688FB8AF98C458B59A9DE09A /* PaletteFooterControls.swift */; };
 		DC511B43191A0CD9BCA9A43E /* AppLeftovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A571F77F43BE087E77F50 /* AppLeftovers.swift */; };
 		E0503F78AA5C3BEFE56FE04E /* bettercast.icon in Resources */ = {isa = PBXBuildFile; fileRef = 283673A7061ED8B0DDACFE64 /* bettercast.icon */; };
 		E58ACC726904C61C57EC78DF /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A7BF060E9E5B90A571D346 /* EmojiSettingsView.swift */; };
@@ -129,6 +130,7 @@
 		5A7CA13A67D1F43B530B1DD5 /* BettercastApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BettercastApp.swift; sourceTree = "<group>"; };
 		5E0FE10714950EC82644EEB5 /* CurrencyRateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyRateStore.swift; sourceTree = "<group>"; };
 		62BF7AD3E7B96E6048FC1EFB /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalog.swift; sourceTree = "<group>"; };
+		688FB8AF98C458B59A9DE09A /* PaletteFooterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteFooterControls.swift; sourceTree = "<group>"; };
 		68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
 		6BD194B9214A93CBD66BD740 /* SystemCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommandRunner.swift; sourceTree = "<group>"; };
 		6EE602D0F879521C586FE8A4 /* EmojiData.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiData.generated.swift; sourceTree = "<group>"; };
@@ -369,6 +371,7 @@
 				4F5FF9F4A59E9FE0D27165BE /* Onboarding */,
 				94B1F72FE51AFBF483881AB5 /* Settings */,
 				974B78590CA581D375E841FD /* Uninstall */,
+				688FB8AF98C458B59A9DE09A /* PaletteFooterControls.swift */,
 				9376385A1BD5D2EF04F4BD9F /* PopoverMenu.swift */,
 				F2693267F9F03712FC1896C8 /* RootPaletteView.swift */,
 			);
@@ -521,6 +524,7 @@
 				0A3708F1D210874864AFD448 /* OnboardingState.swift in Sources */,
 				B1BEB7B2984F1501112ED966 /* OnboardingView.swift in Sources */,
 				E67F3FA3ED98BD0A355D0EB8 /* OverlayScroller.swift in Sources */,
+				D4CAF1939352375AF0986686 /* PaletteFooterControls.swift in Sources */,
 				24D1BE76CF9BEA44318E4C73 /* PalettePanel.swift in Sources */,
 				C6F6424177511C837D2B3934 /* PaletteWindowController.swift in Sources */,
 				9C356D7E4B34C5A8C8ADADA0 /* Paster.swift in Sources */,

@@ -671,22 +671,25 @@ private struct CameraView: View {
                 .frosted(in: Capsule())
                 Spacer()
                 HStack(spacing: Theme.Spacing.xs) {
-                    CameraButton(action: model.takePhoto) {
+                    PaletteBarButton(action: model.takePhoto) {
                         HStack(spacing: Theme.Spacing.sm) {
                             Text(model.isCapturing ? "Taking Photo…" : "Take Photo")
+                                .font(Theme.Typography.bar)
+                                .foregroundStyle(Theme.Colors.textPrimary)
                             KeyCapChip(text: "↵", style: .outline)
                         }
-                        .font(Theme.Typography.bar)
-                        .padding(.horizontal, Theme.Spacing.md)
                     }
                     .disabled(model.state != .ready || model.isCapturing)
-                    CameraButton(action: toggleMenu) {
+                    PaletteBarButton(action: toggleMenu) {
                         HStack(spacing: Theme.Spacing.sm) {
                             Text("Actions")
-                            KeyCapChip(text: "⌘K", style: .outline)
+                                .font(Theme.Typography.bar)
+                                .foregroundStyle(Theme.Colors.textSecondary)
+                            HStack(spacing: Theme.Spacing.xxs) {
+                                KeyCapChip(text: "⌘", style: .outline)
+                                KeyCapChip(text: "K", style: .outline)
+                            }
                         }
-                        .font(Theme.Typography.bar)
-                        .padding(.horizontal, Theme.Spacing.md)
                     }
                 }
                 .padding(Theme.Spacing.xs)
