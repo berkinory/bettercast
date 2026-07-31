@@ -206,7 +206,7 @@ struct AppIconView: View {
         case .searchEmoji: return Theme.Colors.emojiAccent
         case .clipboardHistory: return Theme.Colors.clipboardAccent
         case .settings: return Theme.Colors.systemAccent
-        case .quitAllApps, .quit: return Theme.Colors.textSecondary
+        case .quit: return Theme.Colors.textSecondary
         case nil: return Theme.Colors.textPrimary
         }
     }
@@ -282,12 +282,15 @@ enum AppActionsMenu {
                     core.showInFinder(app)
                 })
         }
-        if AppUninstaller.isEligible(app) {
+        if app.kind == .application,
+            app.url.standardizedFileURL.path != Bundle.main.bundleURL.standardizedFileURL.path,
+            AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
+        {
             items.append(
                 PopoverMenuItem(
-                    title: "Uninstall Application", systemImage: "trash", isDestructive: true
+                    title: "Uninstall Application", systemImage: "trash", shortcut: "⌃⌫", isDestructive: true
                 ) {
-                    core.uninstall(app)
+                    core.beginUninstall(app)
                 })
         }
         if running, app.kind == .application {

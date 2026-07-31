@@ -13,7 +13,9 @@
 		0FC618A5BD62270AD1DBA589 /* NotificationToken.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A52AB60AC0DA311543DA8A1 /* NotificationToken.swift */; };
 		1157092B53EC95C5FCA2665C /* EdgeDissolve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F7212A045E6635C4459BCB7 /* EdgeDissolve.swift */; };
 		13F6BFCF3B015F734318A1C8 /* CalcParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238C67714B196D0C97CD9F81 /* CalcParser.swift */; };
+		196DD7C73976C04C259E9C6A /* SystemCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DF4D8F11F8350307C08617F /* SystemCommand.swift */; };
 		1CF87DFA47B9810C11714D38 /* HotKeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB305954F02474FD2B47711E /* HotKeyCenter.swift */; };
+		1D246CCF6A9C8CC5CEEA5CD3 /* UninstallSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 236C0EEF6E5C9D6A0B5F1EB2 /* UninstallSession.swift */; };
 		1D7FF5656EC31CBAD890DBC6 /* ShortcutsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A1A7233ACE9F9F13E44406 /* ShortcutsSettingsView.swift */; };
 		1F022B9A8EF05A684E7B7196 /* CalcEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6DDA1B877EA4F3EA37886 /* CalcEngine.swift */; };
 		2346CE4545350475720868A4 /* CalcFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D59FE8F4ACB2CEBAF069E2 /* CalcFormatter.swift */; };
@@ -36,8 +38,10 @@
 		54375480000C30BF076157C3 /* NativeConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34AC9115FB0C14111124A93 /* NativeConfirmation.swift */; };
 		56260949EB7B12582FF87672 /* CommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031A1FF2068559E3C45253A5 /* CommandRegistry.swift */; };
 		572B8FF9DDD48DE02D96F2D1 /* EmojiGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE6486377890F8088F39B8C /* EmojiGridView.swift */; };
+		5F728773A7362AEFEDDE6E98 /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75A95943AC11B2FAC72F885 /* UninstallView.swift */; };
 		64AEF278B0BB2F6EADC0D270 /* CurrencyData.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB9E8CB9928E96E71378FA4 /* CurrencyData.generated.swift */; };
 		6585098AF27A847889723BDB /* ThinScrollbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF61A2A87E5AD6147E99044 /* ThinScrollbar.swift */; };
+		66D91D2C2CE263C6AC2B7927 /* SystemCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD194B9214A93CBD66BD740 /* SystemCommandRunner.swift */; };
 		66F7CAC07467B8F0D2DFA9E3 /* LauncherSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F40E434C8B8B4A4FD775F4 /* LauncherSettingsView.swift */; };
 		67573D5F4F4F622F181A2ECC /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00A3A31E3AADB3F9DBCFC794 /* Permissions.swift */; };
 		693EB1B8180233DFA9BBC606 /* SettingsSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2487E1E33168F9BDE2D767B7 /* SettingsSearchIndex.swift */; };
@@ -60,7 +64,6 @@
 		B0117926CB7A3A0F7830B749 /* CalculatorSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7C6CDA619606F08F7A8551 /* CalculatorSettingsView.swift */; };
 		B1BEB7B2984F1501112ED966 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4532B611E46FC4B03AF92D1A /* OnboardingView.swift */; };
 		B274EF4A97CA03A399FC1BF4 /* SettingsPaneScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 923775C70BCE3925DE5CCB42 /* SettingsPaneScanner.swift */; };
-		B43CB63645F4CBF3462C86AE /* AppUninstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DAE1F03988D52499A48F105 /* AppUninstaller.swift */; };
 		B8B59DDD8642E31DE4991207 /* AppCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51996F28EC8A0B1DB1F37D4 /* AppCore.swift */; };
 		BB0D28528A86F4FD0567131C /* VisibilityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 478F9351A825ABC574F67748 /* VisibilityStore.swift */; };
 		BEA874CE3FEE78EA1F1BA5BE /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265BAF7566BAD9205D7DA372 /* LaunchAtLogin.swift */; };
@@ -69,6 +72,7 @@
 		CE7CD295074E624920B8D921 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414EEC6C3328BEF5B7853844 /* HotKeyManager.swift */; };
 		D2C3EF7C6B2FA90F729F968D /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5FCCFFE79A086A53A5241C /* SettingsRootView.swift */; };
 		D463C910B3303EEB1ED488C2 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85F40FDC7CCBCC56E63FC61 /* VisualEffectView.swift */; };
+		DC511B43191A0CD9BCA9A43E /* AppLeftovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A571F77F43BE087E77F50 /* AppLeftovers.swift */; };
 		E0503F78AA5C3BEFE56FE04E /* bettercast.icon in Resources */ = {isa = PBXBuildFile; fileRef = 283673A7061ED8B0DDACFE64 /* bettercast.icon */; };
 		E58ACC726904C61C57EC78DF /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A7BF060E9E5B90A571D346 /* EmojiSettingsView.swift */; };
 		E67F3FA3ED98BD0A355D0EB8 /* OverlayScroller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */; };
@@ -90,7 +94,10 @@
 		16F8497887F37D47F37D5681 /* FrequentEmojiStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrequentEmojiStore.swift; sourceTree = "<group>"; };
 		196F9EF01154C3EC0E98149A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1CB6CA4A9FC2DDCA51D7D88C /* PalettePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalettePanel.swift; sourceTree = "<group>"; };
+		1DF4D8F11F8350307C08617F /* SystemCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommand.swift; sourceTree = "<group>"; };
 		2029AB5A8DCF7801DFC115B9 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
+		209A571F77F43BE087E77F50 /* AppLeftovers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLeftovers.swift; sourceTree = "<group>"; };
+		236C0EEF6E5C9D6A0B5F1EB2 /* UninstallSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallSession.swift; sourceTree = "<group>"; };
 		238C67714B196D0C97CD9F81 /* CalcParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcParser.swift; sourceTree = "<group>"; };
 		2487E1E33168F9BDE2D767B7 /* SettingsSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSearchIndex.swift; sourceTree = "<group>"; };
 		26067FCBCC1B174C888C8A83 /* ClipboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardView.swift; sourceTree = "<group>"; };
@@ -115,10 +122,10 @@
 		50D59FE8F4ACB2CEBAF069E2 /* CalcFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcFormatter.swift; sourceTree = "<group>"; };
 		51F1F0CFAC79C7BBF5226D61 /* KeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyShortcut.swift; sourceTree = "<group>"; };
 		5A7CA13A67D1F43B530B1DD5 /* BettercastApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BettercastApp.swift; sourceTree = "<group>"; };
-		5DAE1F03988D52499A48F105 /* AppUninstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUninstaller.swift; sourceTree = "<group>"; };
 		5E0FE10714950EC82644EEB5 /* CurrencyRateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyRateStore.swift; sourceTree = "<group>"; };
 		62BF7AD3E7B96E6048FC1EFB /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalog.swift; sourceTree = "<group>"; };
 		68F8C3BC3B44EC9C46467C62 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
+		6BD194B9214A93CBD66BD740 /* SystemCommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemCommandRunner.swift; sourceTree = "<group>"; };
 		6EE602D0F879521C586FE8A4 /* EmojiData.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiData.generated.swift; sourceTree = "<group>"; };
 		71E47B17BEE8AD96599566C0 /* RightClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightClick.swift; sourceTree = "<group>"; };
 		7B5FCCFFE79A086A53A5241C /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
@@ -146,6 +153,7 @@
 		D62E2F6E52CA165BF004E1F1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		D654428D9513269E8BFF8974 /* PermissionsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsSettingsView.swift; sourceTree = "<group>"; };
 		D6B10EFBFC2FC71096F6F398 /* LauncherRankingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherRankingStore.swift; sourceTree = "<group>"; };
+		D75A95943AC11B2FAC72F885 /* UninstallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallView.swift; sourceTree = "<group>"; };
 		DB305954F02474FD2B47711E /* HotKeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyCenter.swift; sourceTree = "<group>"; };
 		DFF61A2A87E5AD6147E99044 /* ThinScrollbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinScrollbar.swift; sourceTree = "<group>"; };
 		E4BD69733E927F963EB8E480 /* ClipboardSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSettingsView.swift; sourceTree = "<group>"; };
@@ -184,8 +192,8 @@
 				F51996F28EC8A0B1DB1F37D4 /* AppCore.swift */,
 				FFFD20F5ADAC4FA10AF765C5 /* AppIndex.swift */,
 				9B958BE256565B0B93D47C3A /* AppLauncher.swift */,
+				209A571F77F43BE087E77F50 /* AppLeftovers.swift */,
 				3714BB0D0102E507DF9174D4 /* AppSettings.swift */,
-				5DAE1F03988D52499A48F105 /* AppUninstaller.swift */,
 				EC44B7DB01BAA4B55129CBC5 /* Bundle+AppName.swift */,
 				828E4F96599556B426BD8DB9 /* ClipboardManager.swift */,
 				0C55C633002654B962059B01 /* ClipboardStore.swift */,
@@ -209,8 +217,11 @@
 				89915E4CB7B21D04E4A04B40 /* RunningApps.swift */,
 				923775C70BCE3925DE5CCB42 /* SettingsPaneScanner.swift */,
 				2487E1E33168F9BDE2D767B7 /* SettingsSearchIndex.swift */,
+				1DF4D8F11F8350307C08617F /* SystemCommand.swift */,
+				6BD194B9214A93CBD66BD740 /* SystemCommandRunner.swift */,
 				D62E2F6E52CA165BF004E1F1 /* Theme.swift */,
 				DFF61A2A87E5AD6147E99044 /* ThinScrollbar.swift */,
+				236C0EEF6E5C9D6A0B5F1EB2 /* UninstallSession.swift */,
 				478F9351A825ABC574F67748 /* VisibilityStore.swift */,
 				B85F40FDC7CCBCC56E63FC61 /* VisualEffectView.swift */,
 			);
@@ -297,6 +308,14 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		974B78590CA581D375E841FD /* Uninstall */ = {
+			isa = PBXGroup;
+			children = (
+				D75A95943AC11B2FAC72F885 /* UninstallView.swift */,
+			);
+			path = Uninstall;
+			sourceTree = "<group>";
+		};
 		98EA3D7CF503CCC7D370E29E /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -313,6 +332,13 @@
 			path = Clipboard;
 			sourceTree = "<group>";
 		};
+		B41C11E135D708EB8B966AA4 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		B5C8EEACB8F8808978376F94 /* Features */ = {
 			isa = PBXGroup;
 			children = (
@@ -322,6 +348,7 @@
 				563ACF065C06C68503A93524 /* Launcher */,
 				4F5FF9F4A59E9FE0D27165BE /* Onboarding */,
 				94B1F72FE51AFBF483881AB5 /* Settings */,
+				974B78590CA581D375E841FD /* Uninstall */,
 				9376385A1BD5D2EF04F4BD9F /* PopoverMenu.swift */,
 				F2693267F9F03712FC1896C8 /* RootPaletteView.swift */,
 			);
@@ -334,6 +361,7 @@
 				1A32D85DC9AADD7BC978E5C9 /* App */,
 				35E9857F5A7CBAD11367166C /* Core */,
 				B5C8EEACB8F8808978376F94 /* Features */,
+				B41C11E135D708EB8B966AA4 /* Resources */,
 				BE71FE62E9575376ED9165ED /* Assets.xcassets */,
 				82B53C15DDD7788A332252A1 /* Bettercast.entitlements */,
 				283673A7061ED8B0DDACFE64 /* bettercast.icon */,
@@ -426,8 +454,8 @@
 				086BCBAB1D32A0DA84C0A50D /* AppDelegate.swift in Sources */,
 				4E86B6CE006858D187EDDA21 /* AppIndex.swift in Sources */,
 				F212ACD48FBECFF74F47A0A6 /* AppLauncher.swift in Sources */,
+				DC511B43191A0CD9BCA9A43E /* AppLeftovers.swift in Sources */,
 				9745871BDB1CB45E7E0FE048 /* AppSettings.swift in Sources */,
-				B43CB63645F4CBF3462C86AE /* AppUninstaller.swift in Sources */,
 				FB7B61A0D75D54668A40C633 /* BettercastApp.swift in Sources */,
 				4A021DCD2DA1748EEDECE318 /* Bundle+AppName.swift in Sources */,
 				938BDBBFC18C241C0658D207 /* CalcCurrency.swift in Sources */,
@@ -486,8 +514,12 @@
 				C473931F7AE0FBCD86D9530E /* SettingsSearchView.swift in Sources */,
 				6C32BF73BEFEC61C5318E918 /* ShortcutRecorder.swift in Sources */,
 				1D7FF5656EC31CBAD890DBC6 /* ShortcutsSettingsView.swift in Sources */,
+				196DD7C73976C04C259E9C6A /* SystemCommand.swift in Sources */,
+				66D91D2C2CE263C6AC2B7927 /* SystemCommandRunner.swift in Sources */,
 				7474B7E97033FB3B1AB7C323 /* Theme.swift in Sources */,
 				6585098AF27A847889723BDB /* ThinScrollbar.swift in Sources */,
+				1D246CCF6A9C8CC5CEEA5CD3 /* UninstallSession.swift in Sources */,
+				5F728773A7362AEFEDDE6E98 /* UninstallView.swift in Sources */,
 				BB0D28528A86F4FD0567131C /* VisibilityStore.swift in Sources */,
 				D463C910B3303EEB1ED488C2 /* VisualEffectView.swift in Sources */,
 			);
