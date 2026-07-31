@@ -1,6 +1,6 @@
 # Development
 
-How to build and test Bettercast.
+How to build and test Opencast.
 
 ## Requirements
 
@@ -22,11 +22,11 @@ the semantic checker; `make` runs formatting checks, standalone tests, and a bui
 
 ```sh
 make check                                # lint + tests + Debug build
-make format                               # format Bettercast/ and Tools/
+make format                               # format Opencast/ and Tools/
 make lint
 make build                                # local unsigned Debug build
-make run                                  # build and launch Bettercast Dev
-make generate                             # regenerate Bettercast.xcodeproj from project.yml
+make run                                  # build and launch Opencast Dev
+make generate                             # regenerate Opencast.xcodeproj from project.yml
 ```
 
 Install the local tools once with `brew install swift-format xcodegen`.
@@ -36,7 +36,7 @@ Install the local tools once with `brew install swift-format xcodegen`.
 Open the project in Xcode for editing:
 
 ```sh
-open Bettercast.xcodeproj
+open Opencast.xcodeproj
 ```
 
 For a local run without an Apple account:
@@ -49,13 +49,13 @@ make run
 Xcode, prefix with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (the SwiftUI
 `@State`/`@FocusState` macros need Xcode's macOS platform).
 
-`Bettercast.xcodeproj` is committed and generated from `project.yml` via
+`Opencast.xcodeproj` is committed and generated from `project.yml` via
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) — after changing project settings in `project.yml`,
 run `xcodegen generate` and commit the result.
 
 ### The dev build
 
-Debug builds are isolated from the release: **`Bettercast Dev.app`**, bundle id `com.bettercast.app.dev`. Since
+Debug builds are isolated from the release: **`Opencast Dev.app`**, bundle id `com.opencast.app.dev`. Since
 every persisted thing is keyed by bundle
 id — `~/Library/Preferences/<id>.plist` (settings + hotkey bindings),
 `~/Library/Caches/<id>/` (clipboard history, exchange rates, frequent emoji),
@@ -77,7 +77,7 @@ once (it's machine-specific and git-ignored):
 
 ```sh
 brew install xcode-build-server
-xcode-build-server config -project Bettercast.xcodeproj -scheme Bettercast \
+xcode-build-server config -project Opencast.xcodeproj -scheme Opencast \
     --build_root "$PWD/build/DerivedData"
 ```
 
@@ -91,19 +91,19 @@ There's no XCTest target. Standalone harnesses:
 
 ```sh
 swift Tools/fuzz-test.swift                                        # launcher fuzzy matcher
-swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift \
+swiftc -swift-version 6 Opencast/Core/LauncherRankingStore.swift Tools/ranking-test.swift \
     -o /tmp/ranking-test && /tmp/ranking-test                      # learned launcher ranking
-swiftc -swift-version 6 Bettercast/Core/SearchScopes.swift Tools/scopes-test.swift \
+swiftc -swift-version 6 Opencast/Core/SearchScopes.swift Tools/scopes-test.swift \
     -o /tmp/scopes-test && /tmp/scopes-test                       # launcher search scopes
-swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift \
+swiftc Opencast/Core/Calculator/*.swift Tools/calc-test.swift \
     -o /tmp/calc-test && /tmp/calc-test                           # calculator engine
-swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
+swiftc -swift-version 6 Opencast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
     -o /tmp/clipboard-test && /tmp/clipboard-test                 # clipboard store
 ```
 
-`Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Bettercast/Core/AppIndex.swift` —
+`Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Opencast/Core/AppIndex.swift` —
 change the scoring in one and mirror it in the other. The calc harness compiles the real engine
-sources, which is why `Bettercast/Core/Calculator/` must stay Foundation-only.
+sources, which is why `Opencast/Core/Calculator/` must stay Foundation-only.
 
 The clipboard harness likewise compiles the real `ClipboardStore.swift`, so that file must keep to
 Foundation + SQLite3 and depend on no other app source. Each case drives a store rooted in a
@@ -115,8 +115,8 @@ Two Swift files are emitted by scripts and must never be hand-edited. Both downl
 run them online, then commit the result:
 
 ```sh
-node Tools/gen-emoji.js            # -> Bettercast/Core/Emoji/EmojiData.generated.swift
-node Tools/gen-currencies.js       # -> Bettercast/Core/Calculator/CurrencyData.generated.swift
+node Tools/gen-emoji.js            # -> Opencast/Core/Emoji/EmojiData.generated.swift
+node Tools/gen-currencies.js       # -> Opencast/Core/Calculator/CurrencyData.generated.swift
 ```
 
 `gen-currencies.js` joins two sources on the ISO code: **Frankfurter**'s currency list (the same feed

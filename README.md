@@ -1,10 +1,10 @@
-# Bettercast
+# Opencast
 
 A tiny, fully native macOS launcher — the essentials, without the bloat.
 
 <p align="center">
   <a href="https://discord.gg/v2Eeb4QQy3">
-    <img alt="Join the Bettercast Discord"
+    <img alt="Join the Opencast Discord"
          src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white"></a>
   <a href="mailto:iabueammar@gmail.com?subject=Hiring%20enquiry">
     <img alt="Hire me — iabueammar@gmail.com"
@@ -16,7 +16,7 @@ A tiny, fully native macOS launcher — the essentials, without the bloat.
 
 <!-- Screenshot placeholder — drop the real image at docs/screenshot.png -->
 <p align="center">
-  <img src="docs/screenshot.png" alt="Bettercast command palette" width="720">
+  <img src="docs/screenshot.png" alt="Opencast command palette" width="720">
 </p>
 
 Around **3 MB on disk** and **under 100 MB of RAM** — no Electron, no telemetry, no background
@@ -33,11 +33,11 @@ CPU churn. Just SwiftUI + AppKit with zero dependencies. It's fast because there
 
 ## Install
 
-Bettercast is not distributed yet. Build it from source with Xcode 26:
+Opencast is not distributed yet. Build it from source with Xcode 26:
 
 ```sh
 xcodegen generate
-xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug \
+xcodebuild -project Opencast.xcodeproj -scheme Opencast -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
@@ -46,13 +46,13 @@ attribution remain in this repository.
 
 ## Permissions
 
-**Accessibility** — needed only so Bettercast can paste a clipboard item back into the app you
+**Accessibility** — needed only so Opencast can paste a clipboard item back into the app you
 came from. You're prompted the first time you paste; grant it in **System Settings → Privacy &
 Security → Accessibility**.
 
 ## Using it
 
-1. Open **Settings → General** and record a global shortcut to summon Bettercast.
+1. Open **Settings → General** and record a global shortcut to summon Opencast.
 2. Press it anywhere → the palette floats in. Type to filter, **↵** to launch.
 3. **Tab** switches between Apps and Clipboard; **↑/↓** move, **Esc** dismisses.
 4. **Settings → App Hotkeys** — search an app and record a shortcut to toggle it.
@@ -72,7 +72,7 @@ Questions, ideas, or just want to follow along? **[Join the Discord](https://dis
 
 ## Contributors
 
-Bettercast builds on the work of the [upstream contributors](https://github.com/abue-ammar/tinycast/graphs/contributors).
+Opencast builds on the work of the [upstream contributors](https://github.com/abue-ammar/tinycast/graphs/contributors).
 
 ## License
 

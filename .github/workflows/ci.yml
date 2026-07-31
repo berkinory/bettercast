@@ -4,18 +4,18 @@ on:
   push:
     branches: [main]
     paths:
-      - "Bettercast/**"
+      - "Opencast/**"
       - "Tools/**"
-      - "Bettercast.xcodeproj/**"
+      - "Opencast.xcodeproj/**"
       - "project.yml"
       - "Makefile"
       - ".swift-format.json"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
-      - "Bettercast/**"
+      - "Opencast/**"
       - "Tools/**"
-      - "Bettercast.xcodeproj/**"
+      - "Opencast.xcodeproj/**"
       - "project.yml"
       - "Makefile"
       - ".swift-format.json"

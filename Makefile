@@ -2,15 +2,15 @@
 
 SHELL := /bin/bash
 
-PROJECT := Bettercast.xcodeproj
-SCHEME := Bettercast
+PROJECT := Opencast.xcodeproj
+SCHEME := Opencast
 CONFIGURATION ?= Debug
 DERIVED_DATA ?= build/DerivedData
 TEST_BIN_DIR := build/tests
 SWIFT_FORMAT ?= swift-format
 CODE_SIGNING_ALLOWED ?= NO
 
-SWIFT_FILES := $(shell find Bettercast Tools -type f -name '*.swift' ! -name '*generated.swift' -print)
+SWIFT_FILES := $(shell find Opencast Tools -type f -name '*.swift' ! -name '*generated.swift' -print)
 
 .PHONY: check tools format lint build run release unsigned-dmg test generate clean
 
@@ -33,9 +33,9 @@ build: tools
 
 run: CONFIGURATION=Debug
 run: build
-	@killall "Bettercast Dev" 2>/dev/null || true
-	@while pgrep -x "Bettercast Dev" >/dev/null; do sleep 0.1; done
-	open -n "$(DERIVED_DATA)/Build/Products/Debug/Bettercast Dev.app"
+	@killall "Opencast Dev" 2>/dev/null || true
+	@while pgrep -x "Opencast Dev" >/dev/null; do sleep 0.1; done
+	open -n "$(DERIVED_DATA)/Build/Products/Debug/Opencast Dev.app"
 
 release:
 	./build-dmg.sh
@@ -46,23 +46,23 @@ unsigned-dmg:
 test: tools
 	@mkdir -p $(TEST_BIN_DIR)
 	cp Tools/fuzz-test.swift $(TEST_BIN_DIR)/main.swift
-	swiftc -swift-version 6 Bettercast/Core/Romanization.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/fuzz-test
+	swiftc -swift-version 6 Opencast/Core/Romanization.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/fuzz-test
 	$(TEST_BIN_DIR)/fuzz-test
-	swiftc -swift-version 6 Bettercast/Core/SettingsSearchIndex.swift Tools/settings-search-test.swift -o $(TEST_BIN_DIR)/settings-search-test
+	swiftc -swift-version 6 Opencast/Core/SettingsSearchIndex.swift Tools/settings-search-test.swift -o $(TEST_BIN_DIR)/settings-search-test
 	$(TEST_BIN_DIR)/settings-search-test
-	swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test
+	swiftc -swift-version 6 Opencast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test
 	$(TEST_BIN_DIR)/ranking-test
-	swiftc -swift-version 6 Bettercast/Core/SearchScopes.swift Tools/scopes-test.swift -o $(TEST_BIN_DIR)/scopes-test
+	swiftc -swift-version 6 Opencast/Core/SearchScopes.swift Tools/scopes-test.swift -o $(TEST_BIN_DIR)/scopes-test
 	$(TEST_BIN_DIR)/scopes-test
-	swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift -o $(TEST_BIN_DIR)/calc-test
+	swiftc Opencast/Core/Calculator/*.swift Tools/calc-test.swift -o $(TEST_BIN_DIR)/calc-test
 	$(TEST_BIN_DIR)/calc-test
-	swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift -o $(TEST_BIN_DIR)/clipboard-test
+	swiftc -swift-version 6 Opencast/Core/ClipboardStore.swift Tools/clipboard-test.swift -o $(TEST_BIN_DIR)/clipboard-test
 	$(TEST_BIN_DIR)/clipboard-test
-	swiftc Bettercast/Core/Emoji/EmojiCatalog.swift Bettercast/Core/Emoji/EmojiGridGeometry.swift Bettercast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o $(TEST_BIN_DIR)/emoji-test
+	swiftc Opencast/Core/Emoji/EmojiCatalog.swift Opencast/Core/Emoji/EmojiGridGeometry.swift Opencast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o $(TEST_BIN_DIR)/emoji-test
 	$(TEST_BIN_DIR)/emoji-test
-	swiftc -swift-version 6 Bettercast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
+	swiftc -swift-version 6 Opencast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
 	$(TEST_BIN_DIR)/system-command-test
-	swiftc -swift-version 6 Bettercast/Core/HotKey/DoubleCommandDetector.swift Tools/hotkey-test.swift -o $(TEST_BIN_DIR)/hotkey-test
+	swiftc -swift-version 6 Opencast/Core/HotKey/DoubleCommandDetector.swift Tools/hotkey-test.swift -o $(TEST_BIN_DIR)/hotkey-test
 	$(TEST_BIN_DIR)/hotkey-test
 
 generate:

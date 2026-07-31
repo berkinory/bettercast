@@ -3,11 +3,11 @@
 This document is for maintainers who publish official releases. Contributors and self-hosters do not need
 these credentials.
 
-Bettercast has two signing paths:
+Opencast has two signing paths:
 
 | build | identity | hardened runtime | notarization |
 | --- | --- | --- | --- |
-| Debug / `Bettercast Dev.app` | unsigned by default; Apple Development optional | off | no |
+| Debug / `Opencast Dev.app` | unsigned by default; Apple Development optional | off | no |
 | Release | Developer ID Application | on | yes |
 
 Debug and release use separate bundle identifiers. Debug is for local development and permissions; release
@@ -51,7 +51,7 @@ directory. Then save a notarytool keychain profile; the private key stays in Key
 Services instead of being passed in every build command:
 
 ```sh
-xcrun notarytool store-credentials bettercast-notary \
+xcrun notarytool store-credentials opencast-notary \
   --key ~/Library/Developer/AuthKey_XXXXXXXXXX.p8 \
   --key-id XXXXXXXXXX \
   --issuer 00000000-0000-0000-0000-000000000000
@@ -60,7 +60,7 @@ xcrun notarytool store-credentials bettercast-notary \
 Check the profile without submitting anything:
 
 ```sh
-xcrun notarytool history --keychain-profile bettercast-notary
+xcrun notarytool history --keychain-profile opencast-notary
 ```
 
 The first command may return an empty history. That is a valid credential check; authentication errors
@@ -114,7 +114,7 @@ Export the Developer ID identity from Xcode's **Manage Certificates…** as a `.
 line breaks before adding the secret:
 
 ```sh
-base64 -i ~/Downloads/BettercastDeveloperID.p12 | tr -d '\n' | pbcopy
+base64 -i ~/Downloads/OpencastDeveloperID.p12 | tr -d '\n' | pbcopy
 ```
 
 Paste that value into `DEVELOPER_ID_P12_BASE64`. Keep the `.p12` password in
@@ -146,7 +146,7 @@ Apple Development signing for Debug, but it is not required.
 Run these checks against a release artifact before publishing it:
 
 ```sh
-APP="build/DerivedData/Build/Products/Release/Bettercast.app"
+APP="build/DerivedData/Build/Products/Release/Opencast.app"
 codesign --verify --deep --strict --verbose=2 "$APP"
 xcrun stapler validate "$APP"
 spctl --assess --type execute --verbose=4 "$APP"
@@ -168,6 +168,6 @@ still be affected by a stale quarantine attribute; inspect first and clear it on
 that specific issue:
 
 ```sh
-xattr -l "/Applications/Bettercast.app"
-xattr -dr com.apple.quarantine "/Applications/Bettercast.app"
+xattr -l "/Applications/Opencast.app"
+xattr -dr com.apple.quarantine "/Applications/Opencast.app"
 ```

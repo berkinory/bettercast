@@ -5,7 +5,7 @@
 
 ## Search scopes
 
-`SearchScopes` owns the folders and individual `.app` bundles Bettercast indexes. The list is editable
+`SearchScopes` owns the folders and individual `.app` bundles Opencast indexes. The list is editable
 under Settings → Launcher → Search and stored as tilde-abbreviated paths in `AppSettings`.
 
 Enumeration is flat: one directory listing per scope, with no recursive walk. Add a nested folder as its
@@ -44,7 +44,7 @@ invalidates the cached order. `rank` resolves the query and global affinity tabl
 fold and one clock read per table, not per candidate.
 
 > **Invariant:** `Tools/fuzz-test.swift` contains a **copy** of `FuzzyMatch` from
-> `Bettercast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test
+> `Opencast/Core/AppIndex.swift`. If you change the scoring in one, mirror it in the other or the test
 > is meaningless.
 
 The ranking harness covers prefix learning, frequency/recency scoring, persistence, and both reset
@@ -54,9 +54,9 @@ Icons go through a count-capped `NSCache` (`IconCache`).
 
 ## Uninstall Application
 
-Application actions include a guarded uninstall flow. Bettercast identifies the app bundle by its path and bundle ID, checks common per-user remnants in Application Support, Caches, Containers, Group Containers, preferences, saved state, logs, WebKit, HTTP storage, and user launch agents, then shows the exact paths before confirmation. The app and confirmed user files are moved to the Trash, not permanently deleted. Running apps are asked to quit first. System-owned remnants are reported but left untouched when administrator authorization would be required.
+Application actions include a guarded uninstall flow. Opencast identifies the app bundle by its path and bundle ID, checks common per-user remnants in Application Support, Caches, Containers, Group Containers, preferences, saved state, logs, WebKit, HTTP storage, and user launch agents, then shows the exact paths before confirmation. The app and confirmed user files are moved to the Trash, not permanently deleted. Running apps are asked to quit first. System-owned remnants are reported but left untouched when administrator authorization would be required.
 
-Matching is conservative: Bettercast uses exact bundle-ID/name matches and does not recursively sweep arbitrary home-directory data. This avoids the dangerous false positives that generic name-based cleanup can cause.
+Matching is conservative: Opencast uses exact bundle-ID/name matches and does not recursively sweep arbitrary home-directory data. This avoids the dangerous false positives that generic name-based cleanup can cause.
 
 ## Reveal in Finder
 
@@ -74,7 +74,7 @@ running dot and the availability of the quit actions:
   anything was running; the palette only dismisses when something was, and it restores focus unless
   the app it just quit *was* `previousApp`.
 - **Quit All Applications** — a Command. `AppLauncher.quitAllTargets()` is the policy (every
-  `.regular` app except Finder — `terminate()` only relaunches it — and Bettercast, excluded by PID
+  `.regular` app except Finder — `terminate()` only relaunches it — and Opencast, excluded by PID
   because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()` resolves that
   list **once**, confirms it with an `NSAlert`, then terminates exactly what was confirmed. The palette
   hides before the alert — it is a floating panel and would sit above it.

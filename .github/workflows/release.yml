@@ -1,7 +1,7 @@
 name: Release
 
 # The release is automatic only for a version change pushed to main by berkinory.
-run-name: "Bettercast release #${{ github.run_number }}"
+run-name: "Opencast release #${{ github.run_number }}"
 
 on:
   push:
@@ -78,10 +78,10 @@ jobs:
           fi
           {
             echo "version=${VERSION}"
-            echo "display_name=Bettercast"
-            echo "bundle_id=com.bettercast.app"
-            echo "cask_name=bettercast"
-            echo "dmg_file=Bettercast-${VERSION}.dmg"
+            echo "display_name=Opencast"
+            echo "bundle_id=com.opencast.app"
+            echo "cask_name=opencast"
+            echo "dmg_file=Opencast-${VERSION}.dmg"
           } >> "$GITHUB_OUTPUT"
 
       # Import the Developer ID Application identity into an ephemeral keychain.
@@ -111,7 +111,7 @@ jobs:
           BUNDLE_ID: ${{ steps.meta.outputs.bundle_id }}
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Release \
+          xcodebuild -project Opencast.xcodeproj -scheme Opencast -configuration Release \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" \
             OTHER_CODE_SIGN_FLAGS="--timestamp" \
@@ -203,7 +203,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: Bettercast-${{ steps.meta.outputs.version }}
+          name: Opencast-${{ steps.meta.outputs.version }}
           path: dist/${{ steps.meta.outputs.dmg_file }}
 
       - name: Publish GitHub Release
@@ -213,7 +213,7 @@ jobs:
           TAG="v${{ steps.meta.outputs.version }}"
           gh release create "$TAG" \
             "dist/${{ steps.meta.outputs.dmg_file }}" \
-            --title "Bettercast ${{ steps.meta.outputs.version }}" \
+            --title "Opencast ${{ steps.meta.outputs.version }}" \
             --notes "**Version:** ${{ steps.meta.outputs.version }}
           **Bundle ID:** \`${{ steps.meta.outputs.bundle_id }}\`
           Built from ${{ github.sha }}.
@@ -280,7 +280,7 @@ jobs:
           jq -n \
             --argjson color "${COLOR}" \
             --arg heading "## 🚀 ${DISPLAY_NAME} ${VERSION}" \
-            --arg sub "Now available as the latest Bettercast release." \
+            --arg sub "Now available as the latest Opencast release." \
             --arg install "${INSTALL}" \
             --arg url "${RELEASE_URL}" \
             '{

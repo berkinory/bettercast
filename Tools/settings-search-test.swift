@@ -4,7 +4,7 @@ private let records = [
     SettingsSearchRecord(
         id: "login",
         title: "Launch at Login",
-        detail: "Start Bettercast when you log in.",
+        detail: "Start Opencast when you log in.",
         breadcrumb: "General",
         keywords: ["startup", "boot", "login item"]
     ),
@@ -25,7 +25,7 @@ private let records = [
     SettingsSearchRecord(
         id: "accessibility",
         title: "Accessibility Permission",
-        detail: "Allow Bettercast to paste into the previous app.",
+        detail: "Allow Opencast to paste into the previous app.",
         breadcrumb: "Permissions",
         keywords: ["privacy", "security", "grant access"]
     ),

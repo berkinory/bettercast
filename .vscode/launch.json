@@ -7,10 +7,10 @@
       // -derivedDataPath used by the build task.
       "type": "swift",
       "request": "launch",
-      "name": "Run Bettercast Dev (bundled .app)",
-      "program": "${workspaceFolder}/build/DerivedData/Build/Products/Debug/Bettercast Dev.app/Contents/MacOS/Bettercast Dev",
+      "name": "Run Opencast Dev (bundled .app)",
+      "program": "${workspaceFolder}/build/DerivedData/Build/Products/Debug/Opencast Dev.app/Contents/MacOS/Opencast Dev",
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "Build Bettercast.app (debug)"
+      "preLaunchTask": "Build Opencast.app (debug)"
     }
   ]
 }

@@ -20,8 +20,8 @@ A palette sub-screen (reached like Clipboard) presenting a searchable emoji grid
   `Tools/emoji-test.swift` harness compiles the real sources:
 
   ```sh
-  swiftc Bettercast/Core/Emoji/EmojiCatalog.swift Bettercast/Core/Emoji/EmojiGridGeometry.swift \
-    Bettercast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o /tmp/emoji-test && /tmp/emoji-test
+  swiftc Opencast/Core/Emoji/EmojiCatalog.swift Opencast/Core/Emoji/EmojiGridGeometry.swift \
+    Opencast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o /tmp/emoji-test && /tmp/emoji-test
   ```
 
 - The grid list uses the palette scrollbar (`.thinScrollbar()` + `.hideNativeScrollers()`) and the

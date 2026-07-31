@@ -99,14 +99,14 @@ Settings shows the last fiat and crypto sync independently. Manual rate refresh 
 Rates come from `CurrencyRateStore` (`Core/`, owned by `AppCore`). Fiat rates come from
 [Frankfurter](https://frankfurter.dev) — open source, no key, no account, no quota, rates blended
 from 84 central banks. Crypto rates are optional and come from [CoinGecko](https://www.coingecko.com).
-When crypto is off, Bettercast does not contact CoinGecko. Fiat uses one `GET api.frankfurter.dev/v2/rates?base=USD`, ~1.4 KB gzipped. v2 answers
+When crypto is off, Opencast does not contact CoinGecko. Fiat uses one `GET api.frankfurter.dev/v2/rates?base=USD`, ~1.4 KB gzipped. v2 answers
 with one flat `{date, base, quote, rate}` row per pair rather than a keyed table, and omits the
 base's own row — the store folds both into the `[code: rate]` shape `CurrencyRates` stores.
 
 The merged fiat + crypto table is cached at `~/Library/Caches/<bundle-id>/currency-rates.json`, refreshed
 every three hours with a 15-minute retry after a failure. One small Frankfurter request and one small
 CoinGecko `/simple/price` request update the snapshot. Age is measured from the persisted `fetchedAt`,
-not from launch, so relaunching Bettercast never re-fetches a snapshot that is still fresh. Offline, the last snapshot keeps answering; with no snapshot at all
+not from launch, so relaunching Opencast never re-fetches a snapshot that is still fresh. Offline, the last snapshot keeps answering; with no snapshot at all
 the card says so rather than guessing, and a currency the feed doesn't quote reports
 `No exchange rate for <CODE>.` The store hands `CalcEngine.evaluate` a finished `CurrencyRates`
 value — the engine never fetches, which is what keeps it Foundation-only and testable. `CalcMemo`

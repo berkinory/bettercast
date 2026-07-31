@@ -5,7 +5,7 @@ struct ScopesTest {
     static func main() {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory
-            .appendingPathComponent("bettercast-scopes-\(UUID().uuidString)")
+            .appendingPathComponent("opencast-scopes-\(UUID().uuidString)")
         defer { try? fileManager.removeItem(at: root) }
 
         var failures = 0

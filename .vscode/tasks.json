@@ -9,9 +9,9 @@
       // database (.compile) stays in sync on every build — that's what keeps cross-file
       // symbols resolving in VS Code as you add/rename files. pipefail preserves the
       // xcodebuild exit code so a failed build still blocks F5 / the run step.
-      "label": "Build Bettercast.app (debug)",
+      "label": "Build Opencast.app (debug)",
       "type": "shell",
-      "command": "bash -c 'set -o pipefail; xcodebuild -project Bettercast.xcodeproj -scheme Bettercast -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build 2>&1 | tee \"${TMPDIR:-/tmp}/bettercast-build.log\"; ec=$?; /opt/homebrew/bin/xcode-build-server parse -a -o .compile < \"${TMPDIR:-/tmp}/bettercast-build.log\" >/dev/null 2>&1 || true; exit $ec'",
+      "command": "bash -c 'set -o pipefail; xcodebuild -project Opencast.xcodeproj -scheme Opencast -configuration Debug -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build 2>&1 | tee \"${TMPDIR:-/tmp}/opencast-build.log\"; ec=$?; /opt/homebrew/bin/xcode-build-server parse -a -o .compile < \"${TMPDIR:-/tmp}/opencast-build.log\" >/dev/null 2>&1 || true; exit $ec'",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": { "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer" }
@@ -21,11 +21,11 @@
     },
     {
       // Rebuild, then relaunch the menu-bar app. Default build task (⌘⇧B).
-      "label": "Build & Run Bettercast (debug)",
+      "label": "Build & Run Opencast (debug)",
       "type": "shell",
-      "command": "killall 'Bettercast Dev' 2>/dev/null; open 'build/DerivedData/Build/Products/Debug/Bettercast Dev.app'",
+      "command": "killall 'Opencast Dev' 2>/dev/null; open 'build/DerivedData/Build/Products/Debug/Opencast Dev.app'",
       "options": { "cwd": "${workspaceFolder}" },
-      "dependsOn": "Build Bettercast.app (debug)",
+      "dependsOn": "Build Opencast.app (debug)",
       "group": { "kind": "build", "isDefault": true },
       "problemMatcher": []
     }
