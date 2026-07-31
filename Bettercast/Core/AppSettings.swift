@@ -36,6 +36,11 @@ final class AppSettings: ObservableObject {
         static let showFavoritesInCompactMode = "showFavoritesInCompactMode"
         static let currencyConversionEnabled = "currencyConversionEnabled"
         static let cryptoConversionEnabled = "cryptoConversionEnabled"
+        static let searchScopes = "launcherSearchScopes"
+    }
+
+    @Published var searchScopes: [String] {
+        didSet { defaults.set(searchScopes, forKey: Key.searchScopes) }
     }
 
     @Published var clipboardRetention: ClipboardRetention {
@@ -103,5 +108,7 @@ final class AppSettings: ObservableObject {
             defaults.object(forKey: Key.currencyConversionEnabled) == nil
             || defaults.bool(forKey: Key.currencyConversionEnabled)
         cryptoConversionEnabled = defaults.bool(forKey: Key.cryptoConversionEnabled)
+        searchScopes = SearchScopes.normalize(
+            defaults.stringArray(forKey: Key.searchScopes) ?? SearchScopes.defaults)
     }
 }

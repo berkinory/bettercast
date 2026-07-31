@@ -1,7 +1,23 @@
 # App launcher & fuzzy match
 
-`AppIndex.scan()` runs off-main, enumerates the standard `/Applications` dirs, and dedups by bundle ID
-(first dir wins).
+`AppIndex.scan()` runs off-main, enumerates the user-editable search scopes, and dedups by bundle ID
+(the earliest scope wins).
+
+## Search scopes
+
+`SearchScopes` owns the folders and individual `.app` bundles Bettercast indexes. The list is editable
+under Settings → Launcher → Search and stored as tilde-abbreviated paths in `AppSettings`.
+
+Enumeration is flat: one directory listing per scope, with no recursive walk. Add a nested folder as its
+own scope. This keeps the Settings list honest and avoids scanning unrelated application bundles.
+
+The defaults cover the standard Applications folders, system Utilities, the cryptex-delivered system
+applications, the user's `~/Applications`, and Finder as an individual bundle. Finder is not exposed by
+scanning all of `/System/Library/CoreServices`, because that directory also contains many background
+agents and there is no safe metadata filter that keeps every launchable app.
+
+A missing scope is skipped and shown as a warning. Editing the list triggers a re-index immediately;
+overlapping refreshes collapse into one trailing scan.
 
 `FuzzyMatch` classifies matches as exact → prefix → word-start → substring → subsequence, with
 consecutive / word-boundary detail scoring inside each class. `LauncherRankingStore` learns an

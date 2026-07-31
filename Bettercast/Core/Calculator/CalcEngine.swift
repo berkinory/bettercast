@@ -61,7 +61,7 @@ enum CalcEngine {
             return quantity
         }
 
-        // A lone literal or constant is more likely an app search than a calculation, so no card — except a radix literal ("0xff"), where echoing the decimal is useful.
+        // A lone literal or constant is more likely an app search than a calculation, so no card — except radix and scientific literals, which are explicit numeric expressions.
         if tokens.count == 1 {
             if case .intLiteral(let value, let radix) = tokens[0], radix != 10 {
                 let display = CalcFormatter.grouped(String(value), locale: locale)
@@ -70,7 +70,9 @@ enum CalcEngine {
                     sourceBadge: "Hexadecimal", targetBadge: "Decimal",
                     payload: .value(display: display, copyText: String(value)))
             }
-            return nil
+            guard case .number = tokens[0], query.contains(where: { $0 == "e" || $0 == "E" }) else {
+                return nil
+            }
         }
 
         if let base = baseConversion(tokens, query: query, locale: locale) { return base }

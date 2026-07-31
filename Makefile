@@ -52,6 +52,8 @@ test: tools
 	$(TEST_BIN_DIR)/settings-search-test
 	swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test
 	$(TEST_BIN_DIR)/ranking-test
+	swiftc -swift-version 6 Bettercast/Core/SearchScopes.swift Tools/scopes-test.swift -o $(TEST_BIN_DIR)/scopes-test
+	$(TEST_BIN_DIR)/scopes-test
 	swiftc Bettercast/Core/Calculator/*.swift Tools/calc-test.swift -o $(TEST_BIN_DIR)/calc-test
 	$(TEST_BIN_DIR)/calc-test
 	swiftc -swift-version 6 Bettercast/Core/ClipboardStore.swift Tools/clipboard-test.swift -o $(TEST_BIN_DIR)/clipboard-test

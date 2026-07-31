@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SettingsDestination: Hashable, Sendable {
     case launcherShortcut
+    case searchScopes
     case learnedRanking
     case compactMode
     case compactFavorites
@@ -24,6 +25,7 @@ enum SettingsDestination: Hashable, Sendable {
     var anchorID: String {
         switch self {
         case .launcherShortcut: return "launcher-shortcut"
+        case .searchScopes: return "search-scopes"
         case .learnedRanking: return "learned-ranking"
         case .compactMode: return "compact-mode"
         case .compactFavorites: return "compact-favorites"
@@ -76,6 +78,12 @@ enum SettingsSearchCatalog {
             detail: "Open the fuzzy app launcher.", section: "Shortcut",
             keywords: ["hotkey", "keyboard", "open", "summon"], image: "magnifyingglass",
             tint: .blue
+        ),
+        item(
+            .searchScopes, tab: .launcher, title: "Search Scopes",
+            detail: "Choose folders and applications included in the launcher.", section: "Search",
+            keywords: ["apps", "folders", "directories", "index", "locations"],
+            image: "folder.badge.gearshape", tint: .blue
         ),
         item(
             .learnedRanking, tab: .launcher, title: "Learned Ranking",

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 struct AppEntry: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
@@ -147,69 +148,63 @@ final class AppIndex: ObservableObject {
     private var matchCache: (query: String, rankingRevision: Int, result: [AppEntry])?
 
     private var isRefreshing = false
+    private var refreshPending = false
     private let ranking: LauncherRankingStore
+    private weak var settings: AppSettings?
+    private var cancellables = Set<AnyCancellable>()
 
     init(ranking: LauncherRankingStore) {
         self.ranking = ranking
     }
 
-    /// Re-scan (called on every launcher open); the in-flight guard drops overlapping reopens and `apps` is only re-published when the set changed, so an unchanged reopen does no UI work.
-    func refresh() async {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
-        let found = await Task.detached(priority: .utility) { AppIndex.scan() }.value
-        guard found != apps else { return }
-        apps = found
-        matchCache = nil
+    func start(settings: AppSettings) {
+        self.settings = settings
+        settings.$searchScopes
+            .dropFirst()
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    Task { await self.refresh() }
+                }
+            }
+            .store(in: &cancellables)
     }
 
-    nonisolated private static func scan() -> [AppEntry] {
-        let fm = FileManager.default
-        var searchDirs = [
-            "/Applications",
-            "/Applications/Utilities",
-            "/System/Applications",
-            "/System/Applications/Utilities",
-        ].map { URL(fileURLWithPath: $0) }
-        searchDirs.append(fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications"))
+    /// Re-scan (called on every launcher open); overlapping scans collapse into one trailing scan and an unchanged result does no UI work.
+    func refresh() async {
+        guard !isRefreshing else {
+            refreshPending = true
+            return
+        }
+        isRefreshing = true
+        defer { isRefreshing = false }
 
+        repeat {
+            refreshPending = false
+            let scopes = settings?.searchScopes ?? SearchScopes.defaults
+            let found = await Task.detached(priority: .utility) {
+                AppIndex.scan(scopes: scopes)
+            }.value
+            guard found != apps else { continue }
+            apps = found
+            matchCache = nil
+        } while refreshPending
+    }
+
+    nonisolated private static func scan(scopes: [String]) -> [AppEntry] {
         var seenBundleIDs = Set<String>()
         var result: [AppEntry] = []
-        for dir in searchDirs {
-            guard
-                let items = try? fm.contentsOfDirectory(
-                    at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
-                )
-            else { continue }
-            for url in items where url.pathExtension == "app" {
-                let bundle = Bundle(url: url)
-                let bundleID = bundle?.bundleIdentifier
-                // Dedup by bundle id; first directory (/Applications) wins.
-                if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
+        for url in SearchScopes.appBundles(in: scopes) {
+            let bundle = Bundle(url: url)
+            let bundleID = bundle?.bundleIdentifier
+            // Dedup by bundle ID; the earliest scope wins.
+            if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
 
-                let name = appName(bundle: bundle, url: url)
-                result.append(
-                    AppEntry(
-                        id: url.path, name: name, url: url, bundleID: bundleID,
-                        kind: .application, searchAliases: Romanization.aliases(for: name)))
-            }
-        }
-
-        let finderURL = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
-        if let bundle = Bundle(url: finderURL),
-            let bundleID = bundle.bundleIdentifier,
-            seenBundleIDs.insert(bundleID).inserted
-        {
-            let name = appName(bundle: bundle, url: finderURL)
+            let name = appName(bundle: bundle, url: url)
             result.append(
                 AppEntry(
-                    id: finderURL.path,
-                    name: name,
-                    url: finderURL,
-                    bundleID: bundleID,
-                    kind: .application,
-                    searchAliases: Romanization.aliases(for: name)))
+                    id: url.path, name: name, url: url, bundleID: bundleID,
+                    kind: .application, searchAliases: Romanization.aliases(for: name)))
         }
 
         // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.

@@ -27,6 +27,7 @@ struct CalcTests {
         expectDisplay("-2^2", "-4")  // unary minus binds looser than ^
         expectDisplay("10/4", "2.5")
         expectDisplay("1/3", "0.3333333333")
+        expectDisplay("1e6", "1,000,000")
         expectDisplay("1e6 + 1", "1,000,001")
         expectDisplay("1.5e-3 * 2", "0.003")
         expectDisplay("2.5E8 / 2", "125,000,000")
@@ -126,7 +127,6 @@ struct CalcTests {
         expectNil("10km to")  // half-typed conversion
         expectNil("10 to mi")
         expectNil("45+")  // half-typed expression
-        expectNil("1e6")
         expectNil("10em")
         expectNil("sqrt()")
         expectNil("2.5!")  // factorial needs an integer
