@@ -232,7 +232,9 @@ enum CalcDateTime {
     private static func fixedOffsetTimeZone(_ text: String) -> TimeZone? {
         guard let sign = text.first, sign == "+" || sign == "-" else { return nil }
         let components = text.dropFirst().split(separator: ":")
-        guard let hours = Int(components[0]), (0...23).contains(hours) else { return nil }
+        guard components.count <= 2, !components.isEmpty,
+            let hours = Int(components[0]), (0...23).contains(hours)
+        else { return nil }
         let minutes = components.count == 2 ? Int(components[1]) ?? -1 : 0
         guard (0...59).contains(minutes) else { return nil }
         let seconds = (hours * 3600 + minutes * 60) * (sign == "+" ? 1 : -1)
