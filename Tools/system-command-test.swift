@@ -4,14 +4,11 @@ import Foundation
 private struct SystemCommandTests {
     static func main() {
         let commands = SystemCommandCatalog.all
-        precondition(commands.count == 21)
+        precondition(commands.count == 20)
         precondition(Set(commands.map(\.entryID)).count == commands.count)
         precondition(
             SystemCommandCatalog.command(forEntryID: "command:quit-all-apps")?.id
                 == .quitAllApps)
-        precondition(
-            SystemCommandCatalog.command(forEntryID: "system-command:lock-screen")?.id
-                == .lockScreen)
         precondition(
             SystemCommandCatalog.command(forEntryID: "system-command:show-desktop")?.id
                 == .showDesktop)

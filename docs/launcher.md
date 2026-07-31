@@ -81,7 +81,7 @@ running dot and the availability of the quit actions:
 
 ## Commands
 
-Commands include Lock Screen, Sleep, Sleep Displays, Restart, Shut Down, Log Out, Show Screen Saver,
+Commands include Sleep, Sleep Displays, Restart, Shut Down, Log Out, Show Screen Saver,
 Play / Pause, Next Track, Previous Track, volume controls, Show Desktop, Toggle System Appearance,
 Open Trash, Empty Trash, Toggle Hidden Files, Hide All Apps Except Frontmost, and Unhide All Hidden
 Apps. Keyboard-event commands require Accessibility permission; automation commands require

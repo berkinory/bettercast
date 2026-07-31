@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 import CoreAudio
 import Darwin
 
@@ -41,8 +40,6 @@ enum SystemCommandRunner {
     ) async throws -> State {
         var state = state
         switch id {
-        case .lockScreen:
-            try postKey(keyCode: CGKeyCode(kVK_ANSI_Q), flags: [.maskControl, .maskCommand])
         case .sleep:
             try await runProcess("/usr/bin/pmset", arguments: ["sleepnow"])
         case .sleepDisplays:
@@ -236,24 +233,6 @@ enum SystemCommandRunner {
         guard status == noErr else {
             throw SystemCommandFailure("macOS could not change mute state (error \(status)).")
         }
-    }
-
-    private static func postKey(keyCode: CGKeyCode, flags: CGEventFlags) throws {
-        guard Permissions.ensureAccessibility() else {
-            throw SystemCommandFailure(
-                "Allow Bettercast to control your Mac in Accessibility settings, then try again.",
-                settings: .accessibility)
-        }
-        let source = CGEventSource(stateID: .combinedSessionState)
-        guard let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
-            let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-        else {
-            throw SystemCommandFailure("macOS could not create the keyboard event.")
-        }
-        down.flags = flags
-        up.flags = flags
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
     }
 
     private static func postMediaKey(_ key: Int32) throws {
