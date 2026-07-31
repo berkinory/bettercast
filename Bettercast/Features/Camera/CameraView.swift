@@ -3,7 +3,7 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-private enum CameraState: Equatable {
+fileprivate enum CameraState: Equatable {
     case requestingPermission
     case starting
     case ready
@@ -12,12 +12,12 @@ private enum CameraState: Equatable {
     case failed(String)
 }
 
-private struct CameraDevice: Equatable, Sendable {
+fileprivate struct CameraDevice: Equatable, Sendable {
     let id: String
     let name: String
 }
 
-private struct CameraKeyboardEvent: Equatable {
+fileprivate struct CameraKeyboardEvent: Equatable {
     enum Command: Equatable {
         case activate
         case moveUp
@@ -221,25 +221,28 @@ extension CameraCaptureEngine: AVCapturePhotoCaptureDelegate {
 }
 
 @MainActor
-private final class CameraSessionModel: ObservableObject {
-    @Published private(set) var state: CameraState = .starting
-    @Published private(set) var devices: [CameraDevice] = []
-    @Published private(set) var selectedDeviceID: String?
+final class CameraSessionModel: ObservableObject {
+    @Published fileprivate var state: CameraState = .starting
+    @Published fileprivate var devices: [CameraDevice] = []
+    @Published fileprivate var selectedDeviceID: String?
     @Published private(set) var isCapturing = false
     @Published var isMirrored = true
     @Published private(set) var feedback: String?
     @Published private(set) var flashToken = UUID()
-    @Published private(set) var keyboardEvent: CameraKeyboardEvent?
+    @Published fileprivate var keyboardEvent: CameraKeyboardEvent?
 
     let session: AVCaptureSession
     private let engine = CameraCaptureEngine()
     private var feedbackTask: Task<Void, Never>?
+    private var isStarted = false
 
     init() {
         session = engine.session
     }
 
     func start() {
+        guard !isStarted else { return }
+        isStarted = true
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             discoverAndStart()
@@ -247,7 +250,7 @@ private final class CameraSessionModel: ObservableObject {
             state = .requestingPermission
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 Task { @MainActor in
-                    guard let self else { return }
+                    guard let self, self.isStarted else { return }
                     if granted {
                         self.discoverAndStart()
                     } else {
@@ -263,6 +266,7 @@ private final class CameraSessionModel: ObservableObject {
     }
 
     func stop() {
+        isStarted = false
         feedbackTask?.cancel()
         feedbackTask = nil
         engine.stop()
@@ -299,7 +303,7 @@ private final class CameraSessionModel: ObservableObject {
         showFeedback(isMirrored ? "Mirroring on" : "Mirroring off")
     }
 
-    func selectCamera(_ device: CameraDevice) {
+    fileprivate func selectCamera(_ device: CameraDevice) {
         guard !isCapturing else { return }
         guard device.id != selectedDeviceID else {
             showFeedback("\(device.name) is already selected")
@@ -384,111 +388,6 @@ private final class CameraSessionModel: ObservableObject {
     }
 }
 
-@MainActor
-final class CameraWindowController: NSObject, NSWindowDelegate {
-    private unowned let core: AppCore
-    private var panel: CameraPanel?
-    private var model: CameraSessionModel?
-
-    init(core: AppCore) {
-        self.core = core
-    }
-
-    func show() {
-        if let panel {
-            panel.makeKeyAndOrderFront(nil)
-            return
-        }
-        let model = CameraSessionModel()
-        let panel = CameraPanel(
-            rootView: CameraView(model: model) { [weak self] in self?.returnToLauncher() })
-        panel.onKeyDown = { [weak model] event in model?.handleKeyDown(event) ?? false }
-        panel.delegate = self
-        position(panel)
-        self.model = model
-        self.panel = panel
-        panel.makeKeyAndOrderFront(nil)
-        panel.orderFrontRegardless()
-        model.start()
-    }
-
-    @discardableResult
-    func focusExisting() -> Bool {
-        guard let panel else { return false }
-        panel.makeKeyAndOrderFront(nil)
-        return true
-    }
-
-    func close() {
-        model?.stop()
-        panel?.close()
-    }
-
-    private func returnToLauncher() {
-        close()
-        core.showPalette(mode: .launcher)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        model?.stop()
-        model = nil
-        panel = nil
-    }
-
-    private func position(_ panel: NSPanel) {
-        guard let screen = NSScreen.main else {
-            panel.center()
-            return
-        }
-        let visible = screen.visibleFrame
-        let size = CameraPanel.size
-        panel.setFrame(
-            NSRect(
-                x: visible.midX - size.width / 2,
-                y: visible.maxY - visible.height * Theme.Size.paletteTopMarginFraction - size.height,
-                width: size.width,
-                height: size.height
-            ),
-            display: false
-        )
-    }
-}
-
-private final class CameraPanel: NSPanel {
-    static let size = CGSize(width: 760, height: 520)
-    var onKeyDown: ((NSEvent) -> Bool)?
-
-    init<Content: View>(rootView: Content) {
-        super.init(
-            contentRect: NSRect(origin: .zero, size: Self.size),
-            styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        isFloatingPanel = true
-        level = .floating
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovableByWindowBackground = true
-        isOpaque = false
-        backgroundColor = .clear
-        hasShadow = true
-        animationBehavior = .none
-        isReleasedWhenClosed = false
-
-        let hosting = NSHostingView(rootView: rootView)
-        hosting.sizingOptions = []
-        contentView = hosting
-    }
-
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
-
-    override func sendEvent(_ event: NSEvent) {
-        if event.type == .keyDown, onKeyDown?(event) == true { return }
-        super.sendEvent(event)
-    }
-}
-
 private struct CameraPreview: NSViewRepresentable {
     let session: AVCaptureSession
     let mirrored: Bool
@@ -533,7 +432,7 @@ private final class CameraPreviewNSView: NSView {
     }
 }
 
-private struct CameraView: View {
+struct CameraView: View {
     private enum MenuLevel: Equatable {
         case actions
         case cameras
@@ -606,7 +505,7 @@ private struct CameraView: View {
                 .opacity(flashOpacity)
                 .allowsHitTesting(false)
         }
-        .frame(width: CameraPanel.size.width, height: CameraPanel.size.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
@@ -649,14 +548,6 @@ private struct CameraView: View {
 
     private var controls: some View {
         VStack {
-            HStack {
-                CameraButton(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(Theme.Typography.iconLargeSemibold)
-                        .frame(width: Theme.Size.menuButton, height: Theme.Size.menuButton)
-                }
-                Spacer()
-            }
             Spacer()
             HStack(alignment: .bottom, spacing: Theme.Spacing.md) {
                 HStack(spacing: Theme.Spacing.sm) {
@@ -782,17 +673,5 @@ private struct CameraView: View {
         menuOpen = false
         menuLevel = .actions
         menuSelection = 0
-    }
-}
-
-private struct CameraButton<Label: View>: View {
-    let action: () -> Void
-    @ViewBuilder let label: () -> Label
-
-    var body: some View {
-        Button(action: action, label: label)
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            .contentShape(Rectangle())
     }
 }

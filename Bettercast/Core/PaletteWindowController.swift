@@ -158,9 +158,14 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             if core.palette.mode == .uninstall {
                 core.exitUninstall()
             } else {
+                if core.palette.mode == .camera { core.camera.stop() }
                 core.palette.prepare(mode: .launcher)
             }
             return true
+        }
+        panel.onCameraKeyDown = { [weak self] event in
+            guard let self, core.palette.mode == .camera else { return false }
+            return core.camera.handleKeyDown(event)
         }
         panel.onBareSpace = { [weak self] in
             guard let self, core.palette.mode == .uninstall,

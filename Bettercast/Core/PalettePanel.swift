@@ -7,6 +7,7 @@ final class PalettePanel: NSPanel {
     /// Called for a bare backspace before it reaches the field editor (return true to consume); the field editor swallows plain backspace itself, so SwiftUI `onKeyPress` up the hierarchy never sees it.
     var onBareBackspace: (() -> Bool)?
     var onBareSpace: (() -> Bool)?
+    var onCameraKeyDown: ((NSEvent) -> Bool)?
     /// Arms the hover highlight from `sendEvent` — the one place both event streams pass through, so a keyboard-driven scroll under a still pointer never fires `.mouseMoved` and hover stays disarmed. Also carries the caret-hide hook fired when a footer menu opens.
     weak var paletteViewModel: PaletteViewModel? {
         didSet {
@@ -34,6 +35,7 @@ final class PalettePanel: NSPanel {
         case .keyDown: paletteViewModel?.hoverHighlightArmed = false
         default: break
         }
+        if event.type == .keyDown, onCameraKeyDown?(event) == true { return }
         if event.type == .keyDown,
             event.modifierFlags.contains(.control),
             event.modifierFlags.intersection([.command, .option, .shift]).isEmpty,
