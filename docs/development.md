@@ -99,6 +99,10 @@ swiftc Opencast/Core/Calculator/*.swift Tools/calc-test.swift \
     -o /tmp/calc-test && /tmp/calc-test                           # calculator engine
 swiftc -swift-version 6 Opencast/Core/ClipboardStore.swift Tools/clipboard-test.swift \
     -o /tmp/clipboard-test && /tmp/clipboard-test                 # clipboard store
+swiftc -swift-version 6 Opencast/Core/WindowManagement/WindowCommand.swift \
+    Opencast/Core/WindowManagement/WindowLayout.swift \
+    Opencast/Core/WindowManagement/WindowActionMemory.swift Tools/window-command-test.swift \
+    -o /tmp/window-command-test && /tmp/window-command-test        # window geometry
 ```
 
 `Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Opencast/Core/AppIndex.swift` —

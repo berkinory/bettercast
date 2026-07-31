@@ -86,7 +86,8 @@ running dot and the availability of the quit actions:
 Commands include Sleep, Sleep Displays, Restart, Shut Down, Log Out, Show Screen Saver,
 Play / Pause, Next Track, Previous Track, volume controls, Show Desktop, Toggle System Appearance,
 Open Trash, Empty Trash, Eject All Disks, Toggle Hidden Files, Hide All Apps Except Frontmost, and
-Unhide All Hidden Apps. Eject All Disks ejects local volumes Finder marks as ejectable. Keyboard-event
+Unhide All Hidden Apps. Optional Window Management commands add tiling, sizing, moving, display, and
+fullscreen actions. Eject All Disks ejects local volumes Finder marks as ejectable. Keyboard-event
 commands require Accessibility permission; automation commands require
 Automation permission. The Commands settings category controls both built-in and system actions.
 

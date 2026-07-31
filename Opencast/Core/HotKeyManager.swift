@@ -6,6 +6,7 @@ final class HotKeyManager: ObservableObject {
     var onTogglePalette: (() -> Void)?
     var onToggleClipboard: (() -> Void)?
     var onToggleEmoji: (() -> Void)?
+    var onRunWindowCommand: ((WindowCommand.ID) -> Void)?
 
     /// The recorder currently capturing keystrokes, or `nil`; keeping this as plain app state makes recorders glitch-free, and any active recorder pauses Carbon so the typed combo can't fire a hotkey.
     @Published var recordingAction: HotKeyAction? {
@@ -27,6 +28,9 @@ final class HotKeyManager: ObservableObject {
         register(.toggleEmoji)
         for bundleID in boundBundleIDs { register(.app(bundleID: bundleID)) }
         for bundleID in boundPaneBundleIDs { register(.settingsPane(bundleID: bundleID)) }
+        for command in WindowCommandCatalog.all {
+            register(.windowCommand(id: command.id))
+        }
         doubleCommandMonitor.onDoubleCommand = { [weak self] in self?.performDoubleCommand() }
         doubleCommandMonitor.start()
     }
@@ -81,6 +85,8 @@ final class HotKeyManager: ObservableObject {
             var set = Set(boundPaneBundleIDs)
             if binding == nil { set.remove(bundleID) } else { set.insert(bundleID) }
             UserDefaults.standard.set(Array(set), forKey: boundPaneKey)
+        case .windowCommand:
+            break
         case .togglePalette, .toggleClipboard, .toggleEmoji:
             break
         }
@@ -96,6 +102,7 @@ final class HotKeyManager: ObservableObject {
         var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
         candidates += boundBundleIDs.map { .app(bundleID: $0) }
         candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
+        candidates += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
         for candidate in candidates
         where candidate != action && self.binding(for: candidate) == binding {
             return displayName(of: candidate)
@@ -123,6 +130,8 @@ final class HotKeyManager: ObservableObject {
             let apps = AppCore.shared.appIndex.apps
             return apps.first { $0.kind == .systemSettings && $0.bundleID == bundleID }?.name
                 ?? bundleID
+        case .windowCommand(let id):
+            return WindowCommandCatalog.command(id: id)?.name ?? id.rawValue
         }
     }
 
@@ -138,6 +147,7 @@ final class HotKeyManager: ObservableObject {
         var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
         candidates += boundBundleIDs.map { .app(bundleID: $0) }
         candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
+        candidates += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
         guard let action = candidates.first(where: { binding(for: $0) == .doubleCommand }) else { return }
         perform(action)
     }
@@ -149,6 +159,7 @@ final class HotKeyManager: ObservableObject {
         case .toggleEmoji: onToggleEmoji?()
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)
+        case .windowCommand(let id): onRunWindowCommand?(id)
         }
     }
 }

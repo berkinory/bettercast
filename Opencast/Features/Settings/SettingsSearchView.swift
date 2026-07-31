@@ -72,6 +72,7 @@ enum SettingsSearchCatalog {
         pane(.clipboard, detail: "History retention and excluded applications."),
         pane(.emoji, detail: "Emoji shortcut and preferred skin tone."),
         pane(.calculator, detail: "Inline calculations and currency conversion."),
+        pane(.windowManagement, detail: "Tile, resize, and move application windows."),
         pane(.shortcuts, detail: "Application visibility and shortcuts."),
         pane(.permissions, detail: "Access Opencast needs to work with other apps."),
         pane(.about, detail: "Version, support, and project links."),

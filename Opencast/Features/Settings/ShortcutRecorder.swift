@@ -163,6 +163,11 @@ struct ShortcutRecorder: View {
             return featureIcon(named: "doc.on.clipboard", description: "Clipboard History")
         case .toggleEmoji:
             return featureIcon(named: "face.smiling", description: "Emoji & Symbols")
+        case .windowCommand(let id):
+            let command = WindowCommandCatalog.command(id: id)
+            return featureIcon(
+                named: command?.sfSymbol ?? "macwindow",
+                description: command?.name ?? "Window Management")
         }
     }
 
@@ -375,6 +380,11 @@ private struct ShortcutCapturePopover: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+        case .windowCommand(let id):
+            FeatureIcon(
+                systemImage: WindowCommandCatalog.command(id: id)?.sfSymbol ?? "macwindow",
+                tint: Theme.Colors.launcherAccent,
+                size: Theme.Size.rowIcon)
         }
     }
 

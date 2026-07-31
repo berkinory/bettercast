@@ -48,7 +48,11 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         switch kind {
         case .application: return .app(bundleID: bundleID)
         case .systemSettings: return .settingsPane(bundleID: bundleID)
-        case .command: return nil
+        case .command:
+            if let command = WindowCommandCatalog.command(forEntryID: id) {
+                return .windowCommand(id: command.id)
+            }
+            return nil
         }
     }
 
@@ -57,6 +61,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     var symbolIconName: String {
         SystemCommandCatalog.command(forEntryID: id)?.sfSymbol
             ?? CommandRegistry.command(for: self)?.sfSymbol
+            ?? WindowCommandCatalog.command(forEntryID: id)?.sfSymbol
             ?? "questionmark"
     }
 
@@ -149,6 +154,7 @@ final class AppIndex: ObservableObject {
 
     private var isRefreshing = false
     private var refreshPending = false
+    private var windowCommandsVisible = false
     private let ranking: LauncherRankingStore
     private weak var settings: AppSettings?
     private var cancellables = Set<AnyCancellable>()
@@ -159,11 +165,24 @@ final class AppIndex: ObservableObject {
 
     func start(settings: AppSettings) {
         self.settings = settings
+        windowCommandsVisible =
+            settings.windowManagementEnabled && settings.windowManagementShowInLauncher
         settings.$searchScopes
             .dropFirst()
             .sink { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
+                    Task { await self.refresh() }
+                }
+            }
+            .store(in: &cancellables)
+        settings.$windowManagementEnabled
+            .combineLatest(settings.$windowManagementShowInLauncher)
+            .dropFirst()
+            .sink { [weak self] enabled, visible in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.windowCommandsVisible = enabled && visible
                     Task { await self.refresh() }
                 }
             }
@@ -182,8 +201,9 @@ final class AppIndex: ObservableObject {
         repeat {
             refreshPending = false
             let scopes = settings?.searchScopes ?? SearchScopes.defaults
+            let includeWindowCommands = windowCommandsVisible
             let found = await Task.detached(priority: .utility) {
-                AppIndex.scan(scopes: scopes)
+                AppIndex.scan(scopes: scopes, includeWindowCommands: includeWindowCommands)
             }.value
             guard found != apps else { continue }
             apps = found
@@ -191,7 +211,9 @@ final class AppIndex: ObservableObject {
         } while refreshPending
     }
 
-    nonisolated private static func scan(scopes: [String]) -> [AppEntry] {
+    nonisolated private static func scan(
+        scopes: [String], includeWindowCommands: Bool
+    ) -> [AppEntry] {
         var seenBundleIDs = Set<String>()
         var result: [AppEntry] = []
         for url in SearchScopes.appBundles(in: scopes) {
@@ -219,7 +241,21 @@ final class AppIndex: ObservableObject {
                 bundleID: nil,
                 kind: .command)
         }
-        return apps + SettingsPaneScanner.scan() + systemCommands + CommandRegistry.all
+        let windowCommands =
+            includeWindowCommands
+            ? WindowCommandCatalog.all.map { command in
+                AppEntry(
+                    id: command.entryID,
+                    name: command.name,
+                    url: URL(string: "opencast://window-command/" + command.id.rawValue)!,
+                    bundleID: nil,
+                    kind: .command)
+            }
+            : []
+        let commands = (systemCommands + windowCommands).sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+        return apps + SettingsPaneScanner.scan() + commands + CommandRegistry.all
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {

@@ -15,7 +15,7 @@ struct SettingsRoute: Hashable, Sendable {
 }
 
 enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
-    case general, launcher, clipboard, emoji, calculator, shortcuts, permissions, about
+    case general, launcher, clipboard, emoji, calculator, windowManagement, shortcuts, permissions, about
 
     var id: Int { rawValue }
 
@@ -26,6 +26,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .clipboard: return "Clipboard"
         case .emoji: return "Emoji & Symbols"
         case .calculator: return "Calculator"
+        case .windowManagement: return "Window Management"
         case .shortcuts: return "Shortcuts"
         case .permissions: return "Permissions"
         case .about: return "About"
@@ -39,6 +40,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
         case .calculator: return "function"
+        case .windowManagement: return "macwindow"
         case .shortcuts: return "keyboard"
         case .permissions: return "lock.shield.fill"
         case .about: return "info.circle.fill"
@@ -52,7 +54,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
     var group: SettingsGroup {
         switch self {
         case .general: return .app
-        case .launcher, .clipboard, .emoji, .calculator: return .features
+        case .launcher, .clipboard, .emoji, .calculator, .windowManagement: return .features
         case .shortcuts, .permissions: return .system
         case .about: return .about
         }
@@ -65,6 +67,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .clipboard: return Theme.Colors.clipboardAccent
         case .emoji: return Theme.Colors.emojiAccent
         case .calculator: return Theme.Colors.calculatorAccent
+        case .windowManagement: return Theme.Colors.launcherAccent
         case .shortcuts, .permissions: return Theme.Colors.systemAccent
         case .about: return Theme.Colors.brand
         }
@@ -226,6 +229,7 @@ struct SettingsRootView: View {
         case .clipboard: ClipboardSettingsView()
         case .emoji: EmojiSettingsView()
         case .calculator: CalculatorSettingsView()
+        case .windowManagement: WindowManagementSettingsView()
         case .shortcuts: ShortcutsSettingsView()
         case .permissions: PermissionsSettingsView()
         case .about: AboutView()

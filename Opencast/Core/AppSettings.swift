@@ -54,6 +54,10 @@ final class AppSettings: ObservableObject {
         static let cryptoConversionEnabled = "cryptoConversionEnabled"
         static let searchScopes = "launcherSearchScopes"
         static let appearance = "appearance"
+        static let windowManagementEnabled = "windowManagementEnabled"
+        static let windowManagementShowInLauncher = "windowManagementShowInLauncher"
+        static let windowCycleOnRepeat = "windowCycleOnRepeat"
+        static let windowRespectSystemMargins = "windowRespectSystemMargins"
     }
 
     @Published var appearance: AppAppearance {
@@ -105,6 +109,22 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(cryptoConversionEnabled, forKey: Key.cryptoConversionEnabled) }
     }
 
+    @Published var windowManagementEnabled: Bool {
+        didSet { defaults.set(windowManagementEnabled, forKey: Key.windowManagementEnabled) }
+    }
+
+    @Published var windowManagementShowInLauncher: Bool {
+        didSet { defaults.set(windowManagementShowInLauncher, forKey: Key.windowManagementShowInLauncher) }
+    }
+
+    @Published var windowCycleOnRepeat: Bool {
+        didSet { defaults.set(windowCycleOnRepeat, forKey: Key.windowCycleOnRepeat) }
+    }
+
+    @Published var windowRespectSystemMargins: Bool {
+        didSet { defaults.set(windowRespectSystemMargins, forKey: Key.windowRespectSystemMargins) }
+    }
+
     init() {
         // integer(forKey:) returns 0 when unset, which no case matches — falls through to 3 Months.
         clipboardRetention =
@@ -129,6 +149,14 @@ final class AppSettings: ObservableObject {
             defaults.object(forKey: Key.currencyConversionEnabled) == nil
             || defaults.bool(forKey: Key.currencyConversionEnabled)
         cryptoConversionEnabled = defaults.bool(forKey: Key.cryptoConversionEnabled)
+        windowManagementEnabled = defaults.bool(forKey: Key.windowManagementEnabled)
+        windowManagementShowInLauncher =
+            defaults.object(forKey: Key.windowManagementShowInLauncher) == nil
+            || defaults.bool(forKey: Key.windowManagementShowInLauncher)
+        windowCycleOnRepeat = defaults.bool(forKey: Key.windowCycleOnRepeat)
+        windowRespectSystemMargins =
+            defaults.object(forKey: Key.windowRespectSystemMargins) == nil
+            || defaults.bool(forKey: Key.windowRespectSystemMargins)
         appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init) ?? .dark
         searchScopes = SearchScopes.normalize(
             defaults.stringArray(forKey: Key.searchScopes) ?? SearchScopes.defaults)

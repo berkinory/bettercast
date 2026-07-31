@@ -113,6 +113,7 @@ final class AppCore: ObservableObject {
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
     let uninstall = UninstallSession()
+    let windowMover = WindowMover()
     let palette = PaletteViewModel()
 
     private lazy var windowController = PaletteWindowController(core: self)
@@ -156,6 +157,7 @@ final class AppCore: ObservableObject {
         hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
         hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
         hotKeys.onToggleEmoji = { [weak self] in self?.toggleEmoji() }
+        hotKeys.onRunWindowCommand = { [weak self] id in self?.runWindowCommand(id: id) }
         hotKeys.start()
 
         // First launch has no palette hotkey bound and shows nothing but the menu-bar icon; guide the user once. Marker is written at show-time so it stays one-time even if they Cmd-Q mid-flow.
@@ -496,6 +498,10 @@ final class AppCore: ObservableObject {
     }
 
     private func runCommand(_ entry: AppEntry) {
+        if let command = WindowCommandCatalog.command(forEntryID: entry.id) {
+            runWindowCommand(id: command.id)
+            return
+        }
         if SystemCommandCatalog.command(forEntryID: entry.id) != nil {
             runSystemCommand(entry)
             return
@@ -513,6 +519,21 @@ final class AppCore: ObservableObject {
         case nil:
             break
         }
+    }
+
+    private func runWindowCommand(id: WindowCommand.ID) {
+        guard settings.windowManagementEnabled else { return }
+        let wasVisible = windowController.isVisible
+        let target =
+            wasVisible
+            ? windowController.previousApp
+            : NSWorkspace.shared.frontmostApplication
+        if wasVisible { hidePalette(restoreFocus: true) }
+        _ = windowMover.perform(
+            id,
+            target: target,
+            gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins),
+            cycleOnRepeat: settings.windowCycleOnRepeat)
     }
 
     /// Enter on the inline calculator card: copy the answer and dismiss.

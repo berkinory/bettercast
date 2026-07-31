@@ -6,7 +6,9 @@
 - `HotKeyCenter` — the Carbon `RegisterEventHotKey` layer, pausable.
 - `DoubleCommandMonitor` — the global modifier-event path for the optional double-tap ⌘ binding.
 
-`HotKeyManager` owns both: persistence, conflict lookup, and dispatch.
+`HotKeyManager` owns both: persistence, conflict lookup, and dispatch. Window management commands use
+`KeyboardShortcuts_windowCommand.<id>` keys and are registered even while the feature is disabled; the
+AppCore dispatch guard keeps a disabled feature inert without losing saved bindings.
 
 ## Persistence
 

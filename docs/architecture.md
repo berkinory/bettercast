@@ -2,14 +2,15 @@
 
 How Opencast is wired together. See the per-subsystem docs for internals:
 [palette](palette.md), [launcher](launcher.md), [calculator](calculator.md),
-[clipboard](clipboard.md), [hotkeys](hotkeys.md), [ui](ui.md).
+[clipboard](clipboard.md), [hotkeys](hotkeys.md), [window management](window-management.md), [ui](ui.md).
 
 ## Single-owner core
 
 `AppCore.shared` (`Core/AppCore.swift`) is a `@MainActor` singleton that owns every long-lived
 manager — `AppIndex`, `ClipboardStore`, `ClipboardManager`, `HotKeyManager`, `AppSettings`,
 `FavoritesStore`, `VisibilityStore`, `LauncherRankingStore`, `CurrencyRateStore`,
-`RunningAppsMonitor`, `PaletteViewModel`, and system-command state — plus the window controllers.
+`RunningAppsMonitor`, `PaletteViewModel`, `WindowMover`, and system-command state — plus the window
+controllers.
 `AppDelegate.applicationDidFinishLaunching` calls
 `AppCore.shared.start()` and nothing else; that is the single wiring point. All palette / paste /
 launch actions are methods on `AppCore` that the SwiftUI views call.

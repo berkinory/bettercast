@@ -62,6 +62,12 @@ test: tools
 	$(TEST_BIN_DIR)/emoji-test
 	swiftc -swift-version 6 Opencast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
 	$(TEST_BIN_DIR)/system-command-test
+	swiftc -swift-version 6 \
+		Opencast/Core/WindowManagement/WindowCommand.swift \
+		Opencast/Core/WindowManagement/WindowLayout.swift \
+		Opencast/Core/WindowManagement/WindowActionMemory.swift \
+		Tools/window-command-test.swift -o $(TEST_BIN_DIR)/window-command-test
+	$(TEST_BIN_DIR)/window-command-test
 	swiftc -swift-version 6 Opencast/Core/HotKey/DoubleCommandDetector.swift Tools/hotkey-test.swift -o $(TEST_BIN_DIR)/hotkey-test
 	$(TEST_BIN_DIR)/hotkey-test
 
