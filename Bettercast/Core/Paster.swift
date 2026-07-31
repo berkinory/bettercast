@@ -30,6 +30,15 @@ enum Paster {
         pb.setString(text, forType: .string)
     }
 
+    /// Put a captured PNG on the pasteboard without the internal marker so it enters clipboard history like a normal copy.
+    @MainActor
+    static func copyImage(_ png: Data) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.declareTypes([.png], owner: nil)
+        pb.setData(png, forType: .png)
+    }
+
     /// String counterpart of `paste(_:store:previousApp:)` — marker-stamped so pasted emoji don't re-enter clipboard history.
     @MainActor
     static func pasteString(_ text: String, previousApp: NSRunningApplication?) {

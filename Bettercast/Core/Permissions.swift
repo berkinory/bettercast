@@ -15,6 +15,15 @@ enum Permissions {
     }
 
     @MainActor
+    static func openCameraSettings() {
+        guard
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")
+        else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @MainActor
     static func openAccessibilitySettings() {
         guard
             let url = URL(

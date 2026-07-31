@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Bettercast uses automation only when you explicitly run a system command.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Bettercast uses the camera only when you explicitly open the Camera command.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Bettercast</string>
 </dict>

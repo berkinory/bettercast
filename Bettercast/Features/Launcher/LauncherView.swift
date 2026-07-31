@@ -203,6 +203,7 @@ struct AppIconView: View {
         switch CommandRegistry.command(for: app) {
         case .searchEmoji: return Theme.Colors.emojiAccent
         case .clipboardHistory: return Theme.Colors.clipboardAccent
+        case .openCamera: return Theme.Colors.brand
         case .settings: return Theme.Colors.systemAccent
         case .quit: return Theme.Colors.textSecondary
         case nil: return Theme.Colors.textPrimary

@@ -21,6 +21,7 @@
 		1F022B9A8EF05A684E7B7196 /* CalcEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F6DDA1B877EA4F3EA37886 /* CalcEngine.swift */; };
 		2346CE4545350475720868A4 /* CalcFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D59FE8F4ACB2CEBAF069E2 /* CalcFormatter.swift */; };
 		24D1BE76CF9BEA44318E4C73 /* PalettePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB6CA4A9FC2DDCA51D7D88C /* PalettePanel.swift */; };
+		264CE175524B922814A0DD43 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB6E36AFD5C23F29D394E95 /* CameraView.swift */; };
 		294AC5ADD31C0DCC7C9F6891 /* RunningApps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89915E4CB7B21D04E4A04B40 /* RunningApps.swift */; };
 		2993DAEBBD3D2E1DF1DAA050 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3519AF3D6C2E5CC8DC90077C /* GeneralSettingsView.swift */; };
 		2A47D12EE5EFFF18079329D9 /* ClipboardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BD69733E927F963EB8E480 /* ClipboardSettingsView.swift */; };
@@ -146,6 +147,7 @@
 		923775C70BCE3925DE5CCB42 /* SettingsPaneScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPaneScanner.swift; sourceTree = "<group>"; };
 		9376385A1BD5D2EF04F4BD9F /* PopoverMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverMenu.swift; sourceTree = "<group>"; };
 		9B958BE256565B0B93D47C3A /* AppLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLauncher.swift; sourceTree = "<group>"; };
+		9DB6E36AFD5C23F29D394E95 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		9EE6486377890F8088F39B8C /* EmojiGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridView.swift; sourceTree = "<group>"; };
 		9F7212A045E6635C4459BCB7 /* EdgeDissolve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeDissolve.swift; sourceTree = "<group>"; };
 		B85F40FDC7CCBCC56E63FC61 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
@@ -264,6 +266,14 @@
 			path = Launcher;
 			sourceTree = "<group>";
 		};
+		5D0245009D711349EA92897D /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				9DB6E36AFD5C23F29D394E95 /* CameraView.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
 		69522A695B979ECC9CAC2787 /* HotKey */ = {
 			isa = PBXGroup;
 			children = (
@@ -352,6 +362,7 @@
 			isa = PBXGroup;
 			children = (
 				8E0FD6FB01E13259AEF23DAA /* About */,
+				5D0245009D711349EA92897D /* Camera */,
 				A1F069A0753109A51908BA3E /* Clipboard */,
 				318FA727C0D7DBA7C615B460 /* Emoji */,
 				563ACF065C06C68503A93524 /* Launcher */,
@@ -477,6 +488,7 @@
 				9CAFED143C26E767BB40D05F /* CalcUnits.swift in Sources */,
 				FC8C987D89609CB4FAC716D4 /* CalculatorCardView.swift in Sources */,
 				B0117926CB7A3A0F7830B749 /* CalculatorSettingsView.swift in Sources */,
+				264CE175524B922814A0DD43 /* CameraView.swift in Sources */,
 				AF0CD42051E2BB5BC7AA8F10 /* ClipboardManager.swift in Sources */,
 				2A47D12EE5EFFF18079329D9 /* ClipboardSettingsView.swift in Sources */,
 				94826CEEC58EFCEB047907E0 /* ClipboardStore.swift in Sources */,
