@@ -60,6 +60,8 @@ test: tools
 	$(TEST_BIN_DIR)/emoji-test
 	swiftc -swift-version 6 Bettercast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
 	$(TEST_BIN_DIR)/system-command-test
+	swiftc -swift-version 6 Bettercast/Core/HotKey/DoubleCommandDetector.swift Tools/hotkey-test.swift -o $(TEST_BIN_DIR)/hotkey-test
+	$(TEST_BIN_DIR)/hotkey-test
 
 generate:
 	@command -v xcodegen >/dev/null || { echo "error: xcodegen is required" >&2; exit 1; }

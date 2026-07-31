@@ -100,7 +100,7 @@ struct OnboardingView: View {
     }
 
     private var readyMessage: String {
-        if let caps = hotKeys.shortcut(for: .togglePalette)?.keycaps {
+        if let caps = hotKeys.binding(for: .togglePalette)?.keycaps {
             return "Press \(caps.joined()) anytime to start using Bettercast."
         }
         return "Bettercast is ready. Set a shortcut in Settings to summon it."
