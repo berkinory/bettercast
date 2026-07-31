@@ -244,7 +244,7 @@ struct RootPaletteView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
-            searchFocused = true
+            searchFocused = vm.mode != .camera
             vm.feedback = nil
             showActions = false
             showAppMenu = false
@@ -257,6 +257,7 @@ struct RootPaletteView: View {
         }
         .onChange(of: vm.mode) { oldMode, newMode in
             if oldMode == .camera, newMode != .camera { core.camera.stop() }
+            searchFocused = newMode != .camera
             if newMode == .camera { core.camera.start() }
             vm.selection = 0
             vm.feedback = nil
@@ -284,7 +285,7 @@ struct RootPaletteView: View {
             listScroll = ListScrollIntent(kind: .follow)
         }
         .onAppear {
-            searchFocused = true
+            searchFocused = vm.mode != .camera
             if vm.mode == .camera { core.camera.start() }
         }
         .task(id: vm.feedback?.id) {
@@ -533,9 +534,48 @@ struct RootPaletteView: View {
         }
     }
 
+    @ViewBuilder
     private var header: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
+        Group {
             if vm.mode == .camera {
+                cameraHeader
+            } else {
+                paletteHeader
+            }
+        }
+        .id(vm.mode)
+        .padding(.horizontal, Theme.Spacing.md * 2)
+        // Fixed row height + top padding, identical in both states, so typing (which flips compact→expanded) can't move the search bar. Compact centers the row in symmetric slack; expanded floats the same row over the list.
+        .frame(height: Theme.Size.headerHeight)
+        .padding(.top, Theme.Size.headerPadding)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var cameraHeader: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.md) {
+            Button(action: exitToLauncher) {
+                Image(systemName: "chevron.left")
+                    .font(Theme.Typography.headerIcon)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: Theme.Size.headerIconSlot)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hovering in
+                if hovering { NSCursor.arrow.set() }
+            }
+            Text(vm.mode.title)
+                .font(Theme.Typography.searchField)
+                .foregroundStyle(Theme.Colors.textPrimary)
+            Spacer()
+        }
+    }
+
+    private var paletteHeader: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.md) {
+            // Sub-screens use a back chevron instead of a mode glyph.
+            if vm.mode != .launcher {
                 Button(action: exitToLauncher) {
                     Image(systemName: "chevron.left")
                         .font(Theme.Typography.headerIcon)
@@ -548,42 +588,16 @@ struct RootPaletteView: View {
                 .onHover { hovering in
                     if hovering { NSCursor.arrow.set() }
                 }
-                Text(vm.mode.title)
-                    .font(Theme.Typography.searchField)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                Spacer()
             } else {
-                // Sub-screens use a back chevron instead of a mode glyph.
-                if vm.mode != .launcher {
-                    Button(action: exitToLauncher) {
-                        Image(systemName: "chevron.left")
-                            .font(Theme.Typography.headerIcon)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary)
-                            .frame(width: Theme.Size.headerIconSlot)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { hovering in
-                        if hovering { NSCursor.arrow.set() }
-                    }
-                } else {
-                    Image(systemName: vm.mode.systemImage)
-                        .font(Theme.Typography.headerIcon)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                        .frame(width: Theme.Size.headerIconSlot)
-                }
-                searchField
-                headerTrailing
+                Image(systemName: vm.mode.systemImage)
+                    .font(Theme.Typography.headerIcon)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: Theme.Size.headerIconSlot)
             }
+            searchField
+            headerTrailing
         }
-        // Align the search icon with the list rows and section headers below (list inset + row inset).
-        .padding(.horizontal, Theme.Spacing.md * 2)
-        // Fixed row height + top padding, identical in both states, so typing (which flips compact→expanded) can't move the search bar. Compact centers the row in symmetric slack; expanded floats the same row over the list.
-        .frame(height: Theme.Size.headerHeight)
-        .padding(.top, Theme.Size.headerPadding)
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -696,7 +710,12 @@ struct RootPaletteView: View {
                 )
             }
         case .camera:
-            CameraView(model: core.camera, onBack: exitToLauncher)
+            CameraView(
+                model: core.camera,
+                onBack: exitToLauncher,
+                onFeedback: { showFeedback($0) },
+                onMenuOpenChanged: { vm.menuOpen = $0 }
+            )
         case .uninstall:
             switch uninstall.phase {
             case .removing(let permanently):
@@ -999,7 +1018,7 @@ struct RootPaletteView: View {
     }
 }
 
-private struct PaletteFeedbackButton: View {
+struct PaletteFeedbackButton: View {
     let message: String
 
     var body: some View {

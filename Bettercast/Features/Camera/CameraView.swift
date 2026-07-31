@@ -129,8 +129,17 @@ private final class CameraCaptureEngine: NSObject, @unchecked Sendable {
     }
 
     func stop() {
-        queue.async { [self] in
+        queue.sync { [self] in
             if session.isRunning { session.stopRunning() }
+            session.beginConfiguration()
+            if let currentInput {
+                session.removeInput(currentInput)
+                self.currentInput = nil
+            }
+            if session.outputs.contains(where: { $0 === photoOutput }) {
+                session.removeOutput(photoOutput)
+            }
+            session.commitConfiguration()
             captureCompletion = nil
         }
     }
@@ -228,12 +237,14 @@ final class CameraSessionModel: ObservableObject {
     @Published private(set) var isCapturing = false
     @Published var isMirrored = true
     @Published private(set) var feedback: String?
+    @Published private(set) var feedbackToken = UUID()
     @Published private(set) var flashToken = UUID()
     @Published fileprivate var keyboardEvent: CameraKeyboardEvent?
 
     let session: AVCaptureSession
     private let engine = CameraCaptureEngine()
     private var feedbackTask: Task<Void, Never>?
+    private var lifecycleID = UUID()
     private var isStarted = false
 
     init() {
@@ -243,16 +254,18 @@ final class CameraSessionModel: ObservableObject {
     func start() {
         guard !isStarted else { return }
         isStarted = true
+        let lifecycleID = UUID()
+        self.lifecycleID = lifecycleID
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            discoverAndStart()
+            discoverAndStart(lifecycleID: lifecycleID)
         case .notDetermined:
             state = .requestingPermission
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 Task { @MainActor in
-                    guard let self, self.isStarted else { return }
+                    guard let self, self.isStarted, self.lifecycleID == lifecycleID else { return }
                     if granted {
-                        self.discoverAndStart()
+                        self.discoverAndStart(lifecycleID: lifecycleID)
                     } else {
                         self.state = .denied
                     }
@@ -267,17 +280,21 @@ final class CameraSessionModel: ObservableObject {
 
     func stop() {
         isStarted = false
+        lifecycleID = UUID()
         feedbackTask?.cancel()
         feedbackTask = nil
+        feedback = nil
+        isCapturing = false
         engine.stop()
     }
 
     func takePhoto() {
         guard state == .ready, !isCapturing else { return }
         isCapturing = true
+        let lifecycleID = self.lifecycleID
         engine.capture(mirrored: isMirrored) { [weak self] result in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.isStarted, self.lifecycleID == lifecycleID else { return }
                 self.isCapturing = false
                 switch result {
                 case .success(let data):
@@ -314,9 +331,10 @@ final class CameraSessionModel: ObservableObject {
             return
         }
         state = .starting
+        let lifecycleID = self.lifecycleID
         engine.switchDevice(to: device.id) { [weak self] result in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.isStarted, self.lifecycleID == lifecycleID else { return }
                 switch result {
                 case .success:
                     self.selectedDeviceID = device.id
@@ -358,7 +376,7 @@ final class CameraSessionModel: ObservableObject {
         return true
     }
 
-    private func discoverAndStart() {
+    private func discoverAndStart(lifecycleID: UUID) {
         devices = CameraCaptureEngine.availableDevices()
         guard let device = devices.first else {
             state = .unavailable
@@ -368,7 +386,7 @@ final class CameraSessionModel: ObservableObject {
         state = .starting
         engine.start(deviceID: device.id) { [weak self] result in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.isStarted, self.lifecycleID == lifecycleID else { return }
                 switch result {
                 case .success: self.state = .ready
                 case .failure(let error): self.state = .failed(error.message)
@@ -380,6 +398,7 @@ final class CameraSessionModel: ObservableObject {
     private func showFeedback(_ text: String) {
         feedbackTask?.cancel()
         feedback = text
+        feedbackToken = UUID()
         feedbackTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1.6))
             guard !Task.isCancelled else { return }
@@ -399,10 +418,14 @@ private struct CameraPreview: NSViewRepresentable {
     func updateNSView(_ nsView: CameraPreviewNSView, context: Context) {
         nsView.setMirrored(mirrored)
     }
+
+    static func dismantleNSView(_ nsView: CameraPreviewNSView, coordinator: ()) {
+        nsView.detach()
+    }
 }
 
 private final class CameraPreviewNSView: NSView {
-    private let previewLayer: AVCaptureVideoPreviewLayer
+    private var previewLayer: AVCaptureVideoPreviewLayer
 
     init(session: AVCaptureSession, mirrored: Bool) {
         previewLayer = AVCaptureVideoPreviewLayer(session: session)
@@ -430,6 +453,12 @@ private final class CameraPreviewNSView: NSView {
         connection.automaticallyAdjustsVideoMirroring = false
         connection.isVideoMirrored = mirrored
     }
+
+    func detach() {
+        previewLayer.session = nil
+        previewLayer.removeFromSuperlayer()
+    }
+
 }
 
 struct CameraView: View {
@@ -438,8 +467,11 @@ struct CameraView: View {
         case cameras
     }
 
+    @EnvironmentObject private var palette: PaletteViewModel
     @ObservedObject var model: CameraSessionModel
     let onBack: () -> Void
+    let onFeedback: (String) -> Void
+    let onMenuOpenChanged: (Bool) -> Void
 
     @State private var menuOpen = false
     @State private var menuLevel = MenuLevel.actions
@@ -506,11 +538,6 @@ struct CameraView: View {
                 .allowsHitTesting(false)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
-        }
         .onChange(of: model.flashToken) {
             flashOpacity = 0.7
             withAnimation(.easeOut(duration: 0.22)) { flashOpacity = 0 }
@@ -518,6 +545,9 @@ struct CameraView: View {
         .onChange(of: model.keyboardEvent) { _, event in
             guard let event else { return }
             handleKeyboard(event.command)
+        }
+        .onChange(of: model.feedbackToken) {
+            if let feedback = model.feedback { onFeedback(feedback) }
         }
     }
 
@@ -550,16 +580,20 @@ struct CameraView: View {
         VStack {
             Spacer()
             HStack(alignment: .bottom, spacing: Theme.Spacing.md) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Image(systemName: "camera.fill")
-                    Text(model.feedback ?? selectedDeviceName ?? "Open Camera")
-                        .lineLimit(1)
+                if let feedback = palette.feedback {
+                    PaletteFeedbackButton(message: feedback.message)
+                } else {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Image(systemName: "camera.fill")
+                        Text(selectedDeviceName ?? "Open Camera")
+                            .lineLimit(1)
+                    }
+                    .font(Theme.Typography.bar)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .frame(height: Theme.Size.menuButton)
+                    .frosted(in: Capsule())
                 }
-                .font(Theme.Typography.bar)
-                .foregroundStyle(.primary)
-                .padding(.horizontal, Theme.Spacing.md)
-                .frame(height: Theme.Size.menuButton)
-                .frosted(in: Capsule())
                 Spacer()
                 HStack(spacing: Theme.Spacing.xs) {
                     PaletteBarButton(action: model.takePhoto) {
@@ -659,6 +693,7 @@ struct CameraView: View {
             menuLevel = .actions
             menuSelection = 0
             menuOpen = true
+            onMenuOpenChanged(true)
         }
     }
 
@@ -667,11 +702,13 @@ struct CameraView: View {
         menuLevel = .cameras
         menuSelection = model.devices.firstIndex(where: { $0.id == model.selectedDeviceID }) ?? 0
         menuOpen = true
+        onMenuOpenChanged(true)
     }
 
     private func closeMenu() {
         menuOpen = false
         menuLevel = .actions
         menuSelection = 0
+        onMenuOpenChanged(false)
     }
 }

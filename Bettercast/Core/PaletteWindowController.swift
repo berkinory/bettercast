@@ -158,8 +158,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             if core.palette.mode == .uninstall {
                 core.exitUninstall()
             } else {
-                if core.palette.mode == .camera { core.camera.stop() }
-                core.palette.prepare(mode: .launcher)
+                core.handlePaletteEscape()
             }
             return true
         }
