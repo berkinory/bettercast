@@ -10,7 +10,9 @@ may promote a word-start or substring match by exactly one class. Exact matches 
 prefixes never become exact, and weak subsequences never receive a class promotion. This lets a
 repeated `ch` → Google Chrome choice overtake the default prefix match Chess without allowing an
 unrelated frequent app to surface. Matching strips invisible Unicode format scalars first, since app
-metadata can contain bidi/zero-width markers before the visible name.
+metadata can contain bidi/zero-width markers before the visible name. App names with Han characters also get
+precomputed pinyin aliases for full readings and per-character initials; literal matches always rank above
+romanized aliases.
 
 Selecting a launcher result records every prefix of the submitted query, so choosing WhatsApp for
 `wha` also teaches `w`, `wh`, and `wha`. Every palette launch also records weak item-wide usage,

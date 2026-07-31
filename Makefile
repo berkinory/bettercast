@@ -45,7 +45,9 @@ unsigned-dmg:
 
 test: tools
 	@mkdir -p $(TEST_BIN_DIR)
-	swift Tools/fuzz-test.swift
+	cp Tools/fuzz-test.swift $(TEST_BIN_DIR)/main.swift
+	swiftc -swift-version 6 Bettercast/Core/Romanization.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/fuzz-test
+	$(TEST_BIN_DIR)/fuzz-test
 	swiftc -swift-version 6 Bettercast/Core/SettingsSearchIndex.swift Tools/settings-search-test.swift -o $(TEST_BIN_DIR)/settings-search-test
 	$(TEST_BIN_DIR)/settings-search-test
 	swiftc -swift-version 6 Bettercast/Core/LauncherRankingStore.swift Tools/ranking-test.swift -o $(TEST_BIN_DIR)/ranking-test

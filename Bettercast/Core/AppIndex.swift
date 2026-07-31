@@ -12,6 +12,23 @@ struct AppEntry: Identifiable, Hashable, Sendable {
     let url: URL
     let bundleID: String?
     let kind: Kind
+    let searchAliases: [String]
+
+    init(
+        id: String,
+        name: String,
+        url: URL,
+        bundleID: String?,
+        kind: Kind,
+        searchAliases: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.bundleID = bundleID
+        self.kind = kind
+        self.searchAliases = searchAliases
+    }
 
     /// Stable identity for learned ranking, favorites, and other per-entry preferences.
     var preferenceKey: String { bundleID ?? id }
@@ -175,7 +192,7 @@ final class AppIndex: ObservableObject {
                 result.append(
                     AppEntry(
                         id: url.path, name: name, url: url, bundleID: bundleID,
-                        kind: .application))
+                        kind: .application, searchAliases: Romanization.aliases(for: name)))
             }
         }
 
@@ -184,13 +201,15 @@ final class AppIndex: ObservableObject {
             let bundleID = bundle.bundleIdentifier,
             seenBundleIDs.insert(bundleID).inserted
         {
+            let name = appName(bundle: bundle, url: finderURL)
             result.append(
                 AppEntry(
                     id: finderURL.path,
-                    name: appName(bundle: bundle, url: finderURL),
+                    name: name,
                     url: finderURL,
                     bundleID: bundleID,
-                    kind: .application))
+                    kind: .application,
+                    searchAliases: Romanization.aliases(for: name)))
         }
 
         // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
@@ -239,10 +258,17 @@ final class AppIndex: ObservableObject {
         let learned = ranking.affinities(query: q)
         let global = ranking.globalAffinities()
         let scored = apps.compactMap { app -> RankedApp? in
-            guard let match = FuzzyMatch.match(query: q, candidate: app.name) else { return nil }
+            guard
+                let match = FuzzyMatch.match(
+                    query: q, candidate: app.name, aliases: app.searchAliases
+                )
+            else { return nil }
             let affinity = learned[app.preferenceKey] ?? 0
             let globalAffinity = global[app.preferenceKey] ?? 0
-            let promotedTier = Self.promotedTier(for: match.kind, affinity: affinity)
+            let promotedTier =
+                match.isAlias
+                ? match.kind.rawValue - 5
+                : Self.promotedTier(for: match.kind, affinity: affinity)
             // Query learning can overcome small within-tier shape differences; global usage stays a tiny tie-break and can never change tiers.
             let adaptiveDetail =
                 match.detailScore + affinity / 100 + min(4, globalAffinity / 2_500)
@@ -299,6 +325,13 @@ enum FuzzyMatch {
         let kind: Kind
         /// Quality within a match kind. Ranking compares the kind separately so adaptive history can safely promote by one tier without inheriting the old artificial 10k walls.
         let detailScore: Int
+        let isAlias: Bool
+
+        init(kind: Kind, detailScore: Int, isAlias: Bool = false) {
+            self.kind = kind
+            self.detailScore = detailScore
+            self.isAlias = isAlias
+        }
 
         var score: Int {
             switch kind {
@@ -319,9 +352,22 @@ enum FuzzyMatch {
     }
 
     static func match(query: String, candidate: String) -> Result? {
+        match(query: query, candidate: candidate, aliases: [])
+    }
+
+    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
         let q = normalized(query)
         guard !q.isEmpty else { return nil }
-        return match(normalizedQuery: q, candidate: normalized(candidate))
+        let literal = match(normalizedQuery: q, candidate: normalized(candidate))
+        let alias = aliases.compactMap {
+            match(normalizedQuery: q, candidate: normalized($0)).map {
+                Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
+            }
+        }.max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
+        return literal ?? alias
     }
 
     private static func match(normalizedQuery q: String, candidate c: String) -> Result? {

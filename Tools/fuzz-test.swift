@@ -14,6 +14,13 @@ enum FuzzyMatch {
     struct Result: Sendable {
         let kind: Kind
         let detailScore: Int
+        let isAlias: Bool
+
+        init(kind: Kind, detailScore: Int, isAlias: Bool = false) {
+            self.kind = kind
+            self.detailScore = detailScore
+            self.isAlias = isAlias
+        }
 
         var score: Int {
             switch kind {
@@ -33,9 +40,22 @@ enum FuzzyMatch {
     }
 
     static func match(query: String, candidate: String) -> Result? {
+        match(query: query, candidate: candidate, aliases: [])
+    }
+
+    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
         let q = normalized(query)
         guard !q.isEmpty else { return nil }
-        return match(normalizedQuery: q, candidate: normalized(candidate))
+        let literal = match(normalizedQuery: q, candidate: normalized(candidate))
+        let alias = aliases.compactMap {
+            match(normalizedQuery: q, candidate: normalized($0)).map {
+                Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
+            }
+        }.max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
+        return literal ?? alias
     }
 
     private static func match(normalizedQuery q: String, candidate c: String) -> Result? {
@@ -92,10 +112,12 @@ enum FuzzyMatch {
     }
 }
 
-let apps = [
-    "Google Chrome", "Chess", "Time Machine", "Safari", "Bluetooth File Exchange",
-    "Screenshot", "Screen Sharing", "Visual Studio Code", "Photos", "App Store",
-    "System Settings", "Calendar", "Terminal", "WhatsApp", "Wick",
+let apps: [(name: String, aliases: [String])] = [
+    ("Google Chrome", []), ("Chess", []), ("Time Machine", []), ("Safari", []),
+    ("Bluetooth File Exchange", []), ("Screenshot", []), ("Screen Sharing", []),
+    ("Visual Studio Code", []), ("Photos", []), ("App Store", []),
+    ("System Settings", []), ("Calendar", []), ("Terminal", []), ("WhatsApp", []),
+    ("Wick", []),
 ]
 
 func promotedTier(_ kind: FuzzyMatch.Kind, affinity: Int) -> Int {
@@ -109,12 +131,20 @@ func promotedTier(_ kind: FuzzyMatch.Kind, affinity: Int) -> Int {
 func rank(
     _ query: String, affinities: [String: Int] = [:], globalAffinities: [String: Int] = [:]
 ) -> [String] {
-    apps.compactMap { name -> (name: String, tier: Int, detail: Int, affinity: Int, global: Int)? in
-        guard let match = FuzzyMatch.match(query: query, candidate: name) else { return nil }
-        let affinity = affinities[name, default: 0]
-        let global = globalAffinities[name, default: 0]
+    apps.compactMap { app -> (name: String, tier: Int, detail: Int, affinity: Int, global: Int)? in
+        guard
+            let match = FuzzyMatch.match(
+                query: query, candidate: app.name, aliases: app.aliases
+            )
+        else { return nil }
+        let affinity = affinities[app.name, default: 0]
+        let global = globalAffinities[app.name, default: 0]
         let detail = match.detailScore + affinity / 100 + min(4, global / 2_500)
-        return (name, promotedTier(match.kind, affinity: affinity), detail, affinity, global)
+        let tier =
+            match.isAlias
+            ? match.kind.rawValue - 5
+            : promotedTier(match.kind, affinity: affinity)
+        return (app.name, tier, detail, affinity, global)
     }
     .sorted {
         if $0.tier != $1.tier { return $0.tier > $1.tier }
@@ -127,6 +157,7 @@ func rank(
 }
 
 var failures = 0
+@MainActor
 func check(_ description: String, _ condition: Bool, _ detail: String = "") {
     if condition {
         print("PASS  \(description)")
@@ -167,6 +198,17 @@ let defaultW = rank("w")
 check("shorter Wick wins the default prefix tie", defaultW.first == "Wick", "got \(defaultW)")
 let learnedW = rank("w", affinities: ["WhatsApp": 1_000])
 check("query learning reorders results within a tier", learnedW.first == "WhatsApp")
+
+let xunleiAliases = Romanization.aliases(for: "迅雷")
+check("'xunlei' generates a full romanization alias", xunleiAliases.contains("xunlei"))
+check("'xl' generates initials", xunleiAliases.contains("xl"))
+let qsyyAliases = Romanization.aliases(for: "汽水音乐")
+check("polyphone-aware initials use 'qsyy'", qsyyAliases.contains("qsyy"))
+check("polyphone-aware full reading uses 'qishuiyinyue'", qsyyAliases.contains("qishuiyinyue"))
+check(
+    "romanized exact stays below a literal subsequence",
+    FuzzyMatch.match(query: "gc", candidate: "Google Chrome", aliases: ["gc"])?.isAlias == false
+)
 
 let gc = FuzzyMatch.match(query: "gc", candidate: "Google Chrome")
 check("'gc' is a subsequence match", gc?.kind == .subsequence)
