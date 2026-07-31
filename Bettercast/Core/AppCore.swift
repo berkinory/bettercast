@@ -112,6 +112,7 @@ final class AppCore: ObservableObject {
 
     private lazy var windowController = PaletteWindowController(core: self)
     private let auxWindows = AuxWindowController()
+    private var systemCommandState = SystemCommandRunner.State()
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -273,6 +274,10 @@ final class AppCore: ObservableObject {
             runCommand(app)
             return
         }
+        if app.kind == .systemCommand {
+            runSystemCommand(app)
+            return
+        }
         hidePalette(restoreFocus: false)
         switch app.kind {
         case .application:
@@ -280,7 +285,7 @@ final class AppCore: ObservableObject {
         case .systemSettings:
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
-        case .command:
+        case .command, .systemCommand:
             break  // handled above
         }
     }
@@ -399,6 +404,45 @@ final class AppCore: ObservableObject {
         )
     }
 
+    private func runSystemCommand(_ entry: AppEntry) {
+        guard let command = SystemCommandCatalog.command(forEntryID: entry.id) else { return }
+        let previousApp = windowController.previousApp
+        hidePalette(restoreFocus: false)
+        Task { [weak self] in
+            guard let self else { return }
+            if command.id == .quitAllApps {
+                quitAllApps()
+                return
+            }
+            do {
+                systemCommandState = try await SystemCommandRunner.run(
+                    command.id, previousApp: previousApp, state: systemCommandState)
+            } catch let failure as SystemCommandFailure {
+                presentSystemCommandFailure(name: command.name, failure: failure)
+            } catch {
+                presentSystemCommandFailure(
+                    name: command.name,
+                    failure: SystemCommandFailure(error.localizedDescription))
+            }
+        }
+    }
+
+    private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "“\(name)” Failed"
+        alert.informativeText = failure.message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        if failure.settings == .accessibility {
+            alert.addButton(withTitle: "Open Accessibility Settings…")
+        }
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn, failure.settings == .accessibility {
+            Permissions.openAccessibilitySettings()
+        }
+    }
+
     private func runCommand(_ entry: AppEntry) {
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
@@ -408,8 +452,6 @@ final class AppCore: ObservableObject {
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()
-        case .quitAllApps:
-            quitAllApps()
         case .quit:
             NSApp.terminate(nil)
         case nil:

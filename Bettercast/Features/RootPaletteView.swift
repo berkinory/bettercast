@@ -390,7 +390,9 @@ struct RootPaletteView: View {
                 core.copyToClipboard(clipResults[selection])
             case .launcher:
                 // ⌘↵ reveals applications and settings in Finder, matching the Actions menu.
-                guard command, let app = selectedAppEntry, app.kind != .command else {
+                guard command, let app = selectedAppEntry,
+                    app.kind == .application || app.kind == .systemSettings
+                else {
                     return .ignored
                 }
                 core.showInFinder(app)
@@ -675,6 +677,7 @@ struct RootPaletteView: View {
             switch selectedApp?.kind {
             case .systemSettings: return "Open System Setting"
             case .command: return "Open Command"
+            case .systemCommand: return "Run System Command"
             default: return "Open Application"
             }
         }

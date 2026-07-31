@@ -1,0 +1,22 @@
+import Foundation
+
+@main
+private struct SystemCommandTests {
+    static func main() {
+        let commands = SystemCommandCatalog.all
+        precondition(commands.count == 10)
+        precondition(Set(commands.map(\.entryID)).count == commands.count)
+        precondition(
+            SystemCommandCatalog.command(forEntryID: "command:quit-all-apps")?.id
+                == .quitAllApps)
+        precondition(
+            SystemCommandCatalog.command(forEntryID: "system-command:lock-screen")?.id
+                == .lockScreen)
+        precondition(
+            SystemCommandCatalog.command(forEntryID: "system-command:quit-all-apps") == nil)
+        precondition(
+            SystemCommandCatalog.command(forEntryID: "command:quit-all-apps")?.confirmation
+                == .required)
+        print("system command tests passed")
+    }
+}

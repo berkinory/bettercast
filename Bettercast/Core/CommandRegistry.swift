@@ -5,7 +5,6 @@ enum CommandID: String, CaseIterable, Sendable {
     case clipboardHistory = "command:clipboard-history"
     case searchEmoji = "command:search-emoji"
     case settings = "command:settings"
-    case quitAllApps = "command:quit-all-apps"
     case quit = "command:quit"
 
     var name: String {
@@ -13,7 +12,6 @@ enum CommandID: String, CaseIterable, Sendable {
         case .clipboardHistory: return "Clipboard History"
         case .searchEmoji: return "Search Emoji & Symbols"
         case .settings: return "Settings"
-        case .quitAllApps: return "Quit All Applications"
         case .quit: return "Quit Bettercast"
         }
     }
@@ -23,7 +21,6 @@ enum CommandID: String, CaseIterable, Sendable {
         case .clipboardHistory: return "doc.on.clipboard"
         case .searchEmoji: return "face.smiling"
         case .settings: return "gearshape"
-        case .quitAllApps: return "xmark.circle"
         case .quit: return "power"
         }
     }

@@ -5,6 +5,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case application
         case systemSettings
         case command
+        case systemCommand
     }
 
     let id: String  // file path (or "command:…" id) — always unique
@@ -21,6 +22,7 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .application: return "Application"
         case .systemSettings: return "System Setting"
         case .command: return "Command"
+        case .systemCommand: return "System Command"
         }
     }
 
@@ -30,13 +32,17 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         switch kind {
         case .application: return .app(bundleID: bundleID)
         case .systemSettings: return .settingsPane(bundleID: bundleID)
-        case .command: return nil
+        case .command, .systemCommand: return nil
         }
     }
 
-    /// Commands expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
-    var isSymbolIcon: Bool { kind == .command }
-    var symbolIconName: String { CommandRegistry.command(for: self)?.sfSymbol ?? "questionmark" }
+    /// Synthetic command entries expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
+    var isSymbolIcon: Bool { kind == .command || kind == .systemCommand }
+    var symbolIconName: String {
+        SystemCommandCatalog.command(forEntryID: id)?.sfSymbol
+            ?? CommandRegistry.command(for: self)?.sfSymbol
+            ?? "questionmark"
+    }
 
     var icon: NSImage {
         isSymbolIcon
@@ -189,11 +195,19 @@ final class AppIndex: ObservableObject {
                     kind: .application))
         }
 
-        // Apps, then Settings panes, then Commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
+        // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
         let apps = result.sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
-        return apps + SettingsPaneScanner.scan() + CommandRegistry.all
+        let systemCommands = SystemCommandCatalog.all.map { command in
+            AppEntry(
+                id: command.entryID,
+                name: command.name,
+                url: URL(string: "bettercast://system-command/" + command.id.rawValue)!,
+                bundleID: nil,
+                kind: .systemCommand)
+        }
+        return apps + SettingsPaneScanner.scan() + systemCommands + CommandRegistry.all
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {

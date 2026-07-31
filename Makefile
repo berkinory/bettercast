@@ -56,6 +56,8 @@ test: tools
 	$(TEST_BIN_DIR)/clipboard-test
 	swiftc Bettercast/Core/Emoji/EmojiCatalog.swift Bettercast/Core/Emoji/EmojiGridGeometry.swift Bettercast/Core/Emoji/EmojiData.generated.swift Tools/emoji-test.swift -o $(TEST_BIN_DIR)/emoji-test
 	$(TEST_BIN_DIR)/emoji-test
+	swiftc -swift-version 6 Bettercast/Core/SystemCommand.swift Tools/system-command-test.swift -o $(TEST_BIN_DIR)/system-command-test
+	$(TEST_BIN_DIR)/system-command-test
 
 generate:
 	@command -v xcodegen >/dev/null || { echo "error: xcodegen is required" >&2; exit 1; }

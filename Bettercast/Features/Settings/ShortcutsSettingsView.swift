@@ -58,6 +58,7 @@ struct ShortcutsSettingsView: View {
         case .application: return "Search applications"
         case .systemSettings: return "Search System Settings"
         case .command: return "Search commands"
+        case .systemCommand: return "Search system commands"
         }
     }
 
@@ -204,6 +205,7 @@ private struct ShortcutTable: View {
         case .application: return "applications"
         case .systemSettings: return "System Settings"
         case .command: return "commands"
+        case .systemCommand: return "system commands"
         }
     }
 
