@@ -33,7 +33,9 @@ enum SearchScopes {
         for scope in scopes {
             let url = URL(fileURLWithPath: expand(scope))
             if url.pathExtension.lowercased() == "app" {
-                if fileManager.fileExists(atPath: url.path) { result.append(url) }
+                guard fileManager.fileExists(atPath: url.path) else { continue }
+                result.append(url)
+                result.append(contentsOf: embeddedAppBundles(in: url))
                 continue
             }
 
@@ -44,9 +46,23 @@ enum SearchScopes {
                     options: [.skipsHiddenFiles]
                 )
             else { continue }
-            result.append(contentsOf: items.filter { $0.pathExtension.lowercased() == "app" })
+            let apps = items.filter { $0.pathExtension.lowercased() == "app" }
+            result.append(contentsOf: apps)
+            for app in apps {
+                result.append(contentsOf: embeddedAppBundles(in: app))
+            }
         }
         return result
+    }
+
+    private static func embeddedAppBundles(in app: URL) -> [URL] {
+        let directory = app.appendingPathComponent("Contents/Applications", isDirectory: true)
+        return
+            (try? FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+            ))?.filter { $0.pathExtension.lowercased() == "app" } ?? []
     }
 
     private static func trimTrailingSlash(_ path: String) -> String {

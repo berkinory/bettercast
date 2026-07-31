@@ -8,8 +8,10 @@
 `SearchScopes` owns the folders and individual `.app` bundles Opencast indexes. The list is editable
 under Settings → Launcher → Search and stored as tilde-abbreviated paths in `AppSettings`.
 
-Enumeration is flat: one directory listing per scope, with no recursive walk. Add a nested folder as its
-own scope. This keeps the Settings list honest and avoids scanning unrelated application bundles.
+Enumeration is flat: one directory listing per scope, plus a single targeted listing of each app's
+`Contents/Applications` folder for embedded launchable apps. It never walks arbitrary app contents or nested
+folders, so embedded helpers and resources do not fill the launcher or slow rescans. Add a nested folder as
+its own scope.
 
 The defaults cover the standard Applications folders, system Utilities, the cryptex-delivered system
 applications, the user's `~/Applications`, and Finder as an individual bundle. Finder is not exposed by

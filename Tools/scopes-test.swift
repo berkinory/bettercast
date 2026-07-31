@@ -26,16 +26,23 @@ struct ScopesTest {
         let apps = root.appendingPathComponent("Apps")
         makeDirectory(apps.appendingPathComponent("Alpha.app"))
         makeDirectory(apps.appendingPathComponent("Beta.app"))
+        let host = apps.appendingPathComponent("Host.app")
+        makeDirectory(host.appendingPathComponent("Contents/Applications/Child.app"))
+        makeDirectory(host.appendingPathComponent("Contents/Resources/Noise.app"))
         makeDirectory(apps.appendingPathComponent("Notes.txt"))
         makeDirectory(apps.appendingPathComponent(".Hidden.app"))
         let nested = apps.appendingPathComponent("Sub")
         makeDirectory(nested.appendingPathComponent("Deep.app"))
 
         let found = SearchScopes.appBundles(in: [apps.path]).map(\.lastPathComponent)
-        check("direct .app children are indexed", Set(found) == ["Alpha.app", "Beta.app"])
+        check(
+            "direct .app children are indexed",
+            Set(found).isSuperset(of: ["Alpha.app", "Beta.app", "Host.app"]))
+        check("embedded apps in Contents/Applications are indexed", found.contains("Child.app"))
         check("non-app children are skipped", !found.contains("Notes.txt"))
         check("hidden bundles are skipped", !found.contains(".Hidden.app"))
-        check("nested bundles are not indexed", !found.contains("Deep.app"))
+        check("unrelated nested bundles are skipped", !found.contains("Noise.app"))
+        check("nested folders are not indexed", !found.contains("Deep.app"))
         check(
             "a nested folder works as its own scope",
             SearchScopes.appBundles(in: [nested.path]).map(\.lastPathComponent) == ["Deep.app"])
