@@ -111,7 +111,7 @@ enum SystemCommandCatalog {
 
     private static func confirmation(for id: SystemCommand.ID) -> SystemCommand.Confirmation {
         switch id {
-        case .restart, .shutDown, .logOut, .emptyTrash, .quitAllApps:
+        case .restart, .shutDown, .logOut, .emptyTrash, .ejectAllDisks, .quitAllApps:
             return .required
         default:
             return .none

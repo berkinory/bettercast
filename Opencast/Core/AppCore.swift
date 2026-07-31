@@ -430,6 +430,7 @@ final class AppCore: ObservableObject {
                 quitAllApps()
                 return
             }
+            guard command.confirmation == .none || confirmSystemCommand(command) else { return }
             do {
                 systemCommandState = try await SystemCommandRunner.run(
                     command.id, previousApp: previousApp, state: systemCommandState)
@@ -441,6 +442,29 @@ final class AppCore: ObservableObject {
                     failure: SystemCommandFailure(error.localizedDescription))
             }
         }
+    }
+
+    private func confirmSystemCommand(_ command: SystemCommand) -> Bool {
+        let informativeText: String
+        switch command.id {
+        case .restart:
+            informativeText = "Open applications will be closed and your Mac will restart."
+        case .shutDown:
+            informativeText = "Open applications will be closed and your Mac will shut down."
+        case .logOut:
+            informativeText = "You will be logged out of your Mac."
+        case .emptyTrash:
+            informativeText = "Items in the Trash will be permanently deleted."
+        case .ejectAllDisks:
+            informativeText = "All ejectable local disks will be unmounted."
+        default:
+            informativeText = "This system action will affect your current session."
+        }
+        return windowController.presentConfirmation(
+            message: "\(command.name)?",
+            informativeText: informativeText,
+            confirmTitle: command.name
+        )
     }
 
     private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {

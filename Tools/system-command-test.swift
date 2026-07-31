@@ -19,6 +19,9 @@ private struct SystemCommandTests {
             SystemCommandCatalog.command(forEntryID: "system-command:eject-all-disks")?.id
                 == .ejectAllDisks)
         precondition(
+            SystemCommandCatalog.command(forEntryID: "system-command:eject-all-disks")?.confirmation
+                == .required)
+        precondition(
             SystemCommandCatalog.command(forEntryID: "system-command:quit-all-apps") == nil)
         precondition(
             SystemCommandCatalog.command(forEntryID: "command:quit-all-apps")?.confirmation
