@@ -6,6 +6,7 @@ import Darwin
 struct SystemCommandFailure: LocalizedError, Sendable {
     enum Settings: Sendable, Equatable {
         case accessibility
+        case automation
     }
 
     let message: String
@@ -46,16 +47,52 @@ enum SystemCommandRunner {
             try await runProcess("/usr/bin/pmset", arguments: ["sleepnow"])
         case .sleepDisplays:
             try await runProcess("/usr/bin/pmset", arguments: ["displaysleepnow"])
+        case .restart:
+            try runAppleScript("tell application \"System Events\" to restart")
+        case .shutDown:
+            try runAppleScript("tell application \"System Events\" to shut down")
+        case .logOut:
+            try runAppleScript("tell application \"System Events\" to log out")
+        case .showScreenSaver:
+            try openScreenSaver()
+        case .playPause:
+            try postMediaKey(16)
+        case .nextTrack:
+            try postMediaKey(17)
+        case .previousTrack:
+            try postMediaKey(18)
         case .toggleMute:
             try toggleMute(state: &state)
         case .volumeUp:
             try setVolume(try currentVolume() + volumeStep, state: &state)
         case .volumeDown:
             try setVolume(try currentVolume() - volumeStep, state: &state)
+        case .showDesktop:
+            try await runProcess(
+                "/System/Applications/Mission Control.app/Contents/MacOS/Mission Control",
+                arguments: ["1"])
+        case .toggleAppearance:
+            try runAppleScript(
+                "tell application \"System Events\" to tell appearance preferences to set dark mode to not dark mode")
         case .openTrash:
             let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash")
             guard NSWorkspace.shared.open(trash) else {
                 throw SystemCommandFailure("Finder could not open the Trash.")
+            }
+        case .emptyTrash:
+            let items =
+                try runAppleScript("tell application \"Finder\" to count items of trash")?
+                .int32Value ?? 0
+            if items > 0 {
+                try runAppleScript("tell application \"Finder\" to empty trash")
+            }
+        case .toggleHiddenFiles:
+            _ = try await toggleDefault(domain: "com.apple.finder", key: "AppleShowAllFiles")
+            let output = try await process("/usr/bin/killall", arguments: ["Finder"])
+            guard output.status == 0 || output.status == 1 else {
+                let detail = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                throw SystemCommandFailure(
+                    detail.isEmpty ? "Finder could not be restarted." : detail)
             }
         case .hideOtherApps:
             hideOtherApps(except: previousApp)
@@ -219,6 +256,37 @@ enum SystemCommandRunner {
         up.post(tap: .cghidEventTap)
     }
 
+    private static func postMediaKey(_ key: Int32) throws {
+        guard Permissions.ensureAccessibility() else {
+            throw SystemCommandFailure(
+                "Allow Bettercast to control your Mac in Accessibility settings, then try again.",
+                settings: .accessibility)
+        }
+        for state in [0xA, 0xB] {
+            let data1 = Int((key << 16) | (Int32(state) << 8))
+            let event = NSEvent.otherEvent(
+                with: .systemDefined,
+                location: .zero,
+                modifierFlags: [],
+                timestamp: 0,
+                windowNumber: 0,
+                context: nil,
+                subtype: 8,
+                data1: data1,
+                data2: -1)
+            event?.cgEvent?.post(tap: .cghidEventTap)
+        }
+    }
+
+    private static func openScreenSaver() throws {
+        let url = URL(fileURLWithPath: "/System/Library/CoreServices/ScreenSaverEngine.app")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw SystemCommandFailure("The macOS screen saver could not be found.")
+        }
+        NSWorkspace.shared.openApplication(
+            at: url, configuration: NSWorkspace.OpenConfiguration())
+    }
+
     private static func hideOtherApps(except previousApp: NSRunningApplication?) {
         let ownPID = NSRunningApplication.current.processIdentifier
         let keptPID = previousApp?.processIdentifier
@@ -231,6 +299,61 @@ enum SystemCommandRunner {
         }
         previousApp?.unhide()
         previousApp?.activate()
+    }
+
+    @discardableResult
+    private static func runAppleScript(_ source: String) throws -> NSAppleEventDescriptor? {
+        guard let script = NSAppleScript(source: source) else {
+            throw SystemCommandFailure("The system automation could not be prepared.")
+        }
+        var errorInfo: NSDictionary?
+        let result = script.executeAndReturnError(&errorInfo)
+        guard let errorInfo else { return result }
+        let number = errorInfo[NSAppleScript.errorNumber] as? Int
+        let detail = errorInfo[NSAppleScript.errorMessage] as? String ?? "Unknown automation error."
+        if number == -1743 {
+            throw SystemCommandFailure(
+                "Allow Bettercast to control the requested app in Automation settings, then try again.",
+                settings: .automation)
+        }
+        throw SystemCommandFailure(detail)
+    }
+
+    @discardableResult
+    private static func toggleDefault(domain: String, key: String) async throws -> Bool {
+        let read = try await process("/usr/bin/defaults", arguments: ["read", domain, key])
+        let normalized = read.stdout.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let current: Bool
+        if read.status == 0 {
+            guard let parsed = booleanDefault(normalized) else {
+                throw SystemCommandFailure("macOS reported an unexpected value for this setting.")
+            }
+            current = parsed
+        } else if read.stderr.contains("does not exist") {
+            current = false
+        } else {
+            let detail = read.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw SystemCommandFailure(
+                detail.isEmpty ? "macOS could not read this setting." : detail)
+        }
+        let requested = !current
+        try await runProcess(
+            "/usr/bin/defaults",
+            arguments: ["write", domain, key, "-bool", requested ? "true" : "false"])
+        let verify = try await process("/usr/bin/defaults", arguments: ["read", domain, key])
+        let verified = verify.stdout.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard verify.status == 0, booleanDefault(verified) == requested else {
+            throw SystemCommandFailure("macOS did not save the requested setting.")
+        }
+        return requested
+    }
+
+    private static func booleanDefault(_ value: String) -> Bool? {
+        switch value {
+        case "1", "true", "yes": return true
+        case "0", "false", "no": return false
+        default: return nil
+        }
     }
 
     private static func runProcess(_ executable: String, arguments: [String]) async throws {

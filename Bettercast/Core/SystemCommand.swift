@@ -5,10 +5,21 @@ struct SystemCommand: Identifiable, Hashable, Sendable {
         case lockScreen = "lock-screen"
         case sleep
         case sleepDisplays = "sleep-displays"
+        case restart
+        case shutDown = "shut-down"
+        case logOut = "log-out"
+        case showScreenSaver = "show-screen-saver"
+        case playPause = "play-pause"
+        case nextTrack = "next-track"
+        case previousTrack = "previous-track"
         case toggleMute = "toggle-mute"
         case volumeUp = "volume-up"
         case volumeDown = "volume-down"
+        case showDesktop = "show-desktop"
+        case toggleAppearance = "toggle-system-appearance"
         case openTrash = "open-trash"
+        case emptyTrash = "empty-trash"
+        case toggleHiddenFiles = "toggle-hidden-files"
         case hideOtherApps = "hide-all-apps-except-frontmost"
         case unhideAllApps = "unhide-all-hidden-apps"
         case quitAllApps = "quit-all-apps"
@@ -51,10 +62,21 @@ enum SystemCommandCatalog {
         case .lockScreen: return "Lock Screen"
         case .sleep: return "Sleep"
         case .sleepDisplays: return "Sleep Displays"
+        case .restart: return "Restart"
+        case .shutDown: return "Shut Down"
+        case .logOut: return "Log Out"
+        case .showScreenSaver: return "Show Screen Saver"
+        case .playPause: return "Play / Pause"
+        case .nextTrack: return "Next Track"
+        case .previousTrack: return "Previous Track"
         case .toggleMute: return "Toggle Mute"
         case .volumeUp: return "Turn Volume Up"
         case .volumeDown: return "Turn Volume Down"
+        case .showDesktop: return "Show Desktop"
+        case .toggleAppearance: return "Toggle System Appearance"
         case .openTrash: return "Open Trash"
+        case .emptyTrash: return "Empty Trash"
+        case .toggleHiddenFiles: return "Toggle Hidden Files"
         case .hideOtherApps: return "Hide All Apps Except Frontmost"
         case .unhideAllApps: return "Unhide All Hidden Apps"
         case .quitAllApps: return "Quit All Applications"
@@ -66,10 +88,21 @@ enum SystemCommandCatalog {
         case .lockScreen: return "lock"
         case .sleep: return "moon.zzz"
         case .sleepDisplays: return "display"
+        case .restart: return "arrow.clockwise"
+        case .shutDown: return "power"
+        case .logOut: return "rectangle.portrait.and.arrow.right"
+        case .showScreenSaver: return "rectangle.inset.filled"
+        case .playPause: return "playpause"
+        case .nextTrack: return "forward.end"
+        case .previousTrack: return "backward.end"
         case .toggleMute: return "speaker.slash"
         case .volumeUp: return "speaker.plus"
         case .volumeDown: return "speaker.minus"
+        case .showDesktop: return "macwindow.on.rectangle"
+        case .toggleAppearance: return "circle.lefthalf.filled"
         case .openTrash: return "trash"
+        case .emptyTrash: return "trash.slash"
+        case .toggleHiddenFiles: return "eye.slash"
         case .hideOtherApps: return "eye.slash.circle"
         case .unhideAllApps: return "eye.circle"
         case .quitAllApps: return "xmark.circle"
@@ -77,6 +110,11 @@ enum SystemCommandCatalog {
     }
 
     private static func confirmation(for id: SystemCommand.ID) -> SystemCommand.Confirmation {
-        id == .quitAllApps ? .required : .none
+        switch id {
+        case .restart, .shutDown, .logOut, .emptyTrash, .quitAllApps:
+            return .required
+        default:
+            return .none
+        }
     }
 }

@@ -5,7 +5,6 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case application
         case systemSettings
         case command
-        case systemCommand
     }
 
     let id: String  // file path (or "command:…" id) — always unique
@@ -22,7 +21,6 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         case .application: return "Application"
         case .systemSettings: return "System Setting"
         case .command: return "Command"
-        case .systemCommand: return "System Command"
         }
     }
 
@@ -32,12 +30,12 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         switch kind {
         case .application: return .app(bundleID: bundleID)
         case .systemSettings: return .settingsPane(bundleID: bundleID)
-        case .command, .systemCommand: return nil
+        case .command: return nil
         }
     }
 
     /// Synthetic command entries expose an SF Symbol name; row renderers apply the shared feature-icon surface. Everything else uses its file icon.
-    var isSymbolIcon: Bool { kind == .command || kind == .systemCommand }
+    var isSymbolIcon: Bool { kind == .command }
     var symbolIconName: String {
         SystemCommandCatalog.command(forEntryID: id)?.sfSymbol
             ?? CommandRegistry.command(for: self)?.sfSymbol
@@ -205,7 +203,7 @@ final class AppIndex: ObservableObject {
                 name: command.name,
                 url: URL(string: "bettercast://system-command/" + command.id.rawValue)!,
                 bundleID: nil,
-                kind: .systemCommand)
+                kind: .command)
         }
         return apps + SettingsPaneScanner.scan() + systemCommands + CommandRegistry.all
     }

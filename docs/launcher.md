@@ -55,17 +55,19 @@ running dot and the availability of the quit actions:
   running. `AppLauncher.quit(bundleID:)` terminates every instance of the bundle and reports whether
   anything was running; the palette only dismisses when something was, and it restores focus unless
   the app it just quit *was* `previousApp`.
-- **Quit All Applications** — a System Command. `AppLauncher.quitAllTargets()` is the policy (every
+- **Quit All Applications** — a Command. `AppLauncher.quitAllTargets()` is the policy (every
   `.regular` app except Finder — `terminate()` only relaunches it — and Bettercast, excluded by PID
   because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()` resolves that
   list **once**, confirms it with an `NSAlert`, then terminates exactly what was confirmed. The palette
   hides before the alert — it is a floating panel and would sit above it.
 
-## System Commands
+## Commands
 
-The launcher also exposes Lock Screen, Sleep, Sleep Displays, volume controls, Open Trash, Hide All
-Apps Except Frontmost, and Unhide All Hidden Apps. Keyboard-event commands require Accessibility
-permission; failures explain the missing permission and link to its System Settings pane.
+Commands include Lock Screen, Sleep, Sleep Displays, Restart, Shut Down, Log Out, Show Screen Saver,
+Play / Pause, Next Track, Previous Track, volume controls, Show Desktop, Toggle System Appearance,
+Open Trash, Empty Trash, Toggle Hidden Files, Hide All Apps Except Frontmost, and Unhide All Hidden
+Apps. Keyboard-event commands require Accessibility permission; automation commands require
+Automation permission. The Commands settings category controls both built-in and system actions.
 
 Both quits are graceful `NSRunningApplication.terminate()`, so an app with unsaved work still puts up
 its own save sheet.

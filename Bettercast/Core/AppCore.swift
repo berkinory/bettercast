@@ -287,10 +287,6 @@ final class AppCore: ObservableObject {
             runCommand(app)
             return
         }
-        if app.kind == .systemCommand {
-            runSystemCommand(app)
-            return
-        }
         hidePalette(restoreFocus: false)
         switch app.kind {
         case .application:
@@ -298,7 +294,7 @@ final class AppCore: ObservableObject {
         case .systemSettings:
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
-        case .command, .systemCommand:
+        case .command:
             break  // handled above
         }
     }
@@ -437,16 +433,30 @@ final class AppCore: ObservableObject {
         alert.informativeText = failure.message
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
-        if failure.settings == .accessibility {
-            alert.addButton(withTitle: "Open Accessibility Settings…")
+        if let settings = failure.settings {
+            alert.addButton(
+                withTitle: settings == .accessibility
+                    ? "Open Accessibility Settings…" : "Open Automation Settings…")
         }
         let response = alert.runModal()
-        if response == .alertSecondButtonReturn, failure.settings == .accessibility {
+        guard response == .alertSecondButtonReturn, let settings = failure.settings else { return }
+        switch settings {
+        case .accessibility:
             Permissions.openAccessibilitySettings()
+        case .automation:
+            if let url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+            {
+                NSWorkspace.shared.open(url)
+            }
         }
     }
 
     private func runCommand(_ entry: AppEntry) {
+        if SystemCommandCatalog.command(forEntryID: entry.id) != nil {
+            runSystemCommand(entry)
+            return
+        }
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
             showPalette(mode: .clipboard)

@@ -783,8 +783,9 @@ struct RootPaletteView: View {
             if calcActionable { return "Copy Answer" }
             switch selectedApp?.kind {
             case .systemSettings: return "Open System Setting"
-            case .command: return "Open Command"
-            case .systemCommand: return "Run System Command"
+            case .command:
+                return selectedApp.flatMap { SystemCommandCatalog.command(forEntryID: $0.id) } == nil
+                    ? "Open Command" : "Run Command"
             default: return "Open Application"
             }
         case .uninstall:

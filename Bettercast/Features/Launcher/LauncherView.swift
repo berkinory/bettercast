@@ -41,15 +41,13 @@ struct LauncherList: View {
         var rows: [Row] = calcRows
         let favorites = results.prefix(favoriteCount)
         let rest = results.dropFirst(favoriteCount)
-        // `rest` is apps-then-panes-then-system-commands-then-commands by the AppIndex invariant, so filtering by kind keeps row order identical and the flat selection index valid.
+        // `rest` is apps-then-panes-then-commands by the AppIndex invariant, so filtering by kind keeps row order identical and the flat selection index valid.
         let apps = rest.filter { $0.kind == .application }
         let panes = rest.filter { $0.kind == .systemSettings }
-        let systemCommands = rest.filter { $0.kind == .systemCommand }
         let commands = rest.filter { $0.kind == .command }
         for (title, group) in [
             ("Favorites", Array(favorites)), ("Applications", apps),
-            ("System Settings", panes), ("System Commands", systemCommands),
-            ("Commands", commands),
+            ("System Settings", panes), ("Commands", commands),
         ]
         where !group.isEmpty {
             rows.append(.header(title))
@@ -308,8 +306,9 @@ enum AppActionsMenu {
         switch app.kind {
         case .application: return "Open Application"
         case .systemSettings: return "Open System Setting"
-        case .command: return "Open Command"
-        case .systemCommand: return "Run System Command"
+        case .command:
+            return SystemCommandCatalog.command(forEntryID: app.id) == nil
+                ? "Open Command" : "Run Command"
         }
     }
 }
