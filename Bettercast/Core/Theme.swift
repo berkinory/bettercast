@@ -1,6 +1,7 @@
+import AppKit
 import SwiftUI
 
-/// Central design tokens for the palette UI (dark design system per `docs/ui.md`; the app forces `.darkAqua`, so colors are literal white/black alphas).
+/// Central design tokens for the palette UI (dark-first design system per `docs/ui.md`; neutral colors adapt to the selected appearance).
 enum Theme {
     enum Spacing {
         static let xxs: CGFloat = 2
@@ -182,7 +183,7 @@ enum Theme {
             static let captureConflictFill = captureConflict.opacity(0.08)
             static let captureSuccessFill = Color.green.opacity(0.07)
             static let sidebarSeparator = Theme.Colors.separator
-            static let sidebarDimming = Color.black.opacity(0.14)
+            static let sidebarDimming = Theme.Colors.surfaceBase.opacity(0.14)
             static let surfaceFill = Theme.Colors.cardFill
             static let surfaceStroke = Theme.Colors.cardStroke
             static let rowDivider = Theme.Colors.separator
@@ -194,46 +195,49 @@ enum Theme {
     }
 
     enum Colors {
-        static let panelSurface = Color.black.opacity(0.4)
-        static let textPrimary = Color.white
-        static let searchPlaceholder = Color.white.opacity(0.32)
+        static let surfaceBase = Color(nsColor: .textBackgroundColor)
+        static let contentBase = Color(nsColor: .textColor)
+        static let panelSurface = surfaceBase.opacity(0.4)
+        static let textPrimary = contentBase
+        static let textOnPrimary = surfaceBase
+        static let searchPlaceholder = contentBase.opacity(0.32)
         /// Selection fill: a soft neutral translucent layer shared by launcher and clipboard so both lists look identical.
-        static let selection = Color.white.opacity(0.10)
+        static let selection = contentBase.opacity(0.10)
         /// Mouse hover — a fainter layer that follows the cursor, visually distinct from selection.
-        static let rowHover = Color.white.opacity(0.05)
-        static let menuHover = Color.white.opacity(0.10)
-        static let separator = Color.white.opacity(0.10)
+        static let rowHover = contentBase.opacity(0.05)
+        static let menuHover = contentBase.opacity(0.10)
+        static let separator = contentBase.opacity(0.10)
         /// Small control surfaces: kbd chips, glyph tiles.
-        static let controlSurface = Color.white.opacity(0.10)
+        static let controlSurface = contentBase.opacity(0.10)
         /// Control borders: outlined kbd chips.
-        static let border = Color.white.opacity(0.20)
-        static let textSecondary = Color.white.opacity(0.60)
-        static let textTertiary = Color.white.opacity(0.40)
+        static let border = contentBase.opacity(0.20)
+        static let textSecondary = contentBase.opacity(0.60)
+        static let textTertiary = contentBase.opacity(0.40)
         /// Settings grouped "card": a faint raised surface whose hairline border doubles as the inset row divider.
-        static let cardFill = Color.white.opacity(0.05)
-        static let cardStroke = Color.white.opacity(0.10)
-        /// Whitish tint layered into the Liquid Glass floating controls (action group + menu circle) so the glass reads frosted rather than clear.
-        static let glassFrost = Color.white.opacity(0.05)
+        static let cardFill = contentBase.opacity(0.05)
+        static let cardStroke = contentBase.opacity(0.10)
+        /// Appearance-aware tint layered into the Liquid Glass floating controls.
+        static let glassFrost = contentBase.opacity(0.05)
         static let feedbackFill = Color.green.opacity(0.18)
-        static let feedbackShade = Color.black.opacity(0.40)
-        static let feedbackStroke = Color.white.opacity(0.20)
+        static let feedbackShade = surfaceBase.opacity(0.40)
+        static let feedbackStroke = contentBase.opacity(0.20)
         static let feedbackAccent = Color(red: 0.24, green: 0.82, blue: 0.52)
         static let success = Color.green
         static let warning = Color.orange
         static let attention = Color.yellow
         static let destructive = Color.red
-        static let imagePlaceholder = Color.white.opacity(0.06)
-        static let overlayDimming = Color.black.opacity(0.38)
+        static let imagePlaceholder = contentBase.opacity(0.06)
+        static let overlayDimming = surfaceBase.opacity(0.38)
         static let invisibleOverlay = Color.black.opacity(0.001)
-        static let tooltipSurface = Color.black.opacity(0.86)
-        static let onboardingGradientStart = Color.white.opacity(0.04)
-        static let previewDimming = Color.black.opacity(0.38)
-        static let previewSelected = Color.white.opacity(0.45)
-        static let previewUnselected = Color.white.opacity(0.22)
+        static let tooltipSurface = surfaceBase.opacity(0.86)
+        static let onboardingGradientStart = contentBase.opacity(0.04)
+        static let previewDimming = surfaceBase.opacity(0.38)
+        static let previewSelected = contentBase.opacity(0.45)
+        static let previewUnselected = contentBase.opacity(0.22)
         /// The violet of the app mark. The one non-white hue in the system, used only to tint the About support callout.
         static let brand = Color(red: 0.525, green: 0.231, blue: 1.0)
         static let featureIconTileOpacity: CGFloat = 0.20
-        static let generalAccent = Color.white.opacity(0.72)
+        static let generalAccent = contentBase.opacity(0.72)
         static let launcherAccent = Color(red: 0.42, green: 0.65, blue: 1.0)
         static let clipboardAccent = Color(red: 1.0, green: 0.62, blue: 0.32)
         static let emojiAccent = Color(red: 1.0, green: 0.76, blue: 0.30)
@@ -318,7 +322,7 @@ struct KeyCapChip: View {
 }
 
 extension View {
-    /// A floating Liquid Glass control surface on Tahoe, with a solid dark fallback on older supported systems.
+    /// A floating Liquid Glass control surface on Tahoe, with an appearance-aware fallback on older supported systems.
     @ViewBuilder
     func frosted<S: Shape>(in shape: S) -> some View {
         if #available(macOS 26.0, *) {

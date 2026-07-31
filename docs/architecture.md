@@ -30,8 +30,8 @@ imperatively from AppKit.
   `Features/About/AboutView.swift`). SwiftUI `Settings` / `Window` scenes are unreliable for accessory
   apps, so this is deliberate.
 
-The app forces `.darkAqua` appearance globally; the Liquid Glass material is tuned for a dark surface
-only.
+The app uses a dark-first appearance globally; users can opt into the light appearance from General
+Settings. Liquid Glass and neutral theme tokens adapt with the selected appearance.
 
 ## Concurrency
 

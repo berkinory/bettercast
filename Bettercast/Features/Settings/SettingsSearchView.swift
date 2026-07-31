@@ -8,6 +8,7 @@ enum SettingsDestination: Hashable, Sendable {
     case compactFavorites
     case launchAtLogin
     case showInMenuBar
+    case appearance
     case returnToLauncher
     case welcomeGuide
     case clipboardShortcut
@@ -31,6 +32,7 @@ enum SettingsDestination: Hashable, Sendable {
         case .compactFavorites: return "compact-favorites"
         case .launchAtLogin: return "launch-at-login"
         case .showInMenuBar: return "show-in-menu-bar"
+        case .appearance: return "appearance"
         case .returnToLauncher: return "return-to-launcher"
         case .welcomeGuide: return "welcome-guide"
         case .clipboardShortcut: return "clipboard-shortcut"
@@ -114,6 +116,12 @@ enum SettingsSearchCatalog {
             detail: "Keep the Bettercast icon visible in the menu bar.", section: "General",
             keywords: ["status item", "hide icon", "menubar"],
             image: "menubar.arrow.up.rectangle", tint: .gray
+        ),
+        item(
+            .appearance, tab: .general, title: "Appearance",
+            detail: "Choose the dark or light interface.", section: "General",
+            keywords: ["theme", "dark mode", "light mode", "colors", "interface"],
+            image: "circle.lefthalf.filled", tint: .gray
         ),
         item(
             .returnToLauncher, tab: .launcher, title: "Return to Launcher",

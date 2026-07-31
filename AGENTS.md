@@ -3,7 +3,7 @@
 Bettercast is a native macOS menu-bar launcher (a minimal Raycast): fuzzy app launcher, global +
 per-app hotkeys, a text/image clipboard history, an inline calculator, and an emoji picker. SwiftUI +
 AppKit, runs as an accessory (no Dock icon, `LSUIElement`). Targets **macOS 15+**; macOS 26+ gets
-Liquid Glass while older supported systems use the solid dark fallback. Builds with the **Xcode 26** toolchain.
+Liquid Glass while older supported systems use the appearance-aware solid fallback. Builds with the **Xcode 26** toolchain.
 
 - **Build:** XcodeGen owns the project — `Bettercast.xcodeproj` is committed but generated from
   `project.yml`. After editing `project.yml`, run `xcodegen generate` and commit. There is **no**
@@ -52,8 +52,8 @@ Never break these without an explicit task to do so.
 - **`PaletteWindowController` solely owns the palette frame.** The hosting view sets
   `sizingOptions = []` so SwiftUI never drives the window size — otherwise the top edge drifts on the
   compact↔expanded swap.
-- **The app is locked to `.darkAqua` globally.** The Liquid Glass material is tuned for a dark surface
-  only; do not add light-mode styling.
+- **Dark is the default appearance.** The user may opt into the adaptive light appearance from General
+  Settings; neutral theme tokens must stay appearance-aware and brand accents must remain unchanged.
 - **The flat `selection` index must match the visible row order exactly**, including the inline
   calculator card at index 0 when present. Selection is the single source of truth for highlight /
   activation.

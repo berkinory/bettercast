@@ -266,7 +266,7 @@ private struct UninstallCheckbox: View {
                 shape.fill(Color.primary.opacity(0.85))
                 Image(systemName: "checkmark")
                     .font(Theme.Typography.keyCap.weight(.bold))
-                    .foregroundStyle(Color.black.opacity(0.8))
+                    .foregroundStyle(Theme.Colors.textOnPrimary.opacity(0.8))
             } else {
                 shape.strokeBorder(Theme.Colors.border, lineWidth: 1)
             }

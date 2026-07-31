@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 enum PaletteMode: String, CaseIterable, Identifiable {
@@ -117,6 +118,7 @@ final class AppCore: ObservableObject {
     private lazy var windowController = PaletteWindowController(core: self)
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
+    private var cancellables = Set<AnyCancellable>()
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -129,8 +131,15 @@ final class AppCore: ObservableObject {
         // AppKit's default tooltip delay is ~2–3s; shorten it (in ms) so the compact-bar favorite tooltips appear promptly. Registration domain — never overrides a user default.
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
         NSApp.setActivationPolicy(.accessory)
-        // Force dark: the Liquid Glass material is tuned for a deep dark surface and renders washed-out in Light mode.
-        NSApp.appearance = NSAppearance(named: .darkAqua)
+        applyAppearance(settings.appearance)
+        settings.$appearance
+            .dropFirst()
+            .sink { [weak self] appearance in
+                MainActor.assumeIsolated {
+                    self?.applyAppearance(appearance)
+                }
+            }
+            .store(in: &cancellables)
 
         clipboardStore.maxAge = settings.clipboardRetention.maxAge
         // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
@@ -153,6 +162,13 @@ final class AppCore: ObservableObject {
         if !OnboardingState.hasOnboarded {
             OnboardingState.markShown()
             showOnboarding()
+        }
+    }
+
+    private func applyAppearance(_ appearance: AppAppearance) {
+        NSApp.appearance = appearance.nsAppearance
+        for window in NSApp.windows {
+            window.appearance = appearance.nsAppearance
         }
     }
 
