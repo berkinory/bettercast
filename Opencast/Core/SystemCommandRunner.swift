@@ -83,6 +83,10 @@ enum SystemCommandRunner {
             if items > 0 {
                 try runAppleScript("tell application \"Finder\" to empty trash")
             }
+        case .ejectAllDisks:
+            try runAppleScript(
+                "tell application \"Finder\" to eject (every disk whose ejectable is true and local volume is true)"
+            )
         case .toggleHiddenFiles:
             _ = try await toggleDefault(domain: "com.apple.finder", key: "AppleShowAllFiles")
             let output = try await process("/usr/bin/killall", arguments: ["Finder"])
