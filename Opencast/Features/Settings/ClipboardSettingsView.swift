@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ClipboardSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
-    @State private var confirmingClear = false
     @State private var showingAppPicker = false
 
     var body: some View {
@@ -100,22 +99,19 @@ struct ClipboardSettingsView: View {
                 systemImage: "trash",
                 tint: .red
             ) {
-                Button("Clear…", role: .destructive) { confirmingClear = true }
-                    .controlSize(.small)
+                Button("Clear…", role: .destructive) {
+                    guard
+                        NativeConfirmation.present(
+                            message: "Clear clipboard history?",
+                            informativeText: "This can't be undone.",
+                            confirmTitle: "Clear History"
+                        )
+                    else { return }
+                    AppCore.shared.clipboardStore.clearAll()
+                }
+                .controlSize(.small)
             }
             .settingsDestination(.clipboardClearHistory)
-        }
-        .confirmationDialog(
-            "Clear clipboard history?",
-            isPresented: $confirmingClear,
-            titleVisibility: .visible
-        ) {
-            Button("Clear History", role: .destructive) {
-                AppCore.shared.clipboardStore.clearAll()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This can't be undone.")
         }
     }
 }

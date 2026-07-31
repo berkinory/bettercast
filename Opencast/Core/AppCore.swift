@@ -444,19 +444,21 @@ final class AppCore: ObservableObject {
     }
 
     private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "“\(name)” Failed"
-        alert.informativeText = failure.message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
-        if let settings = failure.settings {
-            alert.addButton(
-                withTitle: settings == .accessibility
-                    ? "Open Accessibility Settings…" : "Open Automation Settings…")
-        }
-        let response = alert.runModal()
-        guard response == .alertSecondButtonReturn, let settings = failure.settings else { return }
+        let settingsTitle: String? =
+            if let settings = failure.settings {
+                settings == .accessibility
+                    ? "Open Accessibility Settings…" : "Open Automation Settings…"
+            } else {
+                nil
+            }
+        let response = NativeConfirmation.show(
+            message: "“\(name)” Failed",
+            informativeText: failure.message,
+            primaryTitle: "OK",
+            secondaryTitle: settingsTitle,
+            style: .critical
+        )
+        guard response == .secondary, let settings = failure.settings else { return }
         switch settings {
         case .accessibility:
             Permissions.openAccessibilitySettings()

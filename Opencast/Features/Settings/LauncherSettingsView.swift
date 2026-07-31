@@ -1,9 +1,9 @@
+import AppKit
 import SwiftUI
 
 struct LauncherSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
     @ObservedObject private var launcherRanking = AppCore.shared.launcherRanking
-    @State private var confirmingRankingReset = false
 
     var body: some View {
         SettingsPane(
@@ -73,24 +73,20 @@ struct LauncherSettingsView: View {
                     destination: .learnedRanking
                 ) {
                     Button("Reset…", role: .destructive) {
-                        confirmingRankingReset = true
+                        guard
+                            NativeConfirmation.present(
+                                message: "Reset learned launcher ranking?",
+                                informativeText:
+                                    "Opencast will relearn your preferred results as you use the launcher.",
+                                confirmTitle: "Reset Ranking"
+                            )
+                        else { return }
+                        launcherRanking.resetAll()
                     }
                     .controlSize(.small)
                     .disabled(launcherRanking.isEmpty)
                 }
             }
-        }
-        .confirmationDialog(
-            "Reset learned launcher ranking?",
-            isPresented: $confirmingRankingReset,
-            titleVisibility: .visible
-        ) {
-            Button("Reset Ranking", role: .destructive) {
-                launcherRanking.resetAll()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Opencast will relearn your preferred results as you use the launcher.")
         }
     }
 }

@@ -2,22 +2,55 @@ import AppKit
 
 @MainActor
 enum NativeConfirmation {
+    enum Response {
+        case primary
+        case secondary
+    }
+
     static func present(
         message: String,
         informativeText: String,
         confirmTitle: String
     ) -> Bool {
+        show(
+            message: message,
+            informativeText: informativeText,
+            primaryTitle: confirmTitle,
+            secondaryTitle: "Cancel",
+            style: .warning,
+            primaryIsDestructive: true
+        ) == .primary
+    }
+
+    static func show(
+        message: String,
+        informativeText: String,
+        primaryTitle: String,
+        secondaryTitle: String? = nil,
+        style: NSAlert.Style = .informational,
+        primaryIsDestructive: Bool = false
+    ) -> Response {
         NSApp.activate(ignoringOtherApps: true)
 
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = informativeText
-        alert.alertStyle = .warning
-        let confirmButton = alert.addButton(withTitle: confirmTitle)
-        confirmButton.hasDestructiveAction = true
-        confirmButton.keyEquivalent = ""
-        alert.addButton(withTitle: "Cancel").keyEquivalent = "\r"
+        alert.alertStyle = style
+
+        if let secondaryTitle {
+            let secondaryButton = alert.addButton(withTitle: secondaryTitle)
+            secondaryButton.keyEquivalent = "\u{1b}"
+        }
+
+        let primaryButton = alert.addButton(withTitle: primaryTitle)
+        primaryButton.keyEquivalent = "\r"
+        primaryButton.hasDestructiveAction = primaryIsDestructive
         alert.window.level = .modalPanel
-        return alert.runModal() == .alertFirstButtonReturn
+
+        let response = alert.runModal()
+        if secondaryTitle != nil, response == .alertFirstButtonReturn {
+            return .secondary
+        }
+        return .primary
     }
 }

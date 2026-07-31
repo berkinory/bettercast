@@ -29,6 +29,9 @@ imperatively from AppKit.
 - **Settings / About** — plain `NSWindow`s via `AuxWindowController` (in
   `Features/About/AboutView.swift`). SwiftUI `Settings` / `Window` scenes are unreliable for accessory
   apps, so this is deliberate.
+- **Modal dialogs** — every confirmation and system-command error uses `Core/NativeConfirmation.swift`.
+  The primary action is on the right and bound to Return; the secondary action is on the left and bound
+  to Escape. Do not add direct `NSAlert` or SwiftUI `confirmationDialog` calls elsewhere.
 
 The app uses a dark-first appearance globally; users can opt into the light appearance from General
 Settings. Liquid Glass and neutral theme tokens adapt with the selected appearance.
