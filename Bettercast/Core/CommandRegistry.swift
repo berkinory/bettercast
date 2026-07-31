@@ -3,7 +3,6 @@ import Foundation
 /// App-internal launcher actions surfaced as a "Commands" category; each is a synthetic `AppEntry` (kind `.command`, no bundle ID) so existing `AppEntry` plumbing applies, with dispatch in `AppCore.runCommand`.
 enum CommandID: String, CaseIterable, Sendable {
     case clipboardHistory = "command:clipboard-history"
-    case openCamera = "command:open-camera"
     case searchEmoji = "command:search-emoji"
     case settings = "command:settings"
     case quit = "command:quit"
@@ -11,7 +10,6 @@ enum CommandID: String, CaseIterable, Sendable {
     var name: String {
         switch self {
         case .clipboardHistory: return "Clipboard History"
-        case .openCamera: return "Open Camera"
         case .searchEmoji: return "Search Emoji & Symbols"
         case .settings: return "Settings"
         case .quit: return "Quit Bettercast"
@@ -21,7 +19,6 @@ enum CommandID: String, CaseIterable, Sendable {
     var sfSymbol: String {
         switch self {
         case .clipboardHistory: return "doc.on.clipboard"
-        case .openCamera: return "camera"
         case .searchEmoji: return "face.smiling"
         case .settings: return "gearshape"
         case .quit: return "power"

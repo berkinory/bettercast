@@ -162,10 +162,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
             return true
         }
-        panel.onCameraKeyDown = { [weak self] event in
-            guard let self, core.palette.mode == .camera else { return false }
-            return core.camera.handleKeyDown(event)
-        }
         panel.onBareSpace = { [weak self] in
             guard let self, core.palette.mode == .uninstall,
                 core.uninstall.phase == .selecting

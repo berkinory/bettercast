@@ -86,7 +86,6 @@ struct RootPaletteView: View {
         case .clipboard: return clipResults.count
         case .emoji: return emojiResults.count
         case .uninstall: return uninstall.phase == .selecting ? uninstallResults.count : 0
-        case .camera: return 0
         }
     }
     /// Selection clamped into the current results — the single source of truth for highlight, preview and activation so the list and preview can never disagree.
@@ -156,8 +155,6 @@ struct RootPaletteView: View {
             guard uninstall.phase == .selecting, !uninstallResults.isEmpty else { return nil }
             return UninstallActionsMenu.content(
                 session: uninstall, visible: uninstallResults, selection: selection, core: core)
-        case .camera:
-            return nil
         }
     }
 
@@ -228,7 +225,7 @@ struct RootPaletteView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isCollapsed, vm.mode != .camera {
+            if !isCollapsed {
                 bottomBar(pillLabel: pillLabel, showActionGroup: showActionGroup)
             }
         }
@@ -244,7 +241,7 @@ struct RootPaletteView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
-            searchFocused = vm.mode != .camera
+            searchFocused = true
             vm.feedback = nil
             showActions = false
             showAppMenu = false
@@ -255,10 +252,7 @@ struct RootPaletteView: View {
             listScroll = ListScrollIntent(kind: .top)
             emojiScroll = EmojiScrollIntent(kind: .top)
         }
-        .onChange(of: vm.mode) { oldMode, newMode in
-            if oldMode == .camera, newMode != .camera { core.camera.stop() }
-            searchFocused = newMode != .camera
-            if newMode == .camera { core.camera.start() }
+        .onChange(of: vm.mode) {
             vm.selection = 0
             vm.feedback = nil
             showActions = false
@@ -284,10 +278,7 @@ struct RootPaletteView: View {
             }
             listScroll = ListScrollIntent(kind: .follow)
         }
-        .onAppear {
-            searchFocused = vm.mode != .camera
-            if vm.mode == .camera { core.camera.start() }
-        }
+        .onAppear { searchFocused = true }
         .task(id: vm.feedback?.id) {
             guard vm.feedback != nil else { return }
             try? await Task.sleep(for: .seconds(2))
@@ -390,8 +381,6 @@ struct RootPaletteView: View {
             case .uninstall:
                 guard command, uninstallResults.indices.contains(selection) else { return .ignored }
                 core.showLeftoverInFinder(uninstallResults[selection])
-            case .camera:
-                return .ignored
             }
             return .handled
         }
@@ -471,7 +460,7 @@ struct RootPaletteView: View {
             switch vm.mode {
             case .clipboard:
                 deleteSelectedClip()
-            case .launcher, .emoji, .uninstall, .camera:
+            case .launcher, .emoji, .uninstall:
                 return .ignored
             }
             return .handled
@@ -534,45 +523,7 @@ struct RootPaletteView: View {
         }
     }
 
-    @ViewBuilder
     private var header: some View {
-        Group {
-            if vm.mode == .camera {
-                cameraHeader
-            } else {
-                paletteHeader
-            }
-        }
-        .id(vm.mode)
-        .padding(.horizontal, Theme.Spacing.md * 2)
-        // Fixed row height + top padding, identical in both states, so typing (which flips compact→expanded) can't move the search bar. Compact centers the row in symmetric slack; expanded floats the same row over the list.
-        .frame(height: Theme.Size.headerHeight)
-        .padding(.top, Theme.Size.headerPadding)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var cameraHeader: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            Button(action: exitToLauncher) {
-                Image(systemName: "chevron.left")
-                    .font(Theme.Typography.headerIcon)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .frame(width: Theme.Size.headerIconSlot)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                if hovering { NSCursor.arrow.set() }
-            }
-            Text(vm.mode.title)
-                .font(Theme.Typography.searchField)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Spacer()
-        }
-    }
-
-    private var paletteHeader: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.md) {
             // Sub-screens use a back chevron instead of a mode glyph.
             if vm.mode != .launcher {
@@ -598,6 +549,12 @@ struct RootPaletteView: View {
             searchField
             headerTrailing
         }
+        // Align the search icon with the list rows and section headers below (list inset + row inset).
+        .padding(.horizontal, Theme.Spacing.md * 2)
+        // Fixed row height + top padding, identical in both states, so typing (which flips compact→expanded) can't move the search bar. Compact centers the row in symmetric slack; expanded floats the same row over the list.
+        .frame(height: Theme.Size.headerHeight)
+        .padding(.top, Theme.Size.headerPadding)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -709,13 +666,6 @@ struct RootPaletteView: View {
                     }
                 )
             }
-        case .camera:
-            CameraView(
-                model: core.camera,
-                onBack: exitToLauncher,
-                onFeedback: { showFeedback($0) },
-                onMenuOpenChanged: { vm.menuOpen = $0 }
-            )
         case .uninstall:
             switch uninstall.phase {
             case .removing(let permanently):
@@ -844,8 +794,6 @@ struct RootPaletteView: View {
             case .removing: return "Removing…"
             case .done: return "Back to Search"
             }
-        case .camera:
-            return "Take Photo"
         }
     }
 
@@ -1012,8 +960,6 @@ struct RootPaletteView: View {
             case .removing: break
             case .done: core.finishUninstall()
             }
-        case .camera:
-            core.camera.takePhoto()
         }
     }
 }
@@ -1082,7 +1028,6 @@ private struct PaletteModeMenuButton: View {
         case .clipboard: return Theme.Colors.clipboardAccent
         case .emoji: return Theme.Colors.emojiAccent
         case .uninstall: return Theme.Colors.textSecondary
-        case .camera: return Theme.Colors.brand
         }
     }
 

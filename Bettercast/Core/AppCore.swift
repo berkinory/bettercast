@@ -6,7 +6,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case clipboard
     case emoji
     case uninstall
-    case camera
 
     var id: String { rawValue }
     var title: String {
@@ -15,7 +14,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .clipboard: return "Clipboard History"
         case .emoji: return "Emoji & Symbols"
         case .uninstall: return "Uninstall"
-        case .camera: return "Camera"
         }
     }
     var systemImage: String {
@@ -24,7 +22,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
         case .uninstall: return "trash"
-        case .camera: return "camera"
         }
     }
     var placeholder: String {
@@ -33,7 +30,6 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .clipboard: return "Type to filter entries…"
         case .emoji: return "Search emoji and symbols…"
         case .uninstall: return "Filter files and folders by name…"
-        case .camera: return ""
         }
     }
 }
@@ -116,7 +112,6 @@ final class AppCore: ObservableObject {
     let frequentEmoji = FrequentEmojiStore()
     let runningApps = RunningAppsMonitor()
     let uninstall = UninstallSession()
-    let camera = CameraSessionModel()
     let palette = PaletteViewModel()
 
     private lazy var windowController = PaletteWindowController(core: self)
@@ -208,7 +203,6 @@ final class AppCore: ObservableObject {
     }
 
     func hidePalette(restoreFocus: Bool = true) {
-        if palette.mode == .camera { camera.stop() }
         windowController.hide(restoreFocus: restoreFocus)
     }
 
@@ -219,7 +213,6 @@ final class AppCore: ObservableObject {
             return
         }
         if palette.mode != .launcher {
-            if palette.mode == .camera { camera.stop() }
             palette.prepare(mode: .launcher)
             return
         }
@@ -468,8 +461,6 @@ final class AppCore: ObservableObject {
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
             showPalette(mode: .clipboard)
-        case .openCamera:
-            showPalette(mode: .camera)
         case .searchEmoji:
             showPalette(mode: .emoji)
         case .settings:

@@ -29,9 +29,6 @@ imperatively from AppKit.
 - **Settings / About** — plain `NSWindow`s via `AuxWindowController` (in
   `Features/About/AboutView.swift`). SwiftUI `Settings` / `Window` scenes are unreliable for accessory
   apps, so this is deliberate.
-- **Camera preview** — a palette mode hosted by the existing `PalettePanel`; its
-  `CameraCaptureEngine` owns AVFoundation session work on a private serial queue, while the
-  `CameraSessionModel` remains `@MainActor` for UI state and clipboard handoff.
 
 The app forces `.darkAqua` appearance globally; the Liquid Glass material is tuned for a dark surface
 only.

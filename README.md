@@ -28,7 +28,6 @@ CPU churn. Just SwiftUI + AppKit with zero dependencies. It's fast because there
   or every app at once.
 - **Calculator** — do math, unit and live currency conversions inline, right in the palette.
 - **Clipboard history** — text and images, searchable, pasted back into the app you were using.
-- **Camera preview** — check your framing, switch cameras, mirror the preview, and copy a photo.
 - **Global hotkey** — one shortcut summons the palette from anywhere.
 - **Per-app hotkeys** — bind a key to an app; press it to toggle (focus/hide).
 
@@ -50,9 +49,6 @@ attribution remain in this repository.
 **Accessibility** — needed only so Bettercast can paste a clipboard item back into the app you
 came from. You're prompted the first time you paste; grant it in **System Settings → Privacy &
 Security → Accessibility**.
-
-**Camera** — requested only when you open the **Open Camera** command. Captured photos are copied
-locally to the clipboard and picked up by Bettercast's clipboard history.
 
 ## Using it
 
