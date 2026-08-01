@@ -6,13 +6,14 @@
 
 ### Fixed
 
-## Improved
+### Improved
 
 ### Removed
 
 ## [0.1.1]
 
-## Added
+### Added
+
 - Snippet support with search, create, edit, and optional keyword expansion.
 - Self-update flow for direct installations.
 
