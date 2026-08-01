@@ -136,6 +136,7 @@ struct EmojiGridView: View {
                 .padding(.top, Theme.Spacing.xs)
                 .padding(.bottom, Theme.Spacing.md)
                 .hideNativeScrollers()
+                .resetNativeScrollToTop(id: scroll.kind == .top ? scroll.nonce : nil)
             }
             .edgeDissolve()
             .thinScrollbar()
