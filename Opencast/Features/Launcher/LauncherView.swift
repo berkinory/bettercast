@@ -208,6 +208,7 @@ struct AppIconView: View {
         case .searchEmoji: return Theme.Colors.emojiAccent
         case .clipboardHistory: return Theme.Colors.clipboardAccent
         case .settings: return Theme.Colors.systemAccent
+        case .checkForUpdates: return Theme.Colors.systemAccent
         case .quit: return Theme.Colors.textSecondary
         case nil: return Theme.Colors.textPrimary
         }

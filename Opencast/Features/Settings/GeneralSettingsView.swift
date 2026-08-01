@@ -1,7 +1,9 @@
+import AppKit
 import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
+    @ObservedObject private var updates = AppCore.shared.updates
     @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
 
     var body: some View {
@@ -58,6 +60,30 @@ struct GeneralSettingsView: View {
                 }
             }
 
+            SettingsSection(header: "Updates") {
+                SettingsControlRow(
+                    title: "Allow update checks",
+                    subtitle: "Contact GitHub only when you check for a newer version.",
+                    systemImage: "arrow.down.circle",
+                    tint: Theme.Colors.systemAccent
+                ) {
+                    Toggle("", isOn: updateConsentBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                }
+                SettingsRowDivider()
+                SettingsControlRow(
+                    title: "Check for Updates",
+                    subtitle: "Look for a newer Opencast release now.",
+                    systemImage: "checkmark.circle",
+                    tint: Theme.Colors.systemAccent
+                ) {
+                    Button("Check Now") { AppCore.shared.checkForUpdates() }
+                        .controlSize(.small)
+                }
+            }
+
             SettingsSection(header: "Setup") {
                 SettingsControlRow(
                     title: "Welcome Guide",
@@ -71,5 +97,27 @@ struct GeneralSettingsView: View {
                 }
             }
         }
+    }
+
+    private var updateConsentBinding: Binding<Bool> {
+        Binding(
+            get: { updates.networkConsentGranted },
+            set: { granted in
+                guard granted else {
+                    updates.setNetworkConsent(false)
+                    return
+                }
+                guard
+                    NativeConfirmation.show(
+                        message: "Allow update checks?",
+                        informativeText:
+                            "Opencast will contact GitHub only when you check for a newer release. No usage data is sent.",
+                        primaryTitle: "Allow",
+                        secondaryTitle: "Cancel"
+                    ) == .primary
+                else { return }
+                updates.setNetworkConsent(true)
+            }
+        )
     }
 }

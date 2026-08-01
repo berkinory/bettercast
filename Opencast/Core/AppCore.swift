@@ -151,11 +151,13 @@ final class AppCore: ObservableObject {
     let runningApps = RunningAppsMonitor()
     let uninstall = UninstallSession()
     let windowMover = WindowMover()
+    let updates = UpdateStore()
     let palette = PaletteViewModel()
 
     private lazy var windowController = PaletteWindowController(core: self)
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
+    private var updateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
@@ -315,6 +317,94 @@ final class AppCore: ObservableObject {
 
     func showAbout() {
         showSettings(route: .about)
+    }
+
+    func checkForUpdates() {
+        guard updateTask == nil else { return }
+        if updates.isHomebrewManaged {
+            checkHomebrewUpdates()
+            return
+        }
+        if !updates.networkConsentGranted {
+            let response = NativeConfirmation.show(
+                message: "Allow update checks?",
+                informativeText:
+                    "Opencast will contact GitHub to check for a newer release. No data about your usage is sent.",
+                primaryTitle: "Allow",
+                secondaryTitle: "Cancel"
+            )
+            guard response == .primary else { return }
+            updates.grantNetworkConsent()
+        }
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            defer { updateTask = nil }
+            do {
+                guard let update = try await updates.checkNow() else {
+                    if case .upToDate = updates.state {
+                        palette.postFeedback("Opencast is up to date")
+                    }
+                    return
+                }
+                let response = NativeConfirmation.show(
+                    message: "Opencast \(update.version) is available",
+                    informativeText: "Download and prepare the update from GitHub?",
+                    primaryTitle: "Update",
+                    secondaryTitle: "Later"
+                )
+                guard response == .primary else { return }
+
+                do {
+                    let prepared = try await updates.downloadAndPrepare(update)
+                    let installResponse = NativeConfirmation.show(
+                        message: "Ready to install Opencast \(update.version)",
+                        informativeText: "Opencast will restart automatically to finish the update.",
+                        primaryTitle: "Install & Relaunch",
+                        secondaryTitle: "Later"
+                    )
+                    guard installResponse == .primary else {
+                        UpdateInstaller.discard(prepared)
+                        return
+                    }
+                    try updates.install(prepared)
+                    NSApp.terminate(nil)
+                } catch is CancellationError {
+                    return
+                } catch {
+                    palette.postFeedback("Could not prepare the update", tone: .error)
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                palette.postFeedback("Could not check for updates", tone: .error)
+            }
+        }
+        updateTask = task
+    }
+
+    private func checkHomebrewUpdates() {
+        Task { [weak self] in
+            guard let self else { return }
+            switch await updates.checkHomebrew() {
+            case .upToDate:
+                palette.postFeedback("Homebrew reports Opencast is up to date")
+            case let .updateAvailable(current, latest):
+                let command = "brew update && brew upgrade --cask opencast"
+                if NativeConfirmation.show(
+                    message: "Opencast \(latest) is available",
+                    informativeText: "Homebrew manages this installation. Installed: \(current). Run:\n\(command)",
+                    primaryTitle: "Copy Command",
+                    secondaryTitle: "Later"
+                ) == .primary {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                    palette.postFeedback("Homebrew command copied")
+                }
+            case let .unavailable(message):
+                palette.postFeedback(message, tone: .warning)
+            }
+        }
     }
 
     /// The first-run wizard: palette shortcut and Accessibility. Also re-runnable from Settings.
@@ -549,6 +639,8 @@ final class AppCore: ObservableObject {
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()
+        case .checkForUpdates:
+            checkForUpdates()
         case .quit:
             NSApp.terminate(nil)
         case nil:

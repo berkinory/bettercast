@@ -79,12 +79,14 @@
 		D322ADE61F789324B99B79CA /* Romanization.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA49C2029CCDF79E5B28837 /* Romanization.swift */; };
 		D4401BC0B07BCE4E86F33F01 /* UninstallSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76ADE3404D990B7BB714E5DA /* UninstallSession.swift */; };
 		D499C33F8FB574B4FB112EC4 /* LauncherSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F48F4C32ACE0359047A8CD3B /* LauncherSettingsView.swift */; };
+		D4CC0FDE6B3199D8C12BD081 /* UpdateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AEE55F9DB20D4AEFD983860 /* UpdateStore.swift */; };
 		D7F0F9B6E556DA1DCA699F82 /* OpencastApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942081E66F360E54E14B3ECB /* OpencastApp.swift */; };
 		D907E27909192B43B187BA07 /* Bundle+AppName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D963E0C9D44A9C09838DD1 /* Bundle+AppName.swift */; };
 		DB9181BDC7E7315295650300 /* WindowActionMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B983EC78B091FC8A5C092600 /* WindowActionMemory.swift */; };
 		DBF70E7B6245A81B9E03CC15 /* AppIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E966858B35F82C73CCC074 /* AppIndex.swift */; };
 		DD0150BEC433DAB24BC4C19D /* CalcPercent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159B6E466810685329AD73B1 /* CalcPercent.swift */; };
 		DD2E0E5179C7156129437F47 /* PopoverMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0CF3416ECDC07F197F4F0 /* PopoverMenu.swift */; };
+		E49DCB29750199A787B557D3 /* UpdateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC667FC938F11B0050D31AD2 /* UpdateInstaller.swift */; };
 		E55C14A2340DE8AF6953D869 /* WindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 523DADE8C953A59F718FF536 /* WindowLayout.swift */; };
 		E6FEDD3C618269DBF3B2BA70 /* PaletteDetailLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */; };
 		E84F5355AE209297FD89AD6D /* SearchScopesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4549BDF3A52CC558BFC8A434 /* SearchScopesView.swift */; };
@@ -127,6 +129,7 @@
 		57AA268C40A0175260ACF1D0 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
 		57BB05E1B378781256276460 /* KeyShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyShortcut.swift; sourceTree = "<group>"; };
 		585D8A95AAAFB112BFCDD37D /* LauncherRankingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherRankingStore.swift; sourceTree = "<group>"; };
+		5AEE55F9DB20D4AEFD983860 /* UpdateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateStore.swift; sourceTree = "<group>"; };
 		5D8BB112B36CE62BCA249E30 /* Opencast.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Opencast.entitlements; sourceTree = "<group>"; };
 		61510CABED591D136431C5A3 /* Opencast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Opencast.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62D12B6B1D8FC9B6E369CD28 /* AppLeftovers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLeftovers.swift; sourceTree = "<group>"; };
@@ -173,6 +176,7 @@
 		C9F74855DB60C4CE77387B40 /* ImageThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageThumbnail.swift; sourceTree = "<group>"; };
 		CB16F32064B011E95F7EDAE5 /* NativeConfirmation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeConfirmation.swift; sourceTree = "<group>"; };
 		CC1DD32BB077497FF46BEF44 /* EdgeDissolve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeDissolve.swift; sourceTree = "<group>"; };
+		CC667FC938F11B0050D31AD2 /* UpdateInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateInstaller.swift; sourceTree = "<group>"; };
 		CEA49C2029CCDF79E5B28837 /* Romanization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Romanization.swift; sourceTree = "<group>"; };
 		D1231005DCD5DC3AC9DA5E76 /* CalculatorSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorSettingsView.swift; sourceTree = "<group>"; };
 		D3A782BDD846463B97DA98A6 /* ShortcutsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsSettingsView.swift; sourceTree = "<group>"; };
@@ -229,6 +233,7 @@
 				11236B57497EEF6D80CF94ED /* Calculator */,
 				5190331BDE79EA28242BF7F6 /* Emoji */,
 				BCCF87DD28EC17B7E71A713D /* HotKey */,
+				F5605A236E27BF6E839495B7 /* Updates */,
 				D3F81DC0F90C56A4588E9FDE /* WindowManagement */,
 				084DC160FDE00DC0FD6EC764 /* AppCore.swift */,
 				70E966858B35F82C73CCC074 /* AppIndex.swift */,
@@ -417,6 +422,15 @@
 			path = Opencast;
 			sourceTree = "<group>";
 		};
+		F5605A236E27BF6E839495B7 /* Updates */ = {
+			isa = PBXGroup;
+			children = (
+				CC667FC938F11B0050D31AD2 /* UpdateInstaller.swift */,
+				5AEE55F9DB20D4AEFD983860 /* UpdateStore.swift */,
+			);
+			path = Updates;
+			sourceTree = "<group>";
+		};
 		FDF61DB80286EDCAFE6E1F3E /* Uninstall */ = {
 			isa = PBXGroup;
 			children = (
@@ -575,6 +589,8 @@
 				30C8F07C5742A2CE2A55A398 /* ThinScrollbar.swift in Sources */,
 				D4401BC0B07BCE4E86F33F01 /* UninstallSession.swift in Sources */,
 				575FFC5E74A97CD36BFBE214 /* UninstallView.swift in Sources */,
+				E49DCB29750199A787B557D3 /* UpdateInstaller.swift in Sources */,
+				D4CC0FDE6B3199D8C12BD081 /* UpdateStore.swift in Sources */,
 				C22AEFB56819316BADAE7F86 /* VisibilityStore.swift in Sources */,
 				28595EAD7482BF7021D92F54 /* VisualEffectView.swift in Sources */,
 				DB9181BDC7E7315295650300 /* WindowActionMemory.swift in Sources */,

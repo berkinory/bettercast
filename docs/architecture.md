@@ -2,7 +2,8 @@
 
 How Opencast is wired together. See the per-subsystem docs for internals:
 [palette](palette.md), [launcher](launcher.md), [calculator](calculator.md),
-[clipboard](clipboard.md), [hotkeys](hotkeys.md), [window management](window-management.md), [ui](ui.md).
+[clipboard](clipboard.md), [hotkeys](hotkeys.md), [updates](updates.md),
+[window management](window-management.md), [ui](ui.md).
 
 ## Single-owner core
 

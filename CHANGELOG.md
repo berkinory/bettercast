@@ -10,6 +10,8 @@
 
 ### Removed
 
-## [0.2.0]
+## [0.1.1]
+
+- Added a self-update flow for direct installations.
 
 
