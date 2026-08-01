@@ -209,21 +209,46 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          TAG="v${{ steps.meta.outputs.version }}"
+          set -euo pipefail
+          TAG="v${VERSION}"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          CHANGELOG_NOTES="$RUNNER_TEMP/changelog-notes.md"
+          : > "$CHANGELOG_NOTES"
+
+          if [ -f CHANGELOG.md ]; then
+            awk -v version="$VERSION" '
+              BEGIN {
+                bracketed = "## [" version "]"
+                plain = "## " version
+              }
+              !found && ($0 == bracketed || index($0, bracketed " ") == 1 || $0 == plain || index($0, plain " ") == 1) {
+                found = 1
+                next
+              }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md > "$CHANGELOG_NOTES"
+          fi
+
+          {
+            if [ -s "$CHANGELOG_NOTES" ] && grep -q '[^[:space:]]' "$CHANGELOG_NOTES"; then
+              echo "## Changelog"
+              echo
+              cat "$CHANGELOG_NOTES"
+              echo
+            fi
+            echo "## Requirements"
+            echo
+            echo "- macOS 15+"
+            echo "- Intel or Apple Silicon CPU"
+          } > "$NOTES_FILE"
+
           gh release create "$TAG" \
             "dist/${{ steps.meta.outputs.dmg_file }}" \
-            --title "Opencast ${{ steps.meta.outputs.version }}" \
-            --notes "**Version:** ${{ steps.meta.outputs.version }}
-          **Bundle ID:** \`${{ steps.meta.outputs.bundle_id }}\`
-          Built from ${{ github.sha }}.
-
-          **Recommended:** install via Homebrew — it clears the quarantine flag automatically on every install and update, so there's nothing to run by hand:
-          \`\`\`sh
-          brew tap ${{ github.repository_owner }}/brew
-          brew install --cask ${{ github.repository_owner }}/brew/${{ steps.meta.outputs.cask_name }}
-          \`\`\`
-          This build is signed with Developer ID Application and notarized by Apple."
+            --title "Opencast ${VERSION}" \
+            --notes-file "$NOTES_FILE"
 
       - name: Update Homebrew cask
         env:

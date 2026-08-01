@@ -143,3 +143,18 @@ make unsigned-dmg
 ```
 
 Do not distribute that artifact.
+
+## Release notes
+
+The release workflow reads the matching version section from `CHANGELOG.md` when it exists. Add the
+section in the same change as the `MARKETING_VERSION` bump:
+
+```md
+## [0.1.0] - 2026-08-01
+
+### Added
+
+- a concise user-facing change
+```
+
+The section is optional. If it is missing, the release contains only the generated requirements block.
