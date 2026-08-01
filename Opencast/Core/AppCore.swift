@@ -65,11 +65,14 @@ final class PaletteViewModel: ObservableObject {
     @Published var focusToken = UUID()
     /// Changes only when `prepare` resets the palette, so the lists snap their scroll to the top even when query/mode were already at their defaults (`focusToken` can't serve: it bumps on every reopen, which must preserve a within-timeout scroll).
     @Published var resetToken = UUID()
+    /// Changes when returning to the launcher so the search field can select its restored query.
+    @Published var selectQueryToken = UUID()
     @Published var feedback: PaletteFeedback?
     /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
     @Published var followToken = UUID()
     /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
     @Published var forceExpanded = false
+    private var launcherQueryForReturn: String?
     /// The app a paste would land in, mirrored from `PaletteWindowController.previousApp` on every show. Deliberately *not* cleared by `prepare` — pop-to-root resets the screen, not the paste target.
     @Published var pasteTarget: PasteTarget?
     /// Gates the mouse-hover highlight: true only while the pointer is physically moving (armed on `.mouseMoved`, disarmed on any `.keyDown` in `PalettePanel.sendEvent`). Plain, not `@Published` — read at hover time, never drives a re-render.
@@ -80,6 +83,7 @@ final class PaletteViewModel: ObservableObject {
     var onMenuOpenChanged: ((Bool) -> Void)?
 
     func prepare(mode: PaletteMode) {
+        launcherQueryForReturn = nil
         self.mode = mode
         query = ""
         selection = 0
@@ -88,6 +92,32 @@ final class PaletteViewModel: ObservableObject {
         menuOpen = false
         focusToken = UUID()
         resetToken = UUID()
+    }
+
+    func enterSubscreen(_ mode: PaletteMode) {
+        launcherQueryForReturn = self.mode == .launcher ? query : launcherQueryForReturn
+        self.mode = mode
+        query = ""
+        selection = 0
+        forceExpanded = false
+        hoverHighlightArmed = false
+        menuOpen = false
+        focusToken = UUID()
+        resetToken = UUID()
+    }
+
+    func returnToLauncher() {
+        let queryToRestore = launcherQueryForReturn ?? query
+        launcherQueryForReturn = nil
+        mode = .launcher
+        query = queryToRestore
+        selection = 0
+        forceExpanded = false
+        hoverHighlightArmed = false
+        menuOpen = false
+        focusToken = UUID()
+        resetToken = UUID()
+        selectQueryToken = UUID()
     }
 
     func postFeedback(_ message: String) {
@@ -231,7 +261,7 @@ final class AppCore: ObservableObject {
             return
         }
         if palette.mode != .launcher {
-            palette.prepare(mode: .launcher)
+            palette.returnToLauncher()
             return
         }
         hidePalette()
@@ -508,9 +538,9 @@ final class AppCore: ObservableObject {
         }
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
-            showPalette(mode: .clipboard)
+            palette.enterSubscreen(.clipboard)
         case .searchEmoji:
-            showPalette(mode: .emoji)
+            palette.enterSubscreen(.emoji)
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()

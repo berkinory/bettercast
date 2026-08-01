@@ -247,6 +247,9 @@ struct RootPaletteView: View {
             showAppMenu = false
             showSortMenu = false
         }
+        .onChange(of: vm.selectQueryToken) {
+            focusAndSelectQuery()
+        }
         .onChange(of: vm.query) {
             vm.selection = 0
             listScroll = ListScrollIntent(kind: .top)
@@ -926,13 +929,21 @@ struct RootPaletteView: View {
         vm.mode = vm.mode == .launcher ? .clipboard : .launcher
     }
 
-    /// Back out to a fresh root search — `prepare` is the same reset used when the palette is shown (clears query/selection, bumps focusToken to refocus the field).
+    /// Return to the launcher and restore the query that opened the sub-screen.
     private func exitToLauncher() {
         if vm.mode == .uninstall {
             core.exitUninstall()
             return
         }
-        vm.prepare(mode: .launcher)
+        vm.returnToLauncher()
+    }
+
+    private func focusAndSelectQuery() {
+        searchFocused = true
+        DispatchQueue.main.async {
+            guard let editor = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
+            editor.selectAll(nil)
+        }
     }
 
     private func activateSelection() {
