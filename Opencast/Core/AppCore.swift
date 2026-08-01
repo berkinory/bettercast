@@ -6,6 +6,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case launcher
     case clipboard
     case emoji
+    case snippets
+    case snippetEditor
     case uninstall
 
     var id: String { rawValue }
@@ -14,6 +16,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "Apps"
         case .clipboard: return "Clipboard History"
         case .emoji: return "Emoji & Symbols"
+        case .snippets: return "Snippets"
+        case .snippetEditor: return "Snippet"
         case .uninstall: return "Uninstall"
         }
     }
@@ -22,6 +26,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
+        case .snippets, .snippetEditor: return "text.quote"
         case .uninstall: return "trash"
         }
     }
@@ -30,6 +35,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .launcher: return "Search for apps and commands…"
         case .clipboard: return "Type to filter entries…"
         case .emoji: return "Search emoji and symbols…"
+        case .snippets: return "Search snippets…"
+        case .snippetEditor: return ""
         case .uninstall: return "Filter files and folders by name…"
         }
     }
@@ -75,6 +82,8 @@ final class PaletteViewModel: ObservableObject {
     /// Changes when returning to the launcher so the search field can select its restored query.
     @Published var selectQueryToken = UUID()
     @Published var feedback: PaletteFeedback?
+    @Published var snippetEditingID: Snippet.ID?
+    @Published var snippetEditorReturnsToSearch = false
     /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
     @Published var followToken = UUID()
     /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
@@ -88,6 +97,7 @@ final class PaletteViewModel: ObservableObject {
     var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
     /// Fired when `menuOpen` flips so `PalettePanel` can hide/show the search field's caret while it keeps first-responder status (no focus swap, so the placeholder never reflows).
     var onMenuOpenChanged: ((Bool) -> Void)?
+    var onCommandEnter: (() -> Bool)?
 
     func prepare(mode: PaletteMode) {
         launcherQueryForReturn = nil
@@ -95,6 +105,9 @@ final class PaletteViewModel: ObservableObject {
         query = ""
         selection = 0
         forceExpanded = false
+        snippetEditingID = nil
+        snippetEditorReturnsToSearch = false
+        onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
         focusToken = UUID()
@@ -107,6 +120,9 @@ final class PaletteViewModel: ObservableObject {
         query = ""
         selection = 0
         forceExpanded = false
+        snippetEditingID = nil
+        snippetEditorReturnsToSearch = false
+        onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
         focusToken = UUID()
@@ -120,6 +136,9 @@ final class PaletteViewModel: ObservableObject {
         query = queryToRestore
         selection = 0
         forceExpanded = false
+        snippetEditingID = nil
+        snippetEditorReturnsToSearch = false
+        onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
         focusToken = UUID()
@@ -140,6 +159,8 @@ final class AppCore: ObservableObject {
     let launcherRanking: LauncherRankingStore
     let appIndex: AppIndex
     let clipboardStore = ClipboardStore()
+    let snippetStore = SnippetStore()
+    let snippetExpansionMonitor: SnippetExpansionMonitor
     let clipboardManager: ClipboardManager
     let hotKeys = HotKeyManager()
     let settings = AppSettings()
@@ -165,6 +186,7 @@ final class AppCore: ObservableObject {
         self.launcherRanking = launcherRanking
         appIndex = AppIndex(ranking: launcherRanking)
         clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
+        snippetExpansionMonitor = SnippetExpansionMonitor(store: snippetStore, settings: settings)
     }
 
     func start() {
@@ -185,6 +207,7 @@ final class AppCore: ObservableObject {
         // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
         Task { clipboardStore.load() }
         clipboardManager.start()
+        snippetExpansionMonitor.start()
 
         appIndex.start(settings: settings)
         Task { await appIndex.refresh() }
@@ -465,6 +488,51 @@ final class AppCore: ObservableObject {
         palette.returnToLauncher()
     }
 
+    func createSnippet() {
+        palette.enterSubscreen(.snippetEditor)
+    }
+
+    func editSnippet(_ snippet: Snippet) {
+        palette.enterSubscreen(.snippetEditor)
+        palette.snippetEditingID = snippet.id
+        palette.snippetEditorReturnsToSearch = true
+    }
+
+    func searchSnippets() {
+        palette.enterSubscreen(.snippets)
+    }
+
+    func exitSnippetEditor() {
+        if palette.snippetEditorReturnsToSearch {
+            palette.mode = .snippets
+            palette.query = ""
+            palette.selection = 0
+            palette.snippetEditingID = nil
+            palette.snippetEditorReturnsToSearch = false
+            palette.focusToken = UUID()
+            palette.resetToken = UUID()
+        } else {
+            palette.returnToLauncher()
+        }
+    }
+
+    func pasteSnippet(_ snippet: Snippet) {
+        let previous = windowController.previousApp
+        hidePalette(restoreFocus: false)
+        Paster.pasteString(snippet.content, previousApp: previous)
+    }
+
+    func copySnippet(_ snippet: Snippet) {
+        Paster.copyString(snippet.content)
+        palette.postFeedback("Copied snippet")
+    }
+
+    func deleteSnippet(_ snippet: Snippet) {
+        snippetStore.delete(snippet)
+        palette.selection = 0
+        palette.postFeedback("Deleted snippet")
+    }
+
     func confirmUninstall(permanently: Bool = false) {
         guard let app = uninstall.target, !uninstall.checkedItems.isEmpty,
             uninstall.phase == .selecting
@@ -634,6 +702,10 @@ final class AppCore: ObservableObject {
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
             palette.enterSubscreen(.clipboard)
+        case .searchSnippets:
+            palette.enterSubscreen(.snippets)
+        case .createSnippet:
+            palette.enterSubscreen(.snippetEditor)
         case .searchEmoji:
             palette.enterSubscreen(.emoji)
         case .settings:

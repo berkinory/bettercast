@@ -16,6 +16,7 @@ struct RootPaletteView: View {
     @EnvironmentObject private var vm: PaletteViewModel
     @EnvironmentObject private var appIndex: AppIndex
     @EnvironmentObject private var store: ClipboardStore
+    @EnvironmentObject private var snippetStore: SnippetStore
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var visibility: VisibilityStore
     /// Observed so the inline card re-evaluates the moment a fresh FX snapshot lands, or the user
@@ -60,6 +61,7 @@ struct RootPaletteView: View {
         return split.favorites + split.rest
     }
     private var clipResults: [ClipboardItem] { store.search(vm.query) }
+    private var snippetResults: [Snippet] { snippetStore.search(vm.query) }
     private var uninstallResults: [LeftoverItem] { uninstall.filtered(vm.query) }
     private var emojiSections: [EmojiGridSection] {
         EmojiGrid.sections(query: vm.query, index: emojiIndex, frequent: frequentEmoji)
@@ -85,6 +87,8 @@ struct RootPaletteView: View {
         case .launcher: return appResults.count + calcCount
         case .clipboard: return clipResults.count
         case .emoji: return emojiResults.count
+        case .snippets: return snippetResults.count
+        case .snippetEditor: return 0
         case .uninstall: return uninstall.phase == .selecting ? uninstallResults.count : 0
         }
     }
@@ -115,6 +119,9 @@ struct RootPaletteView: View {
     }
     private var selectedEmojiEntry: EmojiEntry? {
         emojiResults.indices.contains(selection) ? emojiResults[selection] : nil
+    }
+    private var selectedSnippet: Snippet? {
+        snippetResults.indices.contains(selection) ? snippetResults[selection] : nil
     }
 
     /// The bottom-right Actions menu content for the current mode's selection, or nil when the selection has no actions.
@@ -150,6 +157,13 @@ struct RootPaletteView: View {
                 return EmojiActionsMenu.content(
                     entry: emoji, core: core, target: vm.pasteTarget)
             }
+            return nil
+        case .snippets:
+            if let snippet = selectedSnippet {
+                return SnippetActionsMenu.content(snippet: snippet, core: core)
+            }
+            return nil
+        case .snippetEditor:
             return nil
         case .uninstall:
             guard uninstall.phase == .selecting, !uninstallResults.isEmpty else { return nil }
@@ -189,6 +203,7 @@ struct RootPaletteView: View {
         // Filter once per render for the active mode only, so the matcher/search doesn't run several times per render (rare event handlers use the computed properties above).
         let apps = vm.mode == .launcher ? appResults : []
         let clips = vm.mode == .clipboard ? clipResults : []
+        let snippets = vm.mode == .snippets ? snippetResults : []
         let emojiSections = vm.mode == .emoji ? emojiSections : []
         let emojis = emojiSections.flatMap(\.entries)
         let uninstallItems = vm.mode == .uninstall ? uninstallResults : []
@@ -198,7 +213,7 @@ struct RootPaletteView: View {
         let calc = calcResult
         let offset = calc == nil ? 0 : 1
         // Only the active mode is non-empty.
-        let count = apps.count + offset + clips.count + emojis.count + uninstallItems.count
+        let count = apps.count + offset + clips.count + snippets.count + emojis.count + uninstallItems.count
         let sel = count == 0 ? 0 : min(max(vm.selection, 0), count - 1)
         let calcSelected = calc != nil && sel == 0
         // An error card is selectable but has no action: it must not drive the Copy Answer pill, ⌘K menu, or Enter.
@@ -217,7 +232,7 @@ struct RootPaletteView: View {
                 Color.clear
             } else {
                 content(
-                    apps: apps, clips: clips, emojiSections: emojiSections,
+                    apps: apps, clips: clips, snippets: snippets, emojiSections: emojiSections,
                     uninstallItems: uninstallItems, calc: calc,
                     selection: sel, favoriteCount: favoriteCount, showSections: showSections
                 )
@@ -225,7 +240,7 @@ struct RootPaletteView: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isCollapsed {
+            if !isCollapsed, vm.mode != .snippetEditor {
                 bottomBar(pillLabel: pillLabel, showActionGroup: showActionGroup)
             }
         }
@@ -241,7 +256,7 @@ struct RootPaletteView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
-            searchFocused = true
+            searchFocused = vm.mode != .snippetEditor
             vm.feedback = nil
             showActions = false
             showAppMenu = false
@@ -256,7 +271,7 @@ struct RootPaletteView: View {
             emojiScroll = EmojiScrollIntent(kind: .top)
         }
         .onChange(of: vm.mode) {
-            searchFocused = true
+            searchFocused = vm.mode != .snippetEditor
             vm.selection = 0
             vm.feedback = nil
             showActions = false
@@ -282,7 +297,7 @@ struct RootPaletteView: View {
             }
             listScroll = ListScrollIntent(kind: .follow)
         }
-        .onAppear { searchFocused = true }
+        .onAppear { searchFocused = vm.mode != .snippetEditor }
         .task(id: vm.feedback?.id) {
             guard vm.feedback != nil else { return }
             try? await Task.sleep(for: .seconds(2))
@@ -375,6 +390,11 @@ struct RootPaletteView: View {
                 guard command else { return .ignored }
                 guard clipResults.indices.contains(selection) else { return .ignored }
                 core.copyToClipboard(clipResults[selection])
+            case .snippets:
+                guard command, snippetResults.indices.contains(selection) else { return .ignored }
+                core.copySnippet(snippetResults[selection])
+            case .snippetEditor:
+                return .ignored
             case .launcher:
                 guard command else { return .ignored }
                 guard let app = selectedAppEntry else { return .ignored }
@@ -418,6 +438,8 @@ struct RootPaletteView: View {
             }
             if vm.mode == .uninstall {
                 core.exitUninstall()
+            } else if vm.mode == .snippetEditor {
+                core.exitSnippetEditor()
             } else {
                 core.handlePaletteEscape()
             }
@@ -469,7 +491,7 @@ struct RootPaletteView: View {
             switch vm.mode {
             case .clipboard:
                 deleteSelectedClip()
-            case .launcher, .emoji, .uninstall:
+            case .launcher, .emoji, .snippets, .snippetEditor, .uninstall:
                 return .ignored
             }
             return .handled
@@ -534,8 +556,13 @@ struct RootPaletteView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            // Sub-screens use a back chevron instead of a mode glyph.
-            if vm.mode != .launcher {
+            if vm.mode == .launcher {
+                Image(systemName: vm.mode.systemImage)
+                    .font(Theme.Typography.headerIcon)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+                    .frame(width: Theme.Size.headerIconSlot)
+            } else {
                 Button(action: exitToLauncher) {
                     Image(systemName: "chevron.left")
                         .font(Theme.Typography.headerIcon)
@@ -548,19 +575,20 @@ struct RootPaletteView: View {
                 .onHover { hovering in
                     if hovering { NSCursor.arrow.set() }
                 }
-            } else {
-                Image(systemName: vm.mode.systemImage)
-                    .font(Theme.Typography.headerIcon)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-                    .frame(width: Theme.Size.headerIconSlot)
             }
-            searchField
-            headerTrailing
+
+            if vm.mode == .snippetEditor {
+                Spacer(minLength: 0)
+                Text("Snippets Guide")
+                    .font(Theme.Typography.callout)
+                    .underline()
+                    .foregroundStyle(.secondary)
+            } else {
+                searchField
+                headerTrailing
+            }
         }
-        // Align the search icon with the list rows and section headers below (list inset + row inset).
         .padding(.horizontal, Theme.Spacing.md * 2)
-        // Fixed row height + top padding, identical in both states, so typing (which flips compact→expanded) can't move the search bar. Compact centers the row in symmetric slack; expanded floats the same row over the list.
         .frame(height: Theme.Size.headerHeight)
         .padding(.top, Theme.Size.headerPadding)
         .frame(maxWidth: .infinity)
@@ -592,13 +620,14 @@ struct RootPaletteView: View {
         .textFieldStyle(.plain)
         .font(Theme.Typography.searchField)
         .tint(.white)
+        .paletteTextInputCursor()
         .focused($searchFocused)
         .onSubmit(activateSelection)
     }
 
     @ViewBuilder
     private func content(
-        apps: [AppEntry], clips: [ClipboardItem],
+        apps: [AppEntry], clips: [ClipboardItem], snippets: [Snippet],
         emojiSections: [EmojiGridSection], uninstallItems: [LeftoverItem], calc: CalcResult?,
         selection: Int, favoriteCount: Int, showSections: Bool
     ) -> some View {
@@ -664,6 +693,26 @@ struct RootPaletteView: View {
                     }
                 )
             }
+        case .snippets:
+            SnippetSearchView(
+                results: snippets,
+                selectedID: selectedSnippet?.id,
+                scrollIntent: listScroll,
+                onSelect: { snippet in vm.selection = snippets.firstIndex(of: snippet) ?? 0 },
+                onActivate: { snippet in
+                    if let index = snippets.firstIndex(of: snippet) { vm.selection = index }
+                    activateSelection()
+                },
+                onActions: { snippet in
+                    if let index = snippets.firstIndex(of: snippet) { vm.selection = index }
+                    openActions()
+                }
+            )
+        case .snippetEditor:
+            SnippetEditorView(
+                snippet: snippetStore.snippet(for: vm.snippetEditingID),
+                onSave: saveSnippet
+            )
         case .emoji:
             if !emojiIndex.isLoaded {
                 EmptyResults(text: "Loading emoji…")
@@ -765,31 +814,15 @@ struct RootPaletteView: View {
     private func actionGroup(
         pillLabel: String, destructive: Bool = false, showActionsToggle: Bool = true
     ) -> some View {
-        HStack(spacing: 2) {
-            PaletteBarButton(action: activateSelection) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Text(pillLabel)
-                        .font(Theme.Typography.bar)
-                        .foregroundStyle(destructive ? Color.red : Theme.Colors.textPrimary)
-                    KeyCapChip(text: "↵", style: .outline)
-                }
-            }
-            if showActionsToggle {
-                PaletteBarButton(action: toggleActions) {
-                    HStack(spacing: Theme.Spacing.sm) {
-                        Text("Actions")
-                            .font(Theme.Typography.bar)
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                        HStack(spacing: Theme.Spacing.xxs) {
-                            KeyCapChip(text: "⌘", style: .outline)
-                            KeyCapChip(text: "K", style: .outline)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(Theme.Spacing.xs)
-        .frosted(in: Capsule())
+        PaletteActionGroup(
+            primaryTitle: pillLabel,
+            primaryShortcut: ["↵"],
+            primaryAction: { activateSelection() },
+            primaryColor: destructive ? .red : Theme.Colors.textPrimary,
+            secondaryTitle: showActionsToggle ? "Actions" : nil,
+            secondaryShortcut: ["⌘", "K"],
+            secondaryAction: showActionsToggle ? { toggleActions() } : nil
+        )
     }
 
     /// Pill label for the current selection, derived from the selection already resolved in `body` so it never re-runs the (unmemoized) `appResults` filter/sort.
@@ -797,6 +830,10 @@ struct RootPaletteView: View {
         switch vm.mode {
         case .clipboard, .emoji:
             return vm.pasteTarget?.pasteTitle ?? "Paste"
+        case .snippets:
+            return vm.pasteTarget?.pasteTitle ?? "Paste"
+        case .snippetEditor:
+            return "Save Snippet"
         case .launcher:
             if calcActionable { return "Copy Answer" }
             switch selectedApp?.kind {
@@ -952,7 +989,41 @@ struct RootPaletteView: View {
             core.exitUninstall()
             return
         }
+        if vm.mode == .snippetEditor {
+            core.exitSnippetEditor()
+            return
+        }
         vm.returnToLauncher()
+    }
+
+    private func saveSnippet(_ draft: SnippetDraft) -> String? {
+        do {
+            if let current = snippetStore.snippet(for: vm.snippetEditingID) {
+                _ = try snippetStore.update(
+                    Snippet(
+                        id: current.id, name: draft.name, content: draft.content,
+                        keyword: draft.keyword, icon: draft.icon, createdAt: current.createdAt
+                    )
+                )
+            } else {
+                _ = try snippetStore.create(
+                    name: draft.name, content: draft.content,
+                    keyword: draft.keyword, icon: draft.icon
+                )
+            }
+            vm.mode = .snippets
+            vm.query = ""
+            vm.selection = 0
+            vm.snippetEditingID = nil
+            vm.snippetEditorReturnsToSearch = false
+            vm.focusToken = UUID()
+            vm.resetToken = UUID()
+            return nil
+        } catch let error as SnippetValidationError {
+            return error.localizedDescription
+        } catch {
+            return "Could not save snippet"
+        }
     }
 
     private func focusAndSelectQuery() {
@@ -982,6 +1053,11 @@ struct RootPaletteView: View {
         case .clipboard:
             guard clipResults.indices.contains(selection) else { return }
             core.paste(clipResults[selection])
+        case .snippets:
+            guard snippetResults.indices.contains(selection) else { return }
+            core.pasteSnippet(snippetResults[selection])
+        case .snippetEditor:
+            return
         case .emoji:
             guard emojiResults.indices.contains(selection) else { return }
             core.pasteEmoji(emojiResults[selection])
@@ -992,61 +1068,6 @@ struct RootPaletteView: View {
             case .done: core.finishUninstall()
             }
         }
-    }
-}
-
-struct PaletteFeedbackButton: View {
-    let message: String
-    let tone: PaletteFeedback.Tone
-
-    private var accent: Color {
-        switch tone {
-        case .success: Theme.Colors.feedbackAccent
-        case .warning: Theme.Colors.warning
-        case .error: Theme.Colors.destructive
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                accent.opacity(0.34),
-                                accent.opacity(0.12),
-                                .clear,
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: Theme.Size.feedbackHalo / 2
-                        )
-                    )
-                Circle()
-                    .fill(accent)
-                    .frame(width: Theme.Spacing.sm, height: Theme.Spacing.sm)
-            }
-            .frame(width: Theme.Size.feedbackHalo, height: Theme.Size.feedbackHalo)
-            Text(message)
-                .font(Theme.Typography.bar)
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .lineLimit(1)
-        }
-        .padding(.leading, Theme.Spacing.xl)
-        .padding(.trailing, Theme.Spacing.xxl)
-        .frame(height: Theme.Size.menuButton)
-        .background {
-            Capsule()
-                .fill(Theme.Colors.feedbackShade)
-                .overlay {
-                    Capsule().fill(accent.opacity(0.18))
-                }
-                .overlay {
-                    Capsule().strokeBorder(Theme.Colors.feedbackStroke, lineWidth: 1)
-                }
-        }
-        .allowsHitTesting(false)
     }
 }
 
@@ -1067,6 +1088,7 @@ private struct PaletteModeMenuButton: View {
         case .launcher: return Theme.Colors.launcherAccent
         case .clipboard: return Theme.Colors.clipboardAccent
         case .emoji: return Theme.Colors.emojiAccent
+        case .snippets, .snippetEditor: return Theme.Colors.systemAccent
         case .uninstall: return Theme.Colors.textSecondary
         }
     }

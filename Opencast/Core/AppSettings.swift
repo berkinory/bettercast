@@ -57,6 +57,8 @@ final class AppSettings: ObservableObject {
         static let windowManagementEnabled = "windowManagementEnabled"
         static let windowManagementShowInLauncher = "windowManagementShowInLauncher"
         static let windowRespectSystemMargins = "windowRespectSystemMargins"
+        static let snippetExpansionEnabled = "snippetExpansionEnabled"
+        static let snippetDisabledApps = "snippetDisabledApps"
     }
 
     @Published var appearance: AppAppearance {
@@ -120,6 +122,15 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(windowRespectSystemMargins, forKey: Key.windowRespectSystemMargins) }
     }
 
+    @Published var snippetExpansionEnabled: Bool {
+        didSet { defaults.set(snippetExpansionEnabled, forKey: Key.snippetExpansionEnabled) }
+    }
+
+    /// Bundle IDs whose snippet keywords are never expanded.
+    @Published var snippetDisabledApps: [String] {
+        didSet { defaults.set(snippetDisabledApps, forKey: Key.snippetDisabledApps) }
+    }
+
     init() {
         // integer(forKey:) returns 0 when unset, which no case matches — falls through to 3 Months.
         clipboardRetention =
@@ -151,6 +162,10 @@ final class AppSettings: ObservableObject {
         windowRespectSystemMargins =
             defaults.object(forKey: Key.windowRespectSystemMargins) == nil
             || defaults.bool(forKey: Key.windowRespectSystemMargins)
+        snippetExpansionEnabled =
+            defaults.object(forKey: Key.snippetExpansionEnabled) == nil
+            || defaults.bool(forKey: Key.snippetExpansionEnabled)
+        snippetDisabledApps = defaults.stringArray(forKey: Key.snippetDisabledApps) ?? []
         appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init) ?? .dark
         searchScopes = SearchScopes.normalize(
             defaults.stringArray(forKey: Key.searchScopes) ?? SearchScopes.defaults)

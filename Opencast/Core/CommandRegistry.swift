@@ -3,6 +3,8 @@ import Foundation
 /// App-internal launcher actions surfaced as a "Commands" category; each is a synthetic `AppEntry` (kind `.command`, no bundle ID) so existing `AppEntry` plumbing applies, with dispatch in `AppCore.runCommand`.
 enum CommandID: String, CaseIterable, Sendable {
     case clipboardHistory = "command:clipboard-history"
+    case searchSnippets = "command:search-snippets"
+    case createSnippet = "command:create-snippet"
     case searchEmoji = "command:search-emoji"
     case settings = "command:settings"
     case checkForUpdates = "command:check-for-updates"
@@ -11,6 +13,8 @@ enum CommandID: String, CaseIterable, Sendable {
     var name: String {
         switch self {
         case .clipboardHistory: return "Clipboard History"
+        case .searchSnippets: return "Search Snippets"
+        case .createSnippet: return "Create Snippet"
         case .searchEmoji: return "Search Emoji & Symbols"
         case .settings: return "Settings"
         case .checkForUpdates: return "Check for Updates"
@@ -21,6 +25,7 @@ enum CommandID: String, CaseIterable, Sendable {
     var sfSymbol: String {
         switch self {
         case .clipboardHistory: return "doc.on.clipboard"
+        case .searchSnippets, .createSnippet: return "text.quote"
         case .searchEmoji: return "face.smiling"
         case .settings: return "gearshape"
         case .checkForUpdates: return "arrow.down.circle"

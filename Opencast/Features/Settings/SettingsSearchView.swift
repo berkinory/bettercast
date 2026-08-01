@@ -15,6 +15,8 @@ enum SettingsDestination: Hashable, Sendable {
     case clipboardRetention
     case clipboardExcludedApps
     case clipboardClearHistory
+    case snippetExpansion
+    case snippetDisabledApps
     case emojiShortcut
     case emojiSkinTone
     case accessibility
@@ -39,6 +41,8 @@ enum SettingsDestination: Hashable, Sendable {
         case .clipboardRetention: return "clipboard-retention"
         case .clipboardExcludedApps: return "clipboard-excluded-apps"
         case .clipboardClearHistory: return "clipboard-clear-history"
+        case .snippetExpansion: return "snippet-expansion"
+        case .snippetDisabledApps: return "snippet-disabled-apps"
         case .emojiShortcut: return "emoji-shortcut"
         case .emojiSkinTone: return "emoji-skin-tone"
         case .accessibility: return "accessibility"
@@ -70,6 +74,7 @@ enum SettingsSearchCatalog {
         pane(.general, detail: "Startup, menu bar, and setup."),
         pane(.launcher, detail: "Launcher shortcut, appearance, and behavior."),
         pane(.clipboard, detail: "History retention and excluded applications."),
+        pane(.snippets, detail: "Save and paste frequently used text."),
         pane(.emoji, detail: "Emoji shortcut and preferred skin tone."),
         pane(.calculator, detail: "Inline calculations and currency conversion."),
         pane(.windowManagement, detail: "Tile, resize, and move application windows."),
@@ -158,6 +163,18 @@ enum SettingsSearchCatalog {
             .clipboardClearHistory, tab: .clipboard, title: "Clear Clipboard History",
             detail: "Permanently remove saved clips and images.", section: "History",
             keywords: ["delete all", "erase", "reset"], image: "trash", tint: .red
+        ),
+        item(
+            .snippetExpansion, tab: .snippets, title: "Enable Snippet Expansion",
+            detail: "Expand snippet keywords while you type.", section: "Expansion",
+            keywords: ["snippets", "keywords", "automatic", "paste"], image: "text.quote",
+            tint: .blue
+        ),
+        item(
+            .snippetDisabledApps, tab: .snippets, title: "Disabled Applications",
+            detail: "Choose apps where snippets never expand.", section: "Privacy",
+            keywords: ["snippets", "ignore", "password", "private"], image: "hand.raised",
+            tint: .blue
         ),
         item(
             .emojiShortcut, tab: .emoji, title: "Emoji & Symbols Shortcut",

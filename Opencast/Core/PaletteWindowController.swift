@@ -139,6 +139,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             .environmentObject(core.palette)
             .environmentObject(core.appIndex)
             .environmentObject(core.clipboardStore)
+            .environmentObject(core.snippetStore)
             .environmentObject(core.favorites)
             .environmentObject(core.visibility)
             .environmentObject(core.currencyRates)
@@ -158,6 +159,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
             if core.palette.mode == .uninstall {
                 core.exitUninstall()
+            } else if core.palette.mode == .snippetEditor {
+                guard !(panel.firstResponder is NSTextField || panel.firstResponder is NSTextView) else {
+                    return false
+                }
+                core.exitSnippetEditor()
             } else {
                 core.handlePaletteEscape()
             }
@@ -171,6 +177,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             guard !items.isEmpty else { return true }
             let selection = min(max(core.palette.selection, 0), items.count - 1)
             core.uninstall.toggle(items[selection])
+            return true
+        }
+        panel.onEscape = { [weak self] in
+            guard let self, core.palette.mode == .snippetEditor else { return false }
+            core.exitSnippetEditor()
             return true
         }
         self.panel = panel

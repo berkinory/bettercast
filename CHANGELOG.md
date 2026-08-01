@@ -12,6 +12,8 @@
 
 ## [0.1.1]
 
-- Added a self-update flow for direct installations.
+## Added
+- Snippet support with search, create, edit, and optional keyword expansion.
+- Self-update flow for direct installations.
 
 
