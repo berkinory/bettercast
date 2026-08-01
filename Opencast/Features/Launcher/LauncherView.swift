@@ -118,13 +118,17 @@ struct SectionHeader: View {
     let title: String
     /// The list's first header hugs the top; every later header gets `sectionSpacing` above it, which reads as bottom padding on the section that just ended.
     var isFirst = false
+    var firstTopPadding: CGFloat? = nil
     var body: some View {
         Text(title)
             .font(Theme.Typography.sectionHeader)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Theme.Spacing.md)
-            .padding(.top, isFirst ? Theme.Spacing.xs : Theme.Spacing.sectionSpacing)
+            .padding(
+                .top,
+                isFirst ? (firstTopPadding ?? Theme.Spacing.xs) : Theme.Spacing.sectionSpacing
+            )
             .padding(.bottom, Theme.Spacing.sectionHeaderBottom)
     }
 }

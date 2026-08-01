@@ -142,7 +142,7 @@ struct RootPaletteView: View {
             if let clip = selectedClipItem {
                 return ClipboardActionsMenu.content(
                     item: clip, core: core, target: vm.pasteTarget,
-                    onFeedback: showFeedback(_:))
+                    onFeedback: { showFeedback($0) })
             }
             return nil
         case .emoji:
@@ -256,6 +256,7 @@ struct RootPaletteView: View {
             emojiScroll = EmojiScrollIntent(kind: .top)
         }
         .onChange(of: vm.mode) {
+            searchFocused = true
             vm.selection = 0
             vm.feedback = nil
             showActions = false
@@ -375,9 +376,9 @@ struct RootPaletteView: View {
                 guard clipResults.indices.contains(selection) else { return .ignored }
                 core.copyToClipboard(clipResults[selection])
             case .launcher:
-                guard command, let app = selectedAppEntry,
-                    app.kind == .application || app.kind == .systemSettings
-                else {
+                guard command else { return .ignored }
+                guard let app = selectedAppEntry else { return .ignored }
+                guard app.kind == .application || app.kind == .systemSettings else {
                     return .ignored
                 }
                 core.showInFinder(app)
@@ -417,13 +418,14 @@ struct RootPaletteView: View {
             }
             if vm.mode == .uninstall {
                 core.exitUninstall()
-                return .handled
+            } else {
+                core.handlePaletteEscape()
             }
-            core.handlePaletteEscape()
             return .handled
         }
         .onKeyPress(.tab) {
-            if menuOpen || vm.mode == .uninstall { return .handled }
+            if menuOpen { return .handled }
+            if vm.mode == .uninstall { return .handled }
             toggleMode()
             return .handled
         }
@@ -439,26 +441,30 @@ struct RootPaletteView: View {
             guard !isCollapsed else { return .handled }
             guard resultCount > 0 else { return .handled }
             // An error calc card is the selection but has no actions — don't open an empty panel.
-            if calcCount > 0, selection == 0, calcResult?.isActionable != true { return .handled }
+            if calcCount > 0 {
+                if selection == 0, calcResult?.isActionable != true { return .handled }
+            }
             toggleActions()
             return .handled
         }
         // Bare backspace (back out of a sub-screen when the search is empty) is intercepted by PalettePanel.sendEvent — the field editor consumes it before onKeyPress could fire.
         .onKeyPress(keys: [.delete, .deleteForward], phases: .down) { press in
             if menuOpen { return .handled }
-            if press.modifiers.contains(.control), !isCollapsed, vm.mode == .launcher,
-                let app = selectedAppEntry,
-                AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
-            {
-                core.beginUninstall(app)
-                return .handled
+            if press.modifiers.contains(.control) {
+                if !isCollapsed, vm.mode == .launcher,
+                    let app = selectedAppEntry,
+                    AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
+                {
+                    core.beginUninstall(app)
+                    return .handled
+                }
             }
             guard press.modifiers.contains(.command) else { return .ignored }
-            if press.modifiers.contains(.shift), vm.mode == .uninstall,
-                uninstall.phase == .selecting
-            {
-                core.confirmUninstall(permanently: true)
-                return .handled
+            if press.modifiers.contains(.shift) {
+                if vm.mode == .uninstall, uninstall.phase == .selecting {
+                    core.confirmUninstall(permanently: true)
+                    return .handled
+                }
             }
             switch vm.mode {
             case .clipboard:
@@ -631,24 +637,32 @@ struct RootPaletteView: View {
                 EmptyResults(text: "Clipboard history is empty")
             } else {
                 let selected = clips.indices.contains(selection) ? clips[selection] : nil
-                HStack(spacing: 0) {
-                    ClipboardList(
-                        results: clips,
-                        selectedID: selected?.id,
-                        scrollIntent: listScroll,
-                        onSelect: { item in vm.selection = clips.firstIndex(of: item) ?? 0 },
-                        onActivate: activateSelection,
-                        onActions: { item in
-                            if let index = clips.firstIndex(of: item) { vm.selection = index }
-                            openActions()
+                PaletteDetailLayout(
+                    listWidth: Theme.Size.clipboardListWidth,
+                    detailTitle: "Preview",
+                    sidebar: {
+                        ClipboardList(
+                            results: clips,
+                            selectedID: selected?.id,
+                            scrollIntent: listScroll,
+                            onSelect: { item in vm.selection = clips.firstIndex(of: item) ?? 0 },
+                            onActivate: activateSelection,
+                            onActions: { item in
+                                if let index = clips.firstIndex(of: item) { vm.selection = index }
+                                openActions()
+                            }
+                        )
+                    },
+                    detail: {
+                        ClipboardPreview(item: selected)
+                    },
+                    metadata: {
+                        if let selected {
+                            ClipboardMetadata(
+                                item: selected, imageURL: store.imageURL(for: selected))
                         }
-                    )
-                    .frame(width: Theme.Size.clipboardListWidth)
-                    Rectangle()
-                        .fill(Theme.Colors.separator)
-                        .frame(width: 1)
-                    ClipboardPreview(item: selected)
-                }
+                    }
+                )
             }
         case .emoji:
             if !emojiIndex.isLoaded {
@@ -725,7 +739,8 @@ struct RootPaletteView: View {
                 actionGroup(
                     pillLabel: pillLabel,
                     destructive: vm.mode == .uninstall && uninstall.phase == .selecting,
-                    showActionsToggle: vm.mode != .uninstall || uninstall.phase == .selecting
+                    showActionsToggle:
+                        vm.mode != .uninstall || uninstall.phase == .selecting
                 )
             }
         }
@@ -738,7 +753,7 @@ struct RootPaletteView: View {
     @ViewBuilder
     private var footerMenuButton: some View {
         if let feedback = vm.feedback {
-            PaletteFeedbackButton(message: feedback.message)
+            PaletteFeedbackButton(message: feedback.message, tone: feedback.tone)
         } else if vm.mode == .launcher {
             MenuCircleButton(action: toggleAppMenu)
         } else {
@@ -817,9 +832,11 @@ struct RootPaletteView: View {
         showFeedback(added ? "Added to favorites" : "Removed from favorites")
     }
 
-    private func showFeedback(_ message: String) {
+    private func showFeedback(
+        _ message: String, tone: PaletteFeedback.Tone = .success
+    ) {
         withAnimation(Self.feedbackAnimation) {
-            vm.postFeedback(message)
+            vm.postFeedback(message, tone: tone)
         }
     }
 
@@ -939,10 +956,13 @@ struct RootPaletteView: View {
     }
 
     private func focusAndSelectQuery() {
-        searchFocused = true
+        searchFocused = false
         DispatchQueue.main.async {
-            guard let editor = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
-            editor.selectAll(nil)
+            searchFocused = true
+            DispatchQueue.main.async {
+                guard let editor = NSApp.keyWindow?.firstResponder as? NSTextView else { return }
+                editor.selectAll(nil)
+            }
         }
     }
 
@@ -977,6 +997,15 @@ struct RootPaletteView: View {
 
 struct PaletteFeedbackButton: View {
     let message: String
+    let tone: PaletteFeedback.Tone
+
+    private var accent: Color {
+        switch tone {
+        case .success: Theme.Colors.feedbackAccent
+        case .warning: Theme.Colors.warning
+        case .error: Theme.Colors.destructive
+        }
+    }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
@@ -985,8 +1014,8 @@ struct PaletteFeedbackButton: View {
                     .fill(
                         RadialGradient(
                             colors: [
-                                Theme.Colors.feedbackAccent.opacity(0.34),
-                                Theme.Colors.feedbackAccent.opacity(0.12),
+                                accent.opacity(0.34),
+                                accent.opacity(0.12),
                                 .clear,
                             ],
                             center: .center,
@@ -995,7 +1024,7 @@ struct PaletteFeedbackButton: View {
                         )
                     )
                 Circle()
-                    .fill(Theme.Colors.feedbackAccent)
+                    .fill(accent)
                     .frame(width: Theme.Spacing.sm, height: Theme.Spacing.sm)
             }
             .frame(width: Theme.Size.feedbackHalo, height: Theme.Size.feedbackHalo)
@@ -1011,7 +1040,7 @@ struct PaletteFeedbackButton: View {
             Capsule()
                 .fill(Theme.Colors.feedbackShade)
                 .overlay {
-                    Capsule().fill(Theme.Colors.feedbackFill)
+                    Capsule().fill(accent.opacity(0.18))
                 }
                 .overlay {
                     Capsule().strokeBorder(Theme.Colors.feedbackStroke, lineWidth: 1)

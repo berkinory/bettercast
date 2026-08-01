@@ -52,6 +52,7 @@
 		83D6BDB6804A4D8A1B279547 /* AppLeftovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D12B6B1D8FC9B6E369CD28 /* AppLeftovers.swift */; };
 		87ADA5CF0D871BC1C12EB590 /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0993325B754EBE41A8B80761 /* ShortcutRecorder.swift */; };
 		8AC91E62C332E5D41B3DA9ED /* WindowCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA57190DA7686EC2772D796 /* WindowCommand.swift */; };
+		8CE14BEFCAC47A650F5E8904 /* PaletteListLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */; };
 		905502935B2CD9EA857150CB /* EmojiIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4051408FA502B8509D8A13ED /* EmojiIndex.swift */; };
 		95175FCB7DDB0AD3C034E730 /* LauncherRankingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585D8A95AAAFB112BFCDD37D /* LauncherRankingStore.swift */; };
 		96E19E542511ACA9C67A1C1E /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6CFFBE87EEEB6D08F894AF /* LaunchAtLogin.swift */; };
@@ -85,6 +86,7 @@
 		DD0150BEC433DAB24BC4C19D /* CalcPercent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159B6E466810685329AD73B1 /* CalcPercent.swift */; };
 		DD2E0E5179C7156129437F47 /* PopoverMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF0CF3416ECDC07F197F4F0 /* PopoverMenu.swift */; };
 		E55C14A2340DE8AF6953D869 /* WindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 523DADE8C953A59F718FF536 /* WindowLayout.swift */; };
+		E6FEDD3C618269DBF3B2BA70 /* PaletteDetailLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */; };
 		E84F5355AE209297FD89AD6D /* SearchScopesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4549BDF3A52CC558BFC8A434 /* SearchScopesView.swift */; };
 		E9BEE9E22A824FF2A423E8EB /* NativeConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB16F32064B011E95F7EDAE5 /* NativeConfirmation.swift */; };
 		F5201B807399F1C6E0863AE3 /* ShortcutsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A782BDD846463B97DA98A6 /* ShortcutsSettingsView.swift */; };
@@ -109,6 +111,7 @@
 		1A9F4C5BEB9EAB57292AE8D9 /* ClipboardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardStore.swift; sourceTree = "<group>"; };
 		1E22307E0EE7F6765A45F140 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
 		1E2FC873E8D2002ED435AC90 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
+		1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteDetailLayout.swift; sourceTree = "<group>"; };
 		24327BF95ACECC0F482B1D25 /* WindowManagementSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManagementSettingsView.swift; sourceTree = "<group>"; };
 		27005C975775529D2439B4A4 /* LauncherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherView.swift; sourceTree = "<group>"; };
 		2B6CFFBE87EEEB6D08F894AF /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
@@ -184,6 +187,7 @@
 		F48F4C32ACE0359047A8CD3B /* LauncherSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherSettingsView.swift; sourceTree = "<group>"; };
 		F5AEDADA0CCA562D7C809437 /* CalcParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcParser.swift; sourceTree = "<group>"; };
 		F9B757ECE8217E75C25E12B2 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
+		FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteListLayout.swift; sourceTree = "<group>"; };
 		FFFDB5FB4C753F6AEDC7F91A /* EmojiGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -380,7 +384,9 @@
 				650292D621836C25E5044AA3 /* Onboarding */,
 				8F506C5F46BD04ADE518C3D4 /* Settings */,
 				FDF61DB80286EDCAFE6E1F3E /* Uninstall */,
+				1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */,
 				9B3D242D623DF0D7B1A8C778 /* PaletteFooterControls.swift */,
+				FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */,
 				DAF0CF3416ECDC07F197F4F0 /* PopoverMenu.swift */,
 				B151ADB1745C55478B2669EA /* RootPaletteView.swift */,
 			);
@@ -541,7 +547,9 @@
 				FF063921CF15BD46D854782C /* OnboardingView.swift in Sources */,
 				D7F0F9B6E556DA1DCA699F82 /* OpencastApp.swift in Sources */,
 				2CD74354BCA703175CD6AD20 /* OverlayScroller.swift in Sources */,
+				E6FEDD3C618269DBF3B2BA70 /* PaletteDetailLayout.swift in Sources */,
 				3CE670D0ECABE0A84A554A8F /* PaletteFooterControls.swift in Sources */,
+				8CE14BEFCAC47A650F5E8904 /* PaletteListLayout.swift in Sources */,
 				2722F0176A2EFEE7ECE85A8E /* PalettePanel.swift in Sources */,
 				2F98EEC320827C6A1F25FA53 /* PaletteWindowController.swift in Sources */,
 				BCB7E0E9854BA25046D9EB54 /* Paster.swift in Sources */,
@@ -638,7 +646,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.3;
+				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -705,7 +713,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.0.3;
+				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";

@@ -11,36 +11,31 @@ struct UninstallList: View {
     let onActions: (Int) -> Void
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                        UninstallRow(
-                            item: item,
-                            checked: isChecked(item),
-                            selected: index == selection,
-                            icon: item.kind == .bundle ? appIcon : nil
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            onSelect(index)
-                            onToggle(index)
-                        }
-                        .onRightClick { onActions(index) }
+        PaletteListLayout(
+            scroll: scroll,
+            scrollTarget: items.indices.contains(selection) ? items[selection].id : nil
+        ) {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    UninstallRow(
+                        item: item,
+                        checked: isChecked(item),
+                        selected: index == selection,
+                        icon: item.kind == .bundle ? appIcon : nil
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onSelect(index)
+                        onToggle(index)
                     }
+                    .onRightClick { onActions(index) }
                 }
-                .padding(.horizontal, Theme.Spacing.md)
-                .padding(.top, Theme.Spacing.xs)
-                .padding(.bottom, Theme.Spacing.md)
-                .hideNativeScrollers()
-                .resetNativeScrollToTop(id: scroll.kind == .top ? scroll.id : nil)
             }
-            .edgeDissolve()
-            .thinScrollbar()
-            .onChange(of: scroll) { scroll in
-                guard scroll.kind == .follow, items.indices.contains(selection) else { return }
-                proxy.scrollTo(items[selection].id)
-            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.top, Theme.Spacing.xs)
+            .padding(.bottom, Theme.Spacing.md)
+            .hideNativeScrollers()
+            .resetNativeScrollToTop(id: scroll.kind == .top ? scroll.id : nil)
         }
     }
 }

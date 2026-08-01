@@ -296,12 +296,7 @@ struct ClipboardPreview: View {
 
     var body: some View {
         if let item {
-            VStack(alignment: .leading, spacing: 0) {
-                content(for: item)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                ClipboardInfoSection(item: item, imageURL: store.imageURL(for: item))
-            }
-            .padding(.horizontal, 12)
+            content(for: item)
         } else {
             Color.clear
         }
@@ -336,6 +331,15 @@ struct ClipboardPreview: View {
                     .symbolRenderingMode(.hierarchical).foregroundStyle(.tertiary)
             }
         }
+    }
+}
+
+struct ClipboardMetadata: View {
+    let item: ClipboardItem
+    let imageURL: URL?
+
+    var body: some View {
+        ClipboardInfoSection(item: item, imageURL: imageURL)
     }
 }
 

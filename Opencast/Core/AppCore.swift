@@ -37,8 +37,15 @@ enum PaletteMode: String, CaseIterable, Identifiable {
 
 /// The app a paste will land in, resolved once per palette show so the footer pill and menu rows can name it without re-reading `NSWorkspace` on every render.
 struct PaletteFeedback: Equatable, Identifiable {
+    enum Tone: Equatable {
+        case success
+        case warning
+        case error
+    }
+
     let id = UUID()
     let message: String
+    let tone: Tone
 }
 
 struct PasteTarget: Equatable {
@@ -120,8 +127,8 @@ final class PaletteViewModel: ObservableObject {
         selectQueryToken = UUID()
     }
 
-    func postFeedback(_ message: String) {
-        feedback = PaletteFeedback(message: message)
+    func postFeedback(_ message: String, tone: PaletteFeedback.Tone = .success) {
+        feedback = PaletteFeedback(message: message, tone: tone)
     }
 }
 
@@ -207,7 +214,7 @@ final class AppCore: ObservableObject {
     // MARK: - Palette control
 
     func togglePalette() {
-        if windowController.isVisible, palette.mode == .launcher {
+        if windowController.isVisible {
             hidePalette()
         } else {
             showPalette(mode: .launcher, restoreAnyMode: true)
@@ -360,14 +367,12 @@ final class AppCore: ObservableObject {
             AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
         else { return }
         uninstall.begin(app: app)
-        palette.mode = .uninstall
-        palette.query = ""
-        palette.selection = 0
+        palette.enterSubscreen(.uninstall)
     }
 
     func cancelUninstall() {
         uninstall.end()
-        palette.prepare(mode: .launcher)
+        palette.returnToLauncher()
     }
 
     func confirmUninstall(permanently: Bool = false) {

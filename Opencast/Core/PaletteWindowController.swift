@@ -152,7 +152,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         panel.paletteViewModel = core.palette
         // Backspace in an already-empty search backs out of a sub-screen to a fresh root launcher; `prepare` clears state and re-focuses the field.
         panel.onBareBackspace = { [weak self] in
-            guard let self, core.palette.mode != .launcher, core.palette.query.isEmpty else {
+            guard let self, core.palette.mode != .launcher, core.palette.query.isEmpty
+            else {
                 return false
             }
             if core.palette.mode == .uninstall {

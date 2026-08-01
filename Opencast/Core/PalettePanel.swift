@@ -52,6 +52,12 @@ final class PalettePanel: NSPanel {
             return
         }
         if event.type == .keyDown,
+            event.keyCode == kVK_Tab,
+            firstResponder is NSTextField || firstResponder is NSTextView
+        {
+            return
+        }
+        if event.type == .keyDown,
             event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
             paletteViewModel?.menuOpen != true
         {
