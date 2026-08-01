@@ -35,6 +35,7 @@
 		4BE8F596C87E28C20A958FBF /* ClipboardSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2CEC6B747A3F7FDA120991 /* ClipboardSettingsView.swift */; };
 		4E6259A5AE08C294C786726B /* CalcEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 922E4A08F5C8D594EFDDA19C /* CalcEngine.swift */; };
 		4E82965EA91AF5D36171CD47 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CBA6A6B74BE5D0160E245F /* AboutView.swift */; };
+		4F5060EA94A1420315A3D64D /* PaletteActionLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3776CBF11EBD27E3E049DD /* PaletteActionLayout.swift */; };
 		53DB7872C2658604C4D07B54 /* FrequentEmojiStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C5A706F2C69F0D59AF36CAA /* FrequentEmojiStore.swift */; };
 		54515A7F930A137BECE6E4F8 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76039AA68B80956493E3A313 /* Permissions.swift */; };
 		575FFC5E74A97CD36BFBE214 /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07FD0F81328FD899D97306F5 /* UninstallView.swift */; };
@@ -166,6 +167,7 @@
 		B8243C4190704B957722DE7C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B8A31A5225BDE8E7012E20D3 /* PermissionsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsSettingsView.swift; sourceTree = "<group>"; };
 		B983EC78B091FC8A5C092600 /* WindowActionMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowActionMemory.swift; sourceTree = "<group>"; };
+		BB3776CBF11EBD27E3E049DD /* PaletteActionLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteActionLayout.swift; sourceTree = "<group>"; };
 		BBA57190DA7686EC2772D796 /* WindowCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommand.swift; sourceTree = "<group>"; };
 		BE38B042EDB9B428B0371B97 /* CalculatorCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorCardView.swift; sourceTree = "<group>"; };
 		BEAE804EA9078EB30594C959 /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
@@ -389,6 +391,7 @@
 				650292D621836C25E5044AA3 /* Onboarding */,
 				8F506C5F46BD04ADE518C3D4 /* Settings */,
 				FDF61DB80286EDCAFE6E1F3E /* Uninstall */,
+				BB3776CBF11EBD27E3E049DD /* PaletteActionLayout.swift */,
 				1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */,
 				9B3D242D623DF0D7B1A8C778 /* PaletteFooterControls.swift */,
 				FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */,
@@ -561,6 +564,7 @@
 				FF063921CF15BD46D854782C /* OnboardingView.swift in Sources */,
 				D7F0F9B6E556DA1DCA699F82 /* OpencastApp.swift in Sources */,
 				2CD74354BCA703175CD6AD20 /* OverlayScroller.swift in Sources */,
+				4F5060EA94A1420315A3D64D /* PaletteActionLayout.swift in Sources */,
 				E6FEDD3C618269DBF3B2BA70 /* PaletteDetailLayout.swift in Sources */,
 				3CE670D0ECABE0A84A554A8F /* PaletteFooterControls.swift in Sources */,
 				8CE14BEFCAC47A650F5E8904 /* PaletteListLayout.swift in Sources */,
