@@ -118,12 +118,12 @@ struct KeyShortcut: Hashable, Sendable {
 // Decoding routes through the masking initializer; the encoded shape stays byte-compatible with the legacy `{"carbonKeyCode":N,"carbonModifiers":N}` records.
 enum HotKeyBinding: Hashable, Sendable {
     case key(KeyShortcut)
-    case doubleCommand
+    case doubleModifier(DoubleModifier)
 
     @MainActor var keycaps: [String] {
         switch self {
         case .key(let shortcut): shortcut.keycaps
-        case .doubleCommand: ["⌘", "⌘"]
+        case .doubleModifier(let modifier): [modifier.symbol, modifier.symbol]
         }
     }
 }

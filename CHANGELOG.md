@@ -20,10 +20,12 @@
 ## [0.1.2]
 
 ### Added
+
 - Quicklinks support.
 
 ### Improved
 
+- Hotkeys now support double-tapping command, option, or control modifiers.
 - Launcher search now finds renamed applications by previous names retained in macOS metadata.
 - Added duplicate actions for snippets and quicklinks.
 - Added paste-target application icons to snippet actions.

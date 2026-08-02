@@ -1,9 +1,23 @@
 import Foundation
 
-struct DoubleCommandDetector: Sendable {
+enum DoubleModifier: String, CaseIterable, Hashable, Sendable {
+    case command
+    case option
+    case control
+
+    var symbol: String {
+        switch self {
+        case .command: return "⌘"
+        case .option: return "⌥"
+        case .control: return "⌃"
+        }
+    }
+}
+
+struct DoubleModifierDetector: Sendable {
     let maximumInterval: TimeInterval
 
-    private(set) var commandDown = false
+    private(set) var modifierDown = false
     private var cycleValid = true
     private var previousRelease: TimeInterval?
 
@@ -13,17 +27,17 @@ struct DoubleCommandDetector: Sendable {
 
     @discardableResult
     mutating func flagsChanged(
-        commandIsDown: Bool,
+        modifierIsDown: Bool,
         otherModifierIsDown: Bool,
         at time: TimeInterval
     ) -> Bool {
-        if commandIsDown == commandDown {
-            if commandDown, otherModifierIsDown { cycleValid = false }
+        if modifierIsDown == modifierDown {
+            if modifierDown, otherModifierIsDown { cycleValid = false }
             return false
         }
 
-        if commandIsDown {
-            commandDown = true
+        if modifierIsDown {
+            modifierDown = true
             cycleValid = !otherModifierIsDown
             if let previousRelease, time - previousRelease > maximumInterval {
                 self.previousRelease = nil
@@ -32,27 +46,27 @@ struct DoubleCommandDetector: Sendable {
         }
 
         let recognized =
-            commandDown
+            modifierDown
             && cycleValid
             && !otherModifierIsDown
             && previousRelease.map { time - $0 <= maximumInterval } == true
 
-        if commandDown, cycleValid, !otherModifierIsDown {
+        if modifierDown, cycleValid, !otherModifierIsDown {
             previousRelease = recognized ? nil : time
         } else {
             previousRelease = nil
         }
-        commandDown = false
+        modifierDown = false
         cycleValid = true
         return recognized
     }
 
     mutating func keyDown() {
-        if commandDown { cycleValid = false }
+        if modifierDown { cycleValid = false }
     }
 
     mutating func reset() {
-        commandDown = false
+        modifierDown = false
         cycleValid = true
         previousRelease = nil
     }

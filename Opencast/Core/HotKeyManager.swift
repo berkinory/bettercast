@@ -13,12 +13,12 @@ final class HotKeyManager: ObservableObject {
         didSet {
             let paused = recordingAction != nil
             center.isPaused = paused
-            doubleCommandMonitor.isPaused = paused
+            doubleModifierMonitor.isPaused = paused
         }
     }
 
     private let center = HotKeyCenter()
-    private let doubleCommandMonitor = DoubleCommandMonitor()
+    private let doubleModifierMonitor = DoubleModifierMonitor()
     private let boundKey = "boundAppBundleIDs"
     private let boundPaneKey = "boundPaneBundleIDs"
 
@@ -31,8 +31,10 @@ final class HotKeyManager: ObservableObject {
         for command in WindowCommandCatalog.all {
             register(.windowCommand(id: command.id))
         }
-        doubleCommandMonitor.onDoubleCommand = { [weak self] in self?.performDoubleCommand() }
-        doubleCommandMonitor.start()
+        doubleModifierMonitor.onDoubleModifier = { [weak self] modifier in
+            self?.performDoubleModifier(modifier)
+        }
+        doubleModifierMonitor.start()
     }
 
     /// Bundle IDs that currently have a per-app hotkey — lets `start()` know which records to load and lets launcher rows show keycaps.
@@ -47,7 +49,12 @@ final class HotKeyManager: ObservableObject {
 
     func binding(for action: HotKeyAction) -> HotKeyBinding? {
         guard let json = UserDefaults.standard.string(forKey: action.defaultsKey) else { return nil }
-        if json == "doubleCommand" { return .doubleCommand }
+        switch json {
+        case "doubleCommand": return .doubleModifier(.command)
+        case "doubleOption": return .doubleModifier(.option)
+        case "doubleControl": return .doubleModifier(.control)
+        default: break
+        }
         guard let data = json.data(using: .utf8),
             let shortcut = try? JSONDecoder().decode(KeyShortcut.self, from: data)
         else { return nil }
@@ -69,8 +76,14 @@ final class HotKeyManager: ObservableObject {
             else { return }
             UserDefaults.standard.set(json, forKey: action.defaultsKey)
             register(action)
-        case .doubleCommand:
-            UserDefaults.standard.set("doubleCommand", forKey: action.defaultsKey)
+        case .doubleModifier(let modifier):
+            let value: String
+            switch modifier {
+            case .command: value = "doubleCommand"
+            case .option: value = "doubleOption"
+            case .control: value = "doubleControl"
+            }
+            UserDefaults.standard.set(value, forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         case nil:
             UserDefaults.standard.removeObject(forKey: action.defaultsKey)
@@ -143,12 +156,16 @@ final class HotKeyManager: ObservableObject {
         }
     }
 
-    private func performDoubleCommand() {
+    private func performDoubleModifier(_ modifier: DoubleModifier) {
         var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
         candidates += boundBundleIDs.map { .app(bundleID: $0) }
         candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
         candidates += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
-        guard let action = candidates.first(where: { binding(for: $0) == .doubleCommand }) else { return }
+        guard
+            let action = candidates.first(where: {
+                binding(for: $0) == .doubleModifier(modifier)
+            })
+        else { return }
         perform(action)
     }
 

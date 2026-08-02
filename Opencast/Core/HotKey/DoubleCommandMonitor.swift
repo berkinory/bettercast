@@ -1,15 +1,26 @@
 import AppKit
 
+extension DoubleModifier {
+    var eventFlag: NSEvent.ModifierFlags {
+        switch self {
+        case .command: return .command
+        case .option: return .option
+        case .control: return .control
+        }
+    }
+}
+
 @MainActor
-final class DoubleCommandMonitor {
-    var onDoubleCommand: (() -> Void)?
+final class DoubleModifierMonitor {
+    var onDoubleModifier: ((DoubleModifier) -> Void)?
     var isPaused = false {
         didSet {
-            if isPaused { detector.reset() }
+            if isPaused { resetDetectors() }
         }
     }
 
-    private var detector = DoubleCommandDetector()
+    private var detectors = Dictionary(
+        uniqueKeysWithValues: DoubleModifier.allCases.map { ($0, DoubleModifierDetector()) })
     private var monitors: [Any] = []
 
     func start() {
@@ -36,7 +47,7 @@ final class DoubleCommandMonitor {
     func stop() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors = []
-        detector.reset()
+        resetDetectors()
     }
 
     private func handle(_ event: NSEvent) {
@@ -44,18 +55,37 @@ final class DoubleCommandMonitor {
         let time = ProcessInfo.processInfo.systemUptime
         switch event.type {
         case .keyDown:
-            detector.keyDown()
+            for modifier in DoubleModifier.allCases {
+                detectors[modifier]?.keyDown()
+            }
         case .flagsChanged:
-            let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
-            if detector.flagsChanged(
-                commandIsDown: flags.contains(.command),
-                otherModifierIsDown: !flags.intersection([.option, .control, .shift]).isEmpty,
-                at: time
-            ) {
-                onDoubleCommand?()
+            let flags = event.modifierFlags.intersection(Self.trackedModifierFlags)
+            for modifier in DoubleModifier.allCases {
+                guard var detector = detectors[modifier] else { continue }
+                let otherFlags = Self.trackedModifierFlags.subtracting(modifier.eventFlag)
+                let recognized = detector.flagsChanged(
+                    modifierIsDown: flags.contains(modifier.eventFlag),
+                    otherModifierIsDown: !flags.intersection(otherFlags).isEmpty,
+                    at: time
+                )
+                detectors[modifier] = detector
+                if recognized {
+                    onDoubleModifier?(modifier)
+                    break
+                }
             }
         default:
             break
         }
     }
+
+    private func resetDetectors() {
+        for modifier in DoubleModifier.allCases {
+            detectors[modifier]?.reset()
+        }
+    }
+
+    private static let trackedModifierFlags: NSEvent.ModifierFlags = [
+        .command, .option, .control, .shift,
+    ]
 }

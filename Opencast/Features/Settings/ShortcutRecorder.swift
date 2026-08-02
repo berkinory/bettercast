@@ -460,12 +460,13 @@ private final class CaptureSession: ObservableObject {
     private var monitors: [Any] = []
     private var resignObserver: NSObjectProtocol?
     private var successResolutionTask: Task<Void, Never>?
-    private var doubleCommandDetector = DoubleCommandDetector()
+    private var doubleModifierDetectors = Dictionary(
+        uniqueKeysWithValues: DoubleModifier.allCases.map { ($0, DoubleModifierDetector()) })
 
     func start(action: HotKeyAction, hotKeys: HotKeyManager) {
         stop()
         state = .recording
-        doubleCommandDetector.reset()
+        resetDoubleModifierDetectors()
         heldModifiers = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
 
         if let monitor = NSEvent.addLocalMonitorForEvents(
@@ -492,11 +493,8 @@ private final class CaptureSession: ObservableObject {
                 let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    let recognized = self.doubleCommandDetector.flagsChanged(
-                        commandIsDown: flags.contains(.command),
-                        otherModifierIsDown: !flags.intersection([.option, .control, .shift]).isEmpty,
-                        at: ProcessInfo.processInfo.systemUptime
-                    )
+                    let recognized = self.detectDoubleModifier(
+                        in: flags, at: ProcessInfo.processInfo.systemUptime)
                     self.heldModifiers = flags
                     switch self.state {
                     case .editing where !flags.isEmpty:
@@ -506,9 +504,10 @@ private final class CaptureSession: ObservableObject {
                     case .recording, .editing, .conflict, .success:
                         break
                     }
-                    if recognized {
+                    if let recognized {
                         self.accept(
-                            .doubleCommand, action: action, hotKeys: AppCore.shared.hotKeys)
+                            .doubleModifier(recognized), action: action,
+                            hotKeys: AppCore.shared.hotKeys)
                     }
                 }
                 return event
@@ -543,7 +542,7 @@ private final class CaptureSession: ObservableObject {
         }
         successResolutionTask?.cancel()
         successResolutionTask = nil
-        doubleCommandDetector.reset()
+        resetDoubleModifierDetectors()
         heldModifiers = []
         state = .recording
     }
@@ -551,7 +550,9 @@ private final class CaptureSession: ObservableObject {
     private func handleKeyDown(
         keyCode: Int, flags: NSEvent.ModifierFlags, action: HotKeyAction, hotKeys: HotKeyManager
     ) {
-        doubleCommandDetector.keyDown()
+        for modifier in DoubleModifier.allCases {
+            doubleModifierDetectors[modifier]?.keyDown()
+        }
         let bareKey = flags.intersection([.command, .option, .control, .shift]).isEmpty
 
         successResolutionTask?.cancel()
@@ -577,6 +578,30 @@ private final class CaptureSession: ObservableObject {
         heldModifiers = flags.intersection([.command, .option, .control, .shift])
         guard let shortcut = KeyShortcut(keyCode: keyCode, modifierFlags: flags) else { return }
         accept(.key(shortcut), action: action, hotKeys: hotKeys)
+    }
+
+    private func detectDoubleModifier(
+        in flags: NSEvent.ModifierFlags, at time: TimeInterval
+    ) -> DoubleModifier? {
+        let trackedFlags: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        for modifier in DoubleModifier.allCases {
+            guard var detector = doubleModifierDetectors[modifier] else { continue }
+            let otherFlags = trackedFlags.subtracting(modifier.eventFlag)
+            let recognized = detector.flagsChanged(
+                modifierIsDown: flags.contains(modifier.eventFlag),
+                otherModifierIsDown: !flags.intersection(otherFlags).isEmpty,
+                at: time
+            )
+            doubleModifierDetectors[modifier] = detector
+            if recognized { return modifier }
+        }
+        return nil
+    }
+
+    private func resetDoubleModifierDetectors() {
+        for modifier in DoubleModifier.allCases {
+            doubleModifierDetectors[modifier]?.reset()
+        }
     }
 
     private func accept(
