@@ -53,6 +53,7 @@
 		7F511B0FA936A60A8FFDF35A /* ImageThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F74855DB60C4CE77387B40 /* ImageThumbnail.swift */; };
 		7FA75FD9CF1CC88E5613A91E /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6611BAE04ECE3A8A6B2E742B /* SettingsComponents.swift */; };
 		7FD959DB96807179DA22BD5D /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A0FDBB98365DA92EA6AFE4 /* SettingsRootView.swift */; };
+		815EB570E494CD1DBC851366 /* InlineArgument.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2853308836F857CCD1F3A9 /* InlineArgument.swift */; };
 		83D6BDB6804A4D8A1B279547 /* AppLeftovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D12B6B1D8FC9B6E369CD28 /* AppLeftovers.swift */; };
 		8752558F201BD5E1E51E6335 /* QuicklinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC3C9115B942FC4E9128168 /* QuicklinkViews.swift */; };
 		87ADA5CF0D871BC1C12EB590 /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0993325B754EBE41A8B80761 /* ShortcutRecorder.swift */; };
@@ -100,6 +101,7 @@
 		E84F5355AE209297FD89AD6D /* SearchScopesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4549BDF3A52CC558BFC8A434 /* SearchScopesView.swift */; };
 		E9BEE9E22A824FF2A423E8EB /* NativeConfirmation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB16F32064B011E95F7EDAE5 /* NativeConfirmation.swift */; };
 		EA7F39EE7D7D24BF1D23CD23 /* SnippetActionsMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7828F8E8D06ABDF3E82E4A /* SnippetActionsMenu.swift */; };
+		EB0F48828E3A5B02C4CEECD5 /* PaletteInlineArguments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494FFCFEEE0503D3191481D1 /* PaletteInlineArguments.swift */; };
 		EC9A78624E63B6B63FB50120 /* SnippetExpansionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5626D5C4B7201389BD65AE55 /* SnippetExpansionMonitor.swift */; };
 		F5201B807399F1C6E0863AE3 /* ShortcutsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A782BDD846463B97DA98A6 /* ShortcutsSettingsView.swift */; };
 		F6F0940BA37796914D5F6CEC /* EmojiGridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027E69A728290EA06F4016AA /* EmojiGridGeometry.swift */; };
@@ -132,6 +134,7 @@
 		4051408FA502B8509D8A13ED /* EmojiIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiIndex.swift; sourceTree = "<group>"; };
 		4549BDF3A52CC558BFC8A434 /* SearchScopesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScopesView.swift; sourceTree = "<group>"; };
 		462D07AB47D78A4FE62BA421 /* RunningApps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningApps.swift; sourceTree = "<group>"; };
+		494FFCFEEE0503D3191481D1 /* PaletteInlineArguments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteInlineArguments.swift; sourceTree = "<group>"; };
 		514018E503677049345206FE /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalog.swift; sourceTree = "<group>"; };
 		523DADE8C953A59F718FF536 /* WindowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowLayout.swift; sourceTree = "<group>"; };
 		5386785E3005CEB050117CCD /* SnippetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetSettingsView.swift; sourceTree = "<group>"; };
@@ -212,6 +215,7 @@
 		F5AEDADA0CCA562D7C809437 /* CalcParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalcParser.swift; sourceTree = "<group>"; };
 		F9B757ECE8217E75C25E12B2 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
 		FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteListLayout.swift; sourceTree = "<group>"; };
+		FB2853308836F857CCD1F3A9 /* InlineArgument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineArgument.swift; sourceTree = "<group>"; };
 		FFFDB5FB4C753F6AEDC7F91A /* EmojiGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -269,6 +273,7 @@
 				5491D634DB3BC8C7AB21B0B9 /* FavoritesStore.swift */,
 				921F4FD1DAC16E63203F4FF2 /* HotKeyManager.swift */,
 				C9F74855DB60C4CE77387B40 /* ImageThumbnail.swift */,
+				FB2853308836F857CCD1F3A9 /* InlineArgument.swift */,
 				2B6CFFBE87EEEB6D08F894AF /* LaunchAtLogin.swift */,
 				585D8A95AAAFB112BFCDD37D /* LauncherRankingStore.swift */,
 				CB16F32064B011E95F7EDAE5 /* NativeConfirmation.swift */,
@@ -437,6 +442,7 @@
 				BB3776CBF11EBD27E3E049DD /* PaletteActionLayout.swift */,
 				1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */,
 				9B3D242D623DF0D7B1A8C778 /* PaletteFooterControls.swift */,
+				494FFCFEEE0503D3191481D1 /* PaletteInlineArguments.swift */,
 				FA205250C2E4CA9E959796DB /* PaletteListLayout.swift */,
 				DAF0CF3416ECDC07F197F4F0 /* PopoverMenu.swift */,
 				B151ADB1745C55478B2669EA /* RootPaletteView.swift */,
@@ -596,6 +602,7 @@
 				2DAB5D91FB875D07BAC33D5F /* HotKeyCenter.swift in Sources */,
 				5F5CA7F40954BD868D149F28 /* HotKeyManager.swift in Sources */,
 				7F511B0FA936A60A8FFDF35A /* ImageThumbnail.swift in Sources */,
+				815EB570E494CD1DBC851366 /* InlineArgument.swift in Sources */,
 				610B3B527018E48C36B8FA4A /* KeyShortcut.swift in Sources */,
 				96E19E542511ACA9C67A1C1E /* LaunchAtLogin.swift in Sources */,
 				95175FCB7DDB0AD3C034E730 /* LauncherRankingStore.swift in Sources */,
@@ -610,6 +617,7 @@
 				4F5060EA94A1420315A3D64D /* PaletteActionLayout.swift in Sources */,
 				E6FEDD3C618269DBF3B2BA70 /* PaletteDetailLayout.swift in Sources */,
 				3CE670D0ECABE0A84A554A8F /* PaletteFooterControls.swift in Sources */,
+				EB0F48828E3A5B02C4CEECD5 /* PaletteInlineArguments.swift in Sources */,
 				8CE14BEFCAC47A650F5E8904 /* PaletteListLayout.swift in Sources */,
 				2722F0176A2EFEE7ECE85A8E /* PalettePanel.swift in Sources */,
 				2F98EEC320827C6A1F25FA53 /* PaletteWindowController.swift in Sources */,

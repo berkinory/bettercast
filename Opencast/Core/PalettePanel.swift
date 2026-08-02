@@ -53,8 +53,26 @@ final class PalettePanel: NSPanel {
             return
         }
         if event.type == .keyDown,
+            let delta = Self.verticalArrowDelta(for: event.keyCode),
+            paletteViewModel?.onInlineArgumentsVerticalArrow?(delta) == true
+        {
+            return
+        }
+        if event.type == .keyDown,
+            event.keyCode == kVK_Escape,
+            paletteViewModel?.onInlineArgumentsEscape?() == true
+        {
+            return
+        }
+        if event.type == .keyDown,
             event.keyCode == kVK_Escape,
             onEscape?() == true
+        {
+            return
+        }
+        if event.type == .keyDown,
+            event.keyCode == kVK_Tab,
+            paletteViewModel?.onInlineArgumentsTab?() == true
         {
             return
         }
@@ -79,6 +97,14 @@ final class PalettePanel: NSPanel {
             if Int(event.keyCode) == kVK_Space, onBareSpace?() == true { return }
         }
         super.sendEvent(event)
+    }
+
+    private static func verticalArrowDelta(for keyCode: UInt16) -> Int? {
+        switch Int(keyCode) {
+        case kVK_UpArrow: return -1
+        case kVK_DownArrow: return 1
+        default: return nil
+        }
     }
 
     private static func arrowAlias(for characters: String?) -> (keyCode: Int, character: Int)? {

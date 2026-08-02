@@ -22,6 +22,7 @@
 ### Added
 
 - Quicklinks support.
+- Reusable inline argument inputs for extension commands.
 
 ### Improved
 

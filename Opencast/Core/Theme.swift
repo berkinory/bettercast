@@ -44,6 +44,10 @@ enum Theme {
         static let headerIconSlot: CGFloat = 22
         /// Vertical breathing room above the search row — constant across compact/expanded so the bar never shifts when typing flips the state; also the compact bar's symmetric top/bottom slack.
         static let headerPadding: CGFloat = 10
+        static let searchFieldPointSize: CGFloat = 20
+        static let inlineArgumentHeight: CGFloat = 28
+        static let inlineArgumentMinimumWidth: CGFloat = 72
+        static let inlineArgumentHelpBadge: CGFloat = 14
         /// Collapsed compact bar: the search row centered in symmetric `headerPadding` slack.
         static let compactHeight: CGFloat = headerHeight + headerPadding * 2
         static let bottomBarHeight: CGFloat = 52
@@ -66,7 +70,7 @@ enum Theme {
 
     /// System text styles (not hardcoded sizes) so the UI honors Dynamic Type.
     enum Typography {
-        static let searchField = Font.system(size: 20, weight: .regular)
+        static let searchField = Font.system(size: Theme.Size.searchFieldPointSize, weight: .regular)
         static let headerIcon = Font.system(size: 18, weight: .medium)
         static let rowTitle = Font.body
         static let body = Font.body

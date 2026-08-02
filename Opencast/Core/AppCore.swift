@@ -107,6 +107,9 @@ final class PaletteViewModel: ObservableObject {
     /// Fired when `menuOpen` flips so `PalettePanel` can hide/show the search field's caret while it keeps first-responder status (no focus swap, so the placeholder never reflows).
     var onMenuOpenChanged: ((Bool) -> Void)?
     var onCommandEnter: (() -> Bool)?
+    var onInlineArgumentsTab: (() -> Bool)?
+    var onInlineArgumentsEscape: (() -> Bool)?
+    var onInlineArgumentsVerticalArrow: ((Int) -> Bool)?
 
     func prepare(mode: PaletteMode) {
         launcherQueryForReturn = nil

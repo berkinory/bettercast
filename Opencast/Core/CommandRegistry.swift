@@ -37,6 +37,8 @@ enum CommandID: String, CaseIterable, Sendable {
         case .quit: return "power"
         }
     }
+
+    var inlineArguments: [InlineArgument] { [] }
 }
 
 enum CommandRegistry {

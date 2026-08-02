@@ -40,6 +40,9 @@ struct RootPaletteView: View {
     @State private var listScroll: ListScrollIntent?
     /// The emoji grid's scroll request — the lazy grid needs distinct reset/follow scroll ops.
     @State private var emojiScroll = EmojiScrollIntent(kind: .top)
+    @State private var inlineArgumentValues: [String] = []
+    @State private var inlineArgumentFocus: Int?
+    @State private var inlineArgumentFocusRequest: Int?
 
     private var isQueryEmpty: Bool { vm.query.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -144,6 +147,23 @@ struct RootPaletteView: View {
     }
     private var selectedQuicklink: Quicklink? {
         quicklinkResults.indices.contains(selection) ? quicklinkResults[selection] : nil
+    }
+    private var selectedInlineCommand: CommandID? {
+        guard let app = selectedAppEntry else { return nil }
+        let command = CommandRegistry.command(for: app)
+        return command?.inlineArguments.isEmpty == false ? command : nil
+    }
+    private var inlineArguments: [InlineArgument] {
+        selectedInlineCommand?.inlineArguments ?? []
+    }
+    private var inlineSearchFieldWidth: CGFloat {
+        let font = NSFont.systemFont(
+            ofSize: Theme.Size.searchFieldPointSize, weight: .regular)
+        return max(
+            Theme.Spacing.xs,
+            (vm.query as NSString).size(withAttributes: [.font: font]).width
+                + Theme.Spacing.xs
+        )
     }
 
     /// The bottom-right Actions menu content for the current mode's selection, or nil when the selection has no actions.
@@ -312,6 +332,8 @@ struct RootPaletteView: View {
         }
         .onChange(of: vm.query) {
             vm.selection = 0
+            inlineArgumentFocus = nil
+            inlineArgumentFocusRequest = nil
             listScroll = ListScrollIntent(kind: .top)
             emojiScroll = EmojiScrollIntent(kind: .top)
         }
@@ -342,7 +364,17 @@ struct RootPaletteView: View {
             }
             listScroll = ListScrollIntent(kind: .follow)
         }
-        .onAppear { searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor }
+        .onAppear {
+            searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
+            vm.onInlineArgumentsTab = handleInlineArgumentTab
+            vm.onInlineArgumentsEscape = handleInlineArgumentEscape
+            vm.onInlineArgumentsVerticalArrow = handleInlineArgumentVerticalArrow
+        }
+        .onDisappear {
+            vm.onInlineArgumentsTab = nil
+            vm.onInlineArgumentsEscape = nil
+            vm.onInlineArgumentsVerticalArrow = nil
+        }
         .task(id: vm.feedback?.id) {
             guard vm.feedback != nil else { return }
             try? await Task.sleep(for: .seconds(2))
@@ -415,46 +447,7 @@ struct RootPaletteView: View {
         }
         // With a menu open, plain ↵ activates its highlighted row. A modified ↵ always runs the selection's own action regardless of menu state: ⌘↵ the secondary copy action (each menu advertises it), ⌥↵ paste-in-place; plain ↵ (no menu) falls through to the field's onSubmit.
         .onKeyPress(keys: [.return], phases: .down) { press in
-            let command = press.modifiers.contains(.command)
-            let option = press.modifiers.contains(.option)
-            if menuOpen, !command, !option {
-                activateMenuItem(menuSelection)
-                return .handled
-            }
-            guard command || option else { return .ignored }
-            switch vm.mode {
-            case .emoji:
-                guard emojiResults.indices.contains(selection) else { return .ignored }
-                let emoji = emojiResults[selection]
-                if command {
-                    core.copyEmoji(emoji)
-                } else {
-                    core.pasteEmojiKeepingWindowOpen(emoji)
-                }
-            case .clipboard:
-                guard command else { return .ignored }
-                guard clipResults.indices.contains(selection) else { return .ignored }
-                core.copyToClipboard(clipResults[selection])
-            case .snippets:
-                guard command, snippetResults.indices.contains(selection) else { return .ignored }
-                core.copySnippet(snippetResults[selection])
-            case .quicklinks:
-                guard command, quicklinkResults.indices.contains(selection) else { return .ignored }
-                core.copyQuicklink(quicklinkResults[selection])
-            case .snippetEditor, .quicklinkEditor:
-                return .ignored
-            case .launcher:
-                guard command else { return .ignored }
-                guard let app = selectedAppEntry else { return .ignored }
-                guard app.kind == .application || app.kind == .systemSettings else {
-                    return .ignored
-                }
-                core.showInFinder(app)
-            case .uninstall:
-                guard command, uninstallResults.indices.contains(selection) else { return .ignored }
-                core.showLeftoverInFinder(uninstallResults[selection])
-            }
-            return .handled
+            handleModifiedReturn(press) ? .handled : .ignored
         }
         // ⌘F toggles the selected app's favorite state while its Actions menu is open.
         .onKeyPress(keys: ["f"], phases: .down) { press in
@@ -468,13 +461,15 @@ struct RootPaletteView: View {
             return .handled
         }
         .onKeyPress(keys: ["c"], phases: .down) { press in
-            guard showActions,
-                vm.mode == .launcher,
-                press.modifiers.contains([.command, .shift]),
-                press.modifiers.intersection([.option, .control]).isEmpty,
-                let app = selectedAppEntry,
-                app.kind == .application
-            else { return .ignored }
+            guard showActions else { return .ignored }
+            guard vm.mode == .launcher else { return .ignored }
+            guard press.modifiers.contains([.command, .shift]) else { return .ignored }
+            guard press.modifiers.intersection([.option, .control]).isEmpty else {
+                return .ignored
+            }
+            guard let app = selectedAppEntry, app.kind == .application else {
+                return .ignored
+            }
             core.copyPath(app)
             closeMenus()
             return .handled
@@ -484,13 +479,7 @@ struct RootPaletteView: View {
                 closeMenus()
                 return .handled
             }
-            if vm.mode == .uninstall {
-                core.exitUninstall()
-            } else if vm.mode == .snippetEditor {
-                core.exitSnippetEditor()
-            } else {
-                core.handlePaletteEscape()
-            }
+            handlePaletteEscape()
             return .handled
         }
         .onKeyPress(.tab) {
@@ -633,6 +622,19 @@ struct RootPaletteView: View {
                     .foregroundStyle(.secondary)
             } else {
                 searchField
+                    .frame(
+                        width: inlineArguments.isEmpty ? nil : inlineSearchFieldWidth,
+                        alignment: .leading
+                    )
+                if !inlineArguments.isEmpty {
+                    PaletteInlineArguments(
+                        arguments: inlineArguments,
+                        values: $inlineArgumentValues,
+                        focusRequest: inlineArgumentFocusRequest,
+                        onFocusChanged: { inlineArgumentFocus = $0 }
+                    )
+                    Spacer(minLength: 0)
+                }
                 headerTrailing
             }
         }
@@ -1044,9 +1046,102 @@ struct RootPaletteView: View {
 
     // MARK: - Actions
 
+    private func handleModifiedReturn(_ press: KeyPress) -> Bool {
+        let command = press.modifiers.contains(.command)
+        let option = press.modifiers.contains(.option)
+        if menuOpen, !command, !option {
+            activateMenuItem(menuSelection)
+            return true
+        }
+        guard command || option else { return false }
+        switch vm.mode {
+        case .emoji:
+            guard emojiResults.indices.contains(selection) else { return false }
+            let emoji = emojiResults[selection]
+            if command {
+                core.copyEmoji(emoji)
+            } else {
+                core.pasteEmojiKeepingWindowOpen(emoji)
+            }
+        case .clipboard:
+            guard command, clipResults.indices.contains(selection) else { return false }
+            core.copyToClipboard(clipResults[selection])
+        case .snippets:
+            guard command, snippetResults.indices.contains(selection) else { return false }
+            core.copySnippet(snippetResults[selection])
+        case .quicklinks:
+            guard command, quicklinkResults.indices.contains(selection) else { return false }
+            core.copyQuicklink(quicklinkResults[selection])
+        case .snippetEditor, .quicklinkEditor:
+            return false
+        case .launcher:
+            guard command, let app = selectedAppEntry else { return false }
+            let canShowInFinder = app.kind == .application || app.kind == .systemSettings
+            guard canShowInFinder else { return false }
+            core.showInFinder(app)
+        case .uninstall:
+            guard command, uninstallResults.indices.contains(selection) else { return false }
+            core.showLeftoverInFinder(uninstallResults[selection])
+        }
+        return true
+    }
+
+    private func handlePaletteEscape() {
+        switch vm.mode {
+        case .uninstall:
+            core.exitUninstall()
+        case .snippetEditor:
+            core.exitSnippetEditor()
+        default:
+            core.handlePaletteEscape()
+        }
+    }
+
+    private func handleInlineArgumentTab() -> Bool {
+        guard !inlineArguments.isEmpty else { return false }
+        if let focused = inlineArgumentFocus ?? inlineArgumentFocusRequest {
+            if inlineArguments.indices.contains(focused + 1) {
+                inlineArgumentFocusRequest = focused + 1
+            } else {
+                leaveInlineArguments()
+            }
+        } else {
+            searchFocused = false
+            inlineArgumentFocusRequest = inlineArguments.startIndex
+        }
+        return true
+    }
+
+    private func handleInlineArgumentEscape() -> Bool {
+        guard (inlineArgumentFocus ?? inlineArgumentFocusRequest) != nil else { return false }
+        leaveInlineArguments()
+        return true
+    }
+
+    private func handleInlineArgumentVerticalArrow(_ delta: Int) -> Bool {
+        guard vm.mode == .launcher, !isCollapsed else { return false }
+        if menuOpen {
+            moveMenu(delta)
+        } else {
+            move(delta)
+        }
+        return true
+    }
+
+    private func leaveInlineArguments() {
+        inlineArgumentFocusRequest = nil
+        inlineArgumentFocus = nil
+        focusAndSelectQuery()
+    }
+
     private func move(_ delta: Int) {
         guard resultCount > 0 else { return }
         let nextSelection = min(max(selection + delta, 0), resultCount - 1)
+        if nextSelection != selection {
+            inlineArgumentFocus = nil
+            inlineArgumentFocusRequest = nil
+            searchFocused = true
+        }
         vm.selection = nextSelection
         let kind: ListScrollIntent.Kind = delta < 0 && nextSelection == 0 ? .top : .follow
         listScroll = ListScrollIntent(kind: kind)
