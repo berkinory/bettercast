@@ -6,6 +6,7 @@ struct LauncherList: View {
     let selectedID: AppEntry.ID?
     let selectedQuicklinkID: Quicklink.ID?
     let favoriteCount: Int
+    let favoriteQuicklinkCount: Int
     let showSections: Bool
     /// Present only when the list should follow selection or return to its origin.
     let scrollIntent: ListScrollIntent?
@@ -61,8 +62,16 @@ struct LauncherList: View {
             rows.append(contentsOf: group.map(Row.app))
         }
         if !quicklinks.isEmpty {
-            rows.append(.header("Quicklinks"))
-            rows.append(contentsOf: quicklinks.map(Row.quicklink))
+            let favoriteQuicklinks = quicklinks.prefix(favoriteQuicklinkCount)
+            let restQuicklinks = quicklinks.dropFirst(favoriteQuicklinkCount)
+            if !favoriteQuicklinks.isEmpty {
+                rows.append(.header("Favorite Quicklinks"))
+                rows.append(contentsOf: favoriteQuicklinks.map(Row.quicklink))
+            }
+            if !restQuicklinks.isEmpty {
+                rows.append(.header("Quicklinks"))
+                rows.append(contentsOf: restQuicklinks.map(Row.quicklink))
+            }
         }
         return rows
     }
@@ -233,6 +242,8 @@ struct AppIconView: View {
         case .settings: return Theme.Colors.systemAccent
         case .checkForUpdates: return Theme.Colors.systemAccent
         case .quit: return Theme.Colors.textSecondary
+        case .caffeinate, .caffeinateFor: return Theme.Colors.systemAccent
+        case .decaffeinate: return Theme.Colors.textSecondary
         case nil: return Theme.Colors.textPrimary
         }
     }

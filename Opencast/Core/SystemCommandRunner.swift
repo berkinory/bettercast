@@ -107,6 +107,28 @@ enum SystemCommandRunner {
         return state
     }
 
+    static func caffeinate(for duration: Int? = nil) async throws {
+        var arguments = ["-u"]
+        if let duration { arguments += ["-t", String(duration)] }
+        try await decaffeinate()
+        try await startProcess("/usr/bin/caffeinate", arguments: arguments)
+    }
+
+    static func decaffeinate() async throws {
+        let output = try await process("/usr/bin/killall", arguments: ["caffeinate"])
+        guard output.status == 0 || output.status == 1 else {
+            let detail = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw SystemCommandFailure(
+                detail.isEmpty ? "killall exited with status \(output.status)." : detail)
+        }
+    }
+
+    static func isCaffeinateRunning() async -> Bool {
+        guard let output = try? await process("/usr/bin/pgrep", arguments: ["-x", "caffeinate"])
+        else { return false }
+        return output.status == 0
+    }
+
     private static func currentVolume() throws -> Float32 {
         let device = try defaultOutputDevice()
         let elements = try volumeElements(on: device)
@@ -347,6 +369,24 @@ enum SystemCommandRunner {
             throw SystemCommandFailure(
                 detail.isEmpty ? "\(name) exited with status \(output.status)." : detail)
         }
+    }
+
+    private static func startProcess(_ executable: String, arguments: [String]) async throws {
+        try await Task.detached(priority: .userInitiated) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: executable)
+            process.arguments = arguments
+            process.standardInput = FileHandle.nullDevice
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            do {
+                try process.run()
+            } catch {
+                throw SystemCommandFailure(
+                    "\(URL(fileURLWithPath: executable).lastPathComponent) could not start: \(error.localizedDescription)"
+                )
+            }
+        }.value
     }
 
     private static func process(_ executable: String, arguments: [String]) async throws -> ProcessOutput {

@@ -229,7 +229,10 @@ final class AppCore: ObservableObject {
         snippetExpansionMonitor.start()
 
         appIndex.start(settings: settings)
-        Task { await appIndex.refresh() }
+        Task {
+            appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
+            await appIndex.refresh()
+        }
         Task { await emojiIndex.load() }
         if settings.currencyConversionEnabled {
             currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
@@ -298,7 +301,12 @@ final class AppCore: ObservableObject {
         }
         windowController.show()
         // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
-        if palette.mode == .launcher { Task { await appIndex.refresh() } }
+        if palette.mode == .launcher {
+            Task {
+                appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
+                await appIndex.refresh()
+            }
+        }
     }
 
     func hidePalette(restoreFocus: Bool = true) {
@@ -467,12 +475,16 @@ final class AppCore: ObservableObject {
 
     // MARK: - Actions invoked from the palette UI
 
-    func launch(_ app: AppEntry, searchQuery: String? = nil) {
+    func launch(
+        _ app: AppEntry,
+        searchQuery: String? = nil,
+        inlineArgumentValues: [String] = []
+    ) {
         // Every palette launch teaches weak global usage; typed launches additionally teach the submitted query and each of its prefixes.
         launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery ?? "")
         // Commands dispatch before the palette hides: mode-switching commands keep it open.
         if app.kind == .command {
-            runCommand(app)
+            runCommand(app, inlineArgumentValues: inlineArgumentValues)
             return
         }
         hidePalette(restoreFocus: false)
@@ -617,6 +629,7 @@ final class AppCore: ObservableObject {
 
     func deleteQuicklink(_ quicklink: Quicklink) {
         quicklinkStore.delete(quicklink)
+        favorites.remove(quicklink)
         palette.selection = 0
         palette.postFeedback("Deleted quicklink")
     }
@@ -784,7 +797,7 @@ final class AppCore: ObservableObject {
         }
     }
 
-    private func runCommand(_ entry: AppEntry) {
+    private func runCommand(_ entry: AppEntry, inlineArgumentValues: [String] = []) {
         if let command = WindowCommandCatalog.command(forEntryID: entry.id) {
             runWindowCommand(id: command.id)
             return
@@ -813,9 +826,87 @@ final class AppCore: ObservableObject {
             checkForUpdates()
         case .quit:
             NSApp.terminate(nil)
+        case .caffeinate:
+            runCaffeinate(duration: nil)
+        case .decaffeinate:
+            runDecaffeinate()
+        case .caffeinateFor:
+            guard let duration = caffeinateDuration(from: inlineArgumentValues) else { return }
+            runCaffeinate(duration: duration)
         case nil:
             break
         }
+    }
+
+    private func runCaffeinate(duration: Int?) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await SystemCommandRunner.caffeinate(for: duration)
+                appIndex.setCaffeinationActive(true)
+                await appIndex.refresh()
+                palette.postFeedback(
+                    duration == nil ? "Your Mac is now caffeinated" : "Your Mac is caffeinated")
+            } catch let failure as SystemCommandFailure {
+                presentSystemCommandFailure(
+                    name: duration == nil ? "Caffeinate" : "Caffeinate For", failure: failure)
+            } catch {
+                presentSystemCommandFailure(
+                    name: duration == nil ? "Caffeinate" : "Caffeinate For",
+                    failure: SystemCommandFailure(error.localizedDescription))
+            }
+        }
+    }
+
+    private func runDecaffeinate() {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await SystemCommandRunner.decaffeinate()
+                appIndex.setCaffeinationActive(false)
+                await appIndex.refresh()
+                palette.postFeedback("Your Mac is now decaffeinated")
+            } catch let failure as SystemCommandFailure {
+                presentSystemCommandFailure(name: "Decaffeinate", failure: failure)
+            } catch {
+                presentSystemCommandFailure(
+                    name: "Decaffeinate", failure: SystemCommandFailure(error.localizedDescription))
+            }
+        }
+    }
+
+    private func caffeinateDuration(from values: [String]) -> Int? {
+        let components = (0..<3).map { index in
+            values.indices.contains(index)
+                ? values[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                : ""
+        }
+        guard components.contains(where: { !$0.isEmpty }) else {
+            return nil
+        }
+        let numbers = components.map { $0.isEmpty ? 0 : Int($0) }
+        guard numbers.allSatisfy({ $0 != nil && $0! >= 0 }) else {
+            presentSystemCommandFailure(
+                name: "Caffeinate For",
+                failure: SystemCommandFailure("Duration values must be whole numbers."))
+            return nil
+        }
+        let hours = numbers[0]!
+        let minutes = numbers[1]!
+        let seconds = numbers[2]!
+        let (hoursSeconds, hoursOverflow) = hours.multipliedReportingOverflow(by: 3_600)
+        let (minutesSeconds, minutesOverflow) = minutes.multipliedReportingOverflow(by: 60)
+        let (partial, additionOverflow) = hoursSeconds.addingReportingOverflow(minutesSeconds)
+        let (totalSeconds, secondsOverflow) = partial.addingReportingOverflow(seconds)
+        guard !hoursOverflow, !minutesOverflow, !additionOverflow, !secondsOverflow,
+            totalSeconds > 0
+        else {
+            presentSystemCommandFailure(
+                name: "Caffeinate For",
+                failure: SystemCommandFailure("Duration is too large or empty."))
+            return nil
+        }
+        return totalSeconds
     }
 
     private func runWindowCommand(id: WindowCommand.ID) {

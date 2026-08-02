@@ -11,6 +11,9 @@ enum CommandID: String, CaseIterable, Sendable {
     case settings = "command:settings"
     case checkForUpdates = "command:check-for-updates"
     case quit = "command:quit"
+    case caffeinate = "command:caffeinate"
+    case decaffeinate = "command:decaffeinate"
+    case caffeinateFor = "command:caffeinate-for"
 
     var name: String {
         switch self {
@@ -23,6 +26,9 @@ enum CommandID: String, CaseIterable, Sendable {
         case .settings: return "Settings"
         case .checkForUpdates: return "Check for Updates"
         case .quit: return "Quit Opencast"
+        case .caffeinate: return "Caffeinate"
+        case .decaffeinate: return "Decaffeinate"
+        case .caffeinateFor: return "Caffeinate For"
         }
     }
 
@@ -35,10 +41,27 @@ enum CommandID: String, CaseIterable, Sendable {
         case .settings: return "gearshape"
         case .checkForUpdates: return "arrow.down.circle"
         case .quit: return "power"
+        case .caffeinate: return "cup.and.saucer.fill"
+        case .decaffeinate: return "cup.and.saucer"
+        case .caffeinateFor: return "timer"
         }
     }
 
-    var inlineArguments: [InlineArgument] { [] }
+    var inlineArguments: [InlineArgument] {
+        guard self == .caffeinateFor else { return [] }
+        return [
+            InlineArgument(id: "hours", placeholder: "Hours", help: "Whole hours"),
+            InlineArgument(id: "minutes", placeholder: "Minutes", help: "Whole minutes"),
+            InlineArgument(id: "seconds", placeholder: "Seconds", help: "Whole seconds"),
+        ]
+    }
+
+    var isRunnable: Bool {
+        switch self {
+        case .caffeinate, .decaffeinate, .caffeinateFor: return true
+        default: return false
+        }
+    }
 }
 
 enum CommandRegistry {

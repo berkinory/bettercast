@@ -5,6 +5,7 @@ struct PaletteInlineArguments: View {
     @Binding var values: [String]
     let focusRequest: Int?
     let onFocusChanged: (Int?) -> Void
+    let onSubmit: () -> Void
 
     @FocusState private var focusedArgument: Int?
 
@@ -21,7 +22,8 @@ struct PaletteInlineArguments: View {
                         }
                     ),
                     focused: $focusedArgument,
-                    index: index
+                    index: index,
+                    onSubmit: onSubmit
                 )
             }
         }
@@ -42,6 +44,7 @@ private struct PaletteInlineArgumentField: View {
     @Binding var text: String
     let focused: FocusState<Int?>.Binding
     let index: Int
+    let onSubmit: () -> Void
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -57,6 +60,7 @@ private struct PaletteInlineArgumentField: View {
             .tint(Theme.Colors.textPrimary)
             .focused(focused, equals: index)
             .paletteTextInputCursor()
+            .onSubmit(onSubmit)
             .padding(.horizontal, Theme.Spacing.sm)
             .frame(minWidth: Theme.Size.inlineArgumentMinimumWidth)
             .frame(height: Theme.Size.inlineArgumentHeight)

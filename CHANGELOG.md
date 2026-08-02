@@ -35,4 +35,12 @@
 
 - Creating a snippet or quicklink now returns to the previous palette screen with success feedback.
 
+## [0.1.3]
 
+### Added
+
+- Caffeinate, Decaffeinate, and timed Caffeinate For launcher commands.
+
+### Improved
+
+- Quicklinks can now be added to and removed from launcher favorites.

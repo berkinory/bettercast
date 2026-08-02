@@ -156,6 +156,7 @@ final class AppIndex: ObservableObject {
     private var isRefreshing = false
     private var refreshPending = false
     private var windowCommandsVisible = false
+    private var caffeinationActive = false
     private let ranking: LauncherRankingStore
     private weak var settings: AppSettings?
     private var cancellables = Set<AnyCancellable>()
@@ -190,6 +191,12 @@ final class AppIndex: ObservableObject {
             .store(in: &cancellables)
     }
 
+    func setCaffeinationActive(_ active: Bool) {
+        guard caffeinationActive != active else { return }
+        caffeinationActive = active
+        matchCache = nil
+    }
+
     /// Re-scan (called on every launcher open); overlapping scans collapse into one trailing scan and an unchanged result does no UI work.
     func refresh() async {
         guard !isRefreshing else {
@@ -203,8 +210,12 @@ final class AppIndex: ObservableObject {
             refreshPending = false
             let scopes = settings?.searchScopes ?? SearchScopes.defaults
             let includeWindowCommands = windowCommandsVisible
+            let caffeinationActive = self.caffeinationActive
             let found = await Task.detached(priority: .utility) {
-                AppIndex.scan(scopes: scopes, includeWindowCommands: includeWindowCommands)
+                AppIndex.scan(
+                    scopes: scopes,
+                    includeWindowCommands: includeWindowCommands,
+                    caffeinationActive: caffeinationActive)
             }.value
             guard found != apps else { continue }
             apps = found
@@ -213,7 +224,7 @@ final class AppIndex: ObservableObject {
     }
 
     nonisolated private static func scan(
-        scopes: [String], includeWindowCommands: Bool
+        scopes: [String], includeWindowCommands: Bool, caffeinationActive: Bool
     ) -> [AppEntry] {
         var seenBundleIDs = Set<String>()
         var result: [AppEntry] = []
@@ -257,7 +268,24 @@ final class AppIndex: ObservableObject {
         let commands = (systemCommands + windowCommands).sorted {
             $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
-        return apps + SettingsPaneScanner.scan() + commands + CommandRegistry.all
+        let launcherCommands = CommandRegistry.all.compactMap { entry -> AppEntry? in
+            switch CommandRegistry.command(for: entry) {
+            case .caffeinate:
+                guard caffeinationActive else { return entry }
+                return AppEntry(
+                    id: CommandID.decaffeinate.rawValue,
+                    name: CommandID.decaffeinate.name,
+                    url: entry.url,
+                    bundleID: nil,
+                    kind: .command,
+                    searchAliases: [CommandID.caffeinate.name])
+            case .decaffeinate:
+                return nil
+            default:
+                return entry
+            }
+        }
+        return apps + SettingsPaneScanner.scan() + commands + launcherCommands
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {
@@ -312,13 +340,14 @@ final class AppIndex: ObservableObject {
         let scored = apps.compactMap { app -> RankedApp? in
             guard
                 let match = FuzzyMatch.match(
-                    query: q, candidate: app.name, aliases: app.searchAliases
+                    query: q, candidate: app.name, aliases: app.searchAliases,
+                    preferAlias: app.kind == .command
                 )
             else { return nil }
             let affinity = learned[app.preferenceKey] ?? 0
             let globalAffinity = global[app.preferenceKey] ?? 0
             let promotedTier =
-                match.isAlias
+                match.isAlias && app.kind != .command
                 ? match.kind.rawValue - 5
                 : Self.promotedTier(for: match.kind, affinity: affinity)
             // Query learning can overcome small within-tier shape differences; global usage stays a tiny tie-break and can never change tiers.
@@ -407,19 +436,26 @@ enum FuzzyMatch {
         match(query: query, candidate: candidate, aliases: [])
     }
 
-    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
+    static func match(
+        query: String, candidate: String, aliases: [String], preferAlias: Bool = false
+    ) -> Result? {
         let q = normalized(query)
         guard !q.isEmpty else { return nil }
         let literal = match(normalizedQuery: q, candidate: normalized(candidate))
-        let alias = aliases.compactMap {
+        let aliasMatches = aliases.compactMap {
             match(normalizedQuery: q, candidate: normalized($0)).map {
                 Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
             }
-        }.max { left, right in
+        }
+        let alias = aliasMatches.max { left, right in
             if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
             return left.detailScore < right.detailScore
         }
-        return literal ?? alias
+        guard preferAlias else { return literal ?? alias }
+        return ((literal.map { [$0] } ?? []) + aliasMatches).max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
     }
 
     private static func match(normalizedQuery q: String, candidate c: String) -> Result? {

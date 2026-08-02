@@ -73,10 +73,14 @@ struct RootPaletteView: View {
     private var clipResults: [ClipboardItem] { store.search(vm.query) }
     private var snippetResults: [Snippet] { snippetStore.search(vm.query) }
     private var quicklinkResults: [Quicklink] {
-        settings.quicklinksEnabled ? quicklinkStore.search(vm.query) : []
+        guard settings.quicklinksEnabled else { return [] }
+        let results = quicklinkStore.search(vm.query)
+        guard isQueryEmpty else { return results }
+        let split = favorites.ordered(results)
+        return split.favorites + split.rest
     }
     private var launcherQuicklinkResults: [Quicklink] {
-        vm.mode == .launcher && settings.quicklinksEnabled ? quicklinkStore.search(vm.query) : []
+        vm.mode == .launcher ? quicklinkResults : []
     }
     private var uninstallResults: [LeftoverItem] { uninstall.filtered(vm.query) }
     private var emojiSections: [EmojiGridSection] {
@@ -187,7 +191,9 @@ struct RootPaletteView: View {
                     onToggleFavorite: { toggleFavorite(app) })
             }
             if let quicklink = selectedLauncherQuicklink {
-                return QuicklinkActionsMenu.content(quicklink: quicklink, core: core)
+                return QuicklinkActionsMenu.content(
+                    quicklink: quicklink, core: core, favorites: favorites,
+                    onToggleFavorite: { toggleFavorite(quicklink) })
             }
             return nil
         case .clipboard:
@@ -212,7 +218,9 @@ struct RootPaletteView: View {
             return nil
         case .quicklinks:
             if let quicklink = selectedQuicklink {
-                return QuicklinkActionsMenu.content(quicklink: quicklink, core: core)
+                return QuicklinkActionsMenu.content(
+                    quicklink: quicklink, core: core, favorites: favorites,
+                    onToggleFavorite: { toggleFavorite(quicklink) })
             }
             return nil
         case .quicklinkEditor:
@@ -277,6 +285,8 @@ struct RootPaletteView: View {
         let showSections = vm.mode == .launcher && isQueryEmpty
         let favoriteCount =
             showSections ? apps.prefix(while: { favorites.isFavorite($0) }).count : 0
+        let favoriteQuicklinkCount =
+            showSections ? favorites.ordered(launcherQuicklinks).favorites.count : 0
         let selectedApp = apps.indices.contains(sel - offset) ? apps[sel - offset] : nil
         let selectedRootQuicklink =
             launcherQuicklinks.indices.contains(sel - offset - apps.count)
@@ -299,7 +309,8 @@ struct RootPaletteView: View {
                     apps: apps, launcherQuicklinks: launcherQuicklinks, clips: clips,
                     snippets: snippets, quicklinks: quicklinks,
                     emojiSections: emojiSections, uninstallItems: uninstallItems, calc: calc,
-                    selection: sel, favoriteCount: favoriteCount, showSections: showSections
+                    selection: sel, favoriteCount: favoriteCount,
+                    favoriteQuicklinkCount: favoriteQuicklinkCount, showSections: showSections
                 )
             }
         }
@@ -332,6 +343,7 @@ struct RootPaletteView: View {
         }
         .onChange(of: vm.query) {
             vm.selection = 0
+            inlineArgumentValues.removeAll(keepingCapacity: true)
             inlineArgumentFocus = nil
             inlineArgumentFocusRequest = nil
             listScroll = ListScrollIntent(kind: .top)
@@ -340,6 +352,7 @@ struct RootPaletteView: View {
         .onChange(of: vm.mode) {
             searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
             vm.selection = 0
+            inlineArgumentValues.removeAll(keepingCapacity: true)
             vm.feedback = nil
             showActions = false
             showSortMenu = false
@@ -449,14 +462,21 @@ struct RootPaletteView: View {
         .onKeyPress(keys: [.return], phases: .down) { press in
             handleModifiedReturn(press) ? .handled : .ignored
         }
-        // ⌘F toggles the selected app's favorite state while its Actions menu is open.
+        // ⌘F toggles the selected launcher's favorite state while its Actions menu is open.
         .onKeyPress(keys: ["f"], phases: .down) { press in
-            guard showActions, vm.mode == .launcher else { return .ignored }
+            guard showActions else { return .ignored }
             guard press.modifiers.contains(.command),
                 press.modifiers.intersection([.shift, .option, .control]).isEmpty
             else { return .ignored }
-            guard let app = selectedAppEntry else { return .ignored }
-            toggleFavorite(app)
+            if vm.mode == .launcher, let app = selectedAppEntry {
+                toggleFavorite(app)
+            } else if vm.mode == .launcher, let quicklink = selectedLauncherQuicklink {
+                toggleFavorite(quicklink)
+            } else if vm.mode == .quicklinks, let quicklink = selectedQuicklink {
+                toggleFavorite(quicklink)
+            } else {
+                return .ignored
+            }
             closeMenus()
             return .handled
         }
@@ -631,7 +651,8 @@ struct RootPaletteView: View {
                         arguments: inlineArguments,
                         values: $inlineArgumentValues,
                         focusRequest: inlineArgumentFocusRequest,
-                        onFocusChanged: { inlineArgumentFocus = $0 }
+                        onFocusChanged: { inlineArgumentFocus = $0 },
+                        onSubmit: activateSelection
                     )
                     Spacer(minLength: 0)
                 }
@@ -680,7 +701,7 @@ struct RootPaletteView: View {
         apps: [AppEntry], launcherQuicklinks: [Quicklink], clips: [ClipboardItem],
         snippets: [Snippet], quicklinks: [Quicklink],
         emojiSections: [EmojiGridSection], uninstallItems: [LeftoverItem], calc: CalcResult?,
-        selection: Int, favoriteCount: Int, showSections: Bool
+        selection: Int, favoriteCount: Int, favoriteQuicklinkCount: Int, showSections: Bool
     ) -> some View {
         switch vm.mode {
         case .launcher:
@@ -698,6 +719,7 @@ struct RootPaletteView: View {
                         ? launcherQuicklinks[selection - offset - apps.count].id
                         : nil,
                 favoriteCount: favoriteCount,
+                favoriteQuicklinkCount: favoriteQuicklinkCount,
                 showSections: showSections,
                 scrollIntent: listScroll,
                 calc: calc,
@@ -711,7 +733,7 @@ struct RootPaletteView: View {
                     vm.selection = 0
                     openActions()
                 },
-                onActivate: { core.launch($0, searchQuery: vm.query) },
+                onActivate: { activateLauncherApp($0, in: apps, offset: offset) },
                 onActions: { app in
                     if let index = apps.firstIndex(of: app) { vm.selection = index + offset }
                     openActions()
@@ -936,8 +958,8 @@ struct RootPaletteView: View {
             switch selectedApp?.kind {
             case .systemSettings: return "Open System Setting"
             case .command:
-                return selectedApp.flatMap { SystemCommandCatalog.command(forEntryID: $0.id) } == nil
-                    ? "Open Command" : "Run Command"
+                guard let selectedApp else { return "Open Command" }
+                return isRunnableCommand(selectedApp) ? "Run Command" : "Open Command"
             default: return "Open Application"
             }
         case .uninstall:
@@ -947,6 +969,11 @@ struct RootPaletteView: View {
             case .done: return "Back to Search"
             }
         }
+    }
+
+    private func isRunnableCommand(_ app: AppEntry) -> Bool {
+        SystemCommandCatalog.command(forEntryID: app.id) != nil
+            || CommandRegistry.command(for: app)?.isRunnable == true
     }
 
     private func showsActionGroup(count: Int, calcBlocked: Bool) -> Bool {
@@ -965,6 +992,12 @@ struct RootPaletteView: View {
     private func toggleFavorite(_ app: AppEntry) {
         let added = !favorites.isFavorite(app)
         favorites.toggle(app)
+        showFeedback(added ? "Added to favorites" : "Removed from favorites")
+    }
+
+    private func toggleFavorite(_ quicklink: Quicklink) {
+        let added = !favorites.isFavorite(quicklink)
+        favorites.toggle(quicklink)
         showFeedback(added ? "Added to favorites" : "Removed from favorites")
     }
 
@@ -1299,7 +1332,7 @@ struct RootPaletteView: View {
             }
             let index = selection - calcCount
             if appResults.indices.contains(index) {
-                core.launch(appResults[index], searchQuery: vm.query)
+                launchApp(appResults[index])
                 return
             }
             let quicklinkIndex = index - appResults.count
@@ -1332,6 +1365,20 @@ struct RootPaletteView: View {
             case .done: core.finishUninstall()
             }
         }
+    }
+
+    private func activateLauncherApp(_ app: AppEntry, in apps: [AppEntry], offset: Int) {
+        let wasSelected = selectedAppEntry == app
+        if let index = apps.firstIndex(of: app) { vm.selection = index + offset }
+        if !wasSelected { inlineArgumentValues.removeAll(keepingCapacity: true) }
+        launchApp(app)
+    }
+
+    private func launchApp(_ app: AppEntry) {
+        core.launch(
+            app,
+            searchQuery: vm.query,
+            inlineArgumentValues: inlineArgumentValues)
     }
 }
 

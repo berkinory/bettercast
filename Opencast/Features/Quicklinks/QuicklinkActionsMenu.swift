@@ -2,8 +2,19 @@ import SwiftUI
 
 @MainActor
 enum QuicklinkActionsMenu {
-    static func content(quicklink: Quicklink, core: AppCore) -> PopoverMenuContent {
-        PopoverMenuContent(
+    static func content(
+        quicklink: Quicklink, core: AppCore, favorites: FavoritesStore,
+        onToggleFavorite: @escaping () -> Void
+    ) -> PopoverMenuContent {
+        let favoriteItem =
+            favorites.isFavorite(quicklink)
+            ? PopoverMenuItem(
+                title: "Remove from Favorites", systemImage: "star.slash", shortcut: "⌘F",
+                action: onToggleFavorite)
+            : PopoverMenuItem(
+                title: "Add to Favorites", systemImage: "star", shortcut: "⌘F",
+                action: onToggleFavorite)
+        return PopoverMenuContent(
             header: quicklink.name,
             items: [
                 PopoverMenuItem(
@@ -11,6 +22,7 @@ enum QuicklinkActionsMenu {
                 ) {
                     core.openQuicklink(quicklink)
                 },
+                favoriteItem,
                 PopoverMenuItem(title: "Copy Link", systemImage: "doc.on.doc", shortcut: "⌘↵") {
                     core.copyQuicklink(quicklink)
                 },

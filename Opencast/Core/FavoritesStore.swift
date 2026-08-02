@@ -1,15 +1,18 @@
 import Foundation
 
-/// Persists favorite apps as an ordered list of keys (bundle id, or file path when none), pinned to the top of the launcher when the search is empty.
+/// Persists favorite launcher entries as ordered keys, pinned to the top of the launcher when the search is empty.
 @MainActor
 final class FavoritesStore: ObservableObject {
     private let defaults = UserDefaults.standard
     private let key = "favoriteApps"
+    private let quicklinkKey = "favoriteQuicklinks"
 
     @Published private(set) var keys: [String]
+    @Published private(set) var quicklinkKeys: [String]
 
     init() {
         keys = defaults.stringArray(forKey: key) ?? []
+        quicklinkKeys = defaults.stringArray(forKey: quicklinkKey) ?? []
     }
 
     func key(for app: AppEntry) -> String { app.preferenceKey }
@@ -32,6 +35,26 @@ final class FavoritesStore: ObservableObject {
         defaults.set(keys, forKey: key)
     }
 
+    func isFavorite(_ quicklink: Quicklink) -> Bool {
+        quicklinkKeys.contains(quicklink.id.uuidString)
+    }
+
+    func toggle(_ quicklink: Quicklink) {
+        let id = quicklink.id.uuidString
+        if let index = quicklinkKeys.firstIndex(of: id) {
+            quicklinkKeys.remove(at: index)
+        } else {
+            quicklinkKeys.append(id)
+        }
+        defaults.set(quicklinkKeys, forKey: quicklinkKey)
+    }
+
+    func remove(_ quicklink: Quicklink) {
+        guard let index = quicklinkKeys.firstIndex(of: quicklink.id.uuidString) else { return }
+        quicklinkKeys.remove(at: index)
+        defaults.set(quicklinkKeys, forKey: quicklinkKey)
+    }
+
     /// Split `apps` into favorites (in stored order) and the rest (order preserved).
     func ordered(_ apps: [AppEntry]) -> (favorites: [AppEntry], rest: [AppEntry]) {
         guard !keys.isEmpty else { return ([], apps) }
@@ -40,6 +63,16 @@ final class FavoritesStore: ObservableObject {
         let favorites = keys.compactMap { byKey[$0] }
         let favoriteKeys = Set(keys)
         let rest = apps.filter { !favoriteKeys.contains(key(for: $0)) }
+        return (favorites, rest)
+    }
+
+    func ordered(_ quicklinks: [Quicklink]) -> (favorites: [Quicklink], rest: [Quicklink]) {
+        guard !quicklinkKeys.isEmpty else { return ([], quicklinks) }
+        let byID = Dictionary(
+            quicklinks.map { ($0.id.uuidString, $0) }, uniquingKeysWith: { first, _ in first })
+        let favorites = quicklinkKeys.compactMap { byID[$0] }
+        let favoriteIDs = Set(quicklinkKeys)
+        let rest = quicklinks.filter { !favoriteIDs.contains($0.id.uuidString) }
         return (favorites, rest)
     }
 }

@@ -43,19 +43,26 @@ enum FuzzyMatch {
         match(query: query, candidate: candidate, aliases: [])
     }
 
-    static func match(query: String, candidate: String, aliases: [String]) -> Result? {
+    static func match(
+        query: String, candidate: String, aliases: [String], preferAlias: Bool = false
+    ) -> Result? {
         let q = normalized(query)
         guard !q.isEmpty else { return nil }
         let literal = match(normalizedQuery: q, candidate: normalized(candidate))
-        let alias = aliases.compactMap {
+        let aliasMatches = aliases.compactMap {
             match(normalizedQuery: q, candidate: normalized($0)).map {
                 Result(kind: $0.kind, detailScore: $0.detailScore, isAlias: true)
             }
-        }.max { left, right in
+        }
+        let alias = aliasMatches.max { left, right in
             if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
             return left.detailScore < right.detailScore
         }
-        return literal ?? alias
+        guard preferAlias else { return literal ?? alias }
+        return ((literal.map { [$0] } ?? []) + aliasMatches).max { left, right in
+            if left.kind != right.kind { return left.kind.rawValue < right.kind.rawValue }
+            return left.detailScore < right.detailScore
+        }
     }
 
     private static func match(normalizedQuery q: String, candidate c: String) -> Result? {
@@ -208,6 +215,12 @@ check("polyphone-aware full reading uses 'qishuiyinyue'", qsyyAliases.contains("
 check(
     "romanized exact stays below a literal subsequence",
     FuzzyMatch.match(query: "gc", candidate: "Google Chrome", aliases: ["gc"])?.isAlias == false
+)
+check(
+    "command alias exact beats its embedded literal",
+    FuzzyMatch.match(
+        query: "caffeinate", candidate: "Decaffeinate", aliases: ["Caffeinate"], preferAlias: true
+    )?.isAlias == true
 )
 
 let gc = FuzzyMatch.match(query: "gc", candidate: "Google Chrome")
