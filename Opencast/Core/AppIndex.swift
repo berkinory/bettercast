@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreServices
 
 struct AppEntry: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
@@ -223,10 +224,11 @@ final class AppIndex: ObservableObject {
             if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
 
             let name = appName(bundle: bundle, url: url)
+            let aliases = Romanization.aliases(for: name) + alternateNames(for: url, displayName: name)
             result.append(
                 AppEntry(
                     id: url.path, name: name, url: url, bundleID: bundleID,
-                    kind: .application, searchAliases: Romanization.aliases(for: name)))
+                    kind: .application, searchAliases: aliases))
         }
 
         // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
@@ -269,6 +271,25 @@ final class AppIndex: ObservableObject {
             let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? nil : trimmed
         }.first ?? url.deletingPathExtension().lastPathComponent
+    }
+
+    private nonisolated static func alternateNames(for url: URL, displayName: String) -> [String] {
+        guard let item = MDItemCreateWithURL(nil, url as CFURL) else { return [] }
+        guard let values = MDItemCopyAttribute(item, "kMDItemAlternateNames" as CFString) as? [String] else {
+            return []
+        }
+
+        var seen = Set<String>()
+        return values.compactMap { value in
+            var name = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if name.lowercased().hasSuffix(".app") {
+                name.removeLast(4)
+            }
+            guard !name.isEmpty, name.caseInsensitiveCompare(displayName) != .orderedSame else {
+                return nil
+            }
+            return seen.insert(name.lowercased()).inserted ? name : nil
+        }
     }
 
     /// Ranked matches. Empty query returns the full alphabetical list.

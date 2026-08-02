@@ -24,6 +24,7 @@
 
 ### Improved
 
+- Launcher search now finds renamed applications by previous names retained in macOS metadata.
 - Added duplicate actions for snippets and quicklinks.
 - Added paste-target application icons to snippet actions.
 
