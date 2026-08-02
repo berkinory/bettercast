@@ -98,6 +98,16 @@ final class SnippetStore: ObservableObject {
         return updated
     }
 
+    @discardableResult
+    func duplicate(_ snippet: Snippet) throws -> Snippet {
+        try create(
+            name: "\(snippet.name) Copy",
+            content: snippet.content,
+            keyword: "",
+            icon: snippet.icon
+        )
+    }
+
     func delete(_ snippet: Snippet) {
         snippets.removeAll { $0.id == snippet.id }
         try? persist()

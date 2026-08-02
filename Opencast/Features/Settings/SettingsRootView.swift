@@ -15,7 +15,8 @@ struct SettingsRoute: Hashable, Sendable {
 }
 
 enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
-    case general, launcher, clipboard, snippets, emoji, calculator, windowManagement, shortcuts, permissions, about
+    case general, launcher, clipboard, snippets, quicklinks, emoji, calculator, windowManagement, shortcuts,
+        permissions, about
 
     var id: Int { rawValue }
 
@@ -25,6 +26,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .launcher: return "Launcher"
         case .clipboard: return "Clipboard"
         case .snippets: return "Snippets"
+        case .quicklinks: return "Quicklinks"
         case .emoji: return "Emoji & Symbols"
         case .calculator: return "Calculator"
         case .windowManagement: return "Window Management"
@@ -40,6 +42,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .launcher: return "magnifyingglass"
         case .clipboard: return "doc.on.clipboard"
         case .snippets: return "text.quote"
+        case .quicklinks: return "link"
         case .emoji: return "face.smiling"
         case .calculator: return "function"
         case .windowManagement: return "macwindow"
@@ -56,7 +59,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
     var group: SettingsGroup {
         switch self {
         case .general: return .app
-        case .launcher, .clipboard, .snippets, .emoji, .calculator, .windowManagement: return .features
+        case .launcher, .clipboard, .snippets, .quicklinks, .emoji, .calculator, .windowManagement: return .features
         case .shortcuts, .permissions: return .system
         case .about: return .about
         }
@@ -68,6 +71,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .launcher: return Theme.Colors.launcherAccent
         case .clipboard: return Theme.Colors.clipboardAccent
         case .snippets: return Theme.Colors.systemAccent
+        case .quicklinks: return Theme.Colors.systemAccent
         case .emoji: return Theme.Colors.emojiAccent
         case .calculator: return Theme.Colors.calculatorAccent
         case .windowManagement: return Theme.Colors.launcherAccent
@@ -231,6 +235,7 @@ struct SettingsRootView: View {
         case .launcher: LauncherSettingsView()
         case .clipboard: ClipboardSettingsView()
         case .snippets: SnippetSettingsView()
+        case .quicklinks: QuicklinkSettingsView()
         case .emoji: EmojiSettingsView()
         case .calculator: CalculatorSettingsView()
         case .windowManagement: WindowManagementSettingsView()

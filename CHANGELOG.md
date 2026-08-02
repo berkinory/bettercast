@@ -17,4 +17,18 @@
 - Snippet support with search, create, edit, and optional keyword expansion.
 - Self-update flow for direct installations.
 
+## [0.1.2]
+
+### Added
+- Quicklinks support.
+
+### Improved
+
+- Added duplicate actions for snippets and quicklinks.
+- Added paste-target application icons to snippet actions.
+
+### Fixed
+
+- Creating a snippet or quicklink now returns to the previous palette screen with success feedback.
+
 

@@ -59,6 +59,7 @@ final class AppSettings: ObservableObject {
         static let windowRespectSystemMargins = "windowRespectSystemMargins"
         static let snippetExpansionEnabled = "snippetExpansionEnabled"
         static let snippetDisabledApps = "snippetDisabledApps"
+        static let quicklinksEnabled = "quicklinksEnabled"
     }
 
     @Published var appearance: AppAppearance {
@@ -131,6 +132,10 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(snippetDisabledApps, forKey: Key.snippetDisabledApps) }
     }
 
+    @Published var quicklinksEnabled: Bool {
+        didSet { defaults.set(quicklinksEnabled, forKey: Key.quicklinksEnabled) }
+    }
+
     init() {
         // integer(forKey:) returns 0 when unset, which no case matches — falls through to 3 Months.
         clipboardRetention =
@@ -166,6 +171,9 @@ final class AppSettings: ObservableObject {
             defaults.object(forKey: Key.snippetExpansionEnabled) == nil
             || defaults.bool(forKey: Key.snippetExpansionEnabled)
         snippetDisabledApps = defaults.stringArray(forKey: Key.snippetDisabledApps) ?? []
+        quicklinksEnabled =
+            defaults.object(forKey: Key.quicklinksEnabled) == nil
+            || defaults.bool(forKey: Key.quicklinksEnabled)
         appearance = defaults.string(forKey: Key.appearance).flatMap(AppAppearance.init) ?? .dark
         searchScopes = SearchScopes.normalize(
             defaults.stringArray(forKey: Key.searchScopes) ?? SearchScopes.defaults)

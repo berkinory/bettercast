@@ -17,6 +17,7 @@ struct RootPaletteView: View {
     @EnvironmentObject private var appIndex: AppIndex
     @EnvironmentObject private var store: ClipboardStore
     @EnvironmentObject private var snippetStore: SnippetStore
+    @EnvironmentObject private var quicklinkStore: QuicklinkStore
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var visibility: VisibilityStore
     /// Observed so the inline card re-evaluates the moment a fresh FX snapshot lands, or the user
@@ -55,13 +56,25 @@ struct RootPaletteView: View {
     /// Ordered launcher results (the single source of truth for list, selection and activation): empty query pins favorites to the top, otherwise plain ranked matches.
     private var appResults: [AppEntry] {
         // Visibility filtering stays downstream of `matches` so its one-deep memo cache is never keyed on hidden state; hidden favorites drop out here too.
-        let base = appIndex.matches(vm.query).filter(visibility.isVisible)
+        let base = appIndex.matches(vm.query)
+            .filter { app in
+                settings.quicklinksEnabled
+                    || ![CommandID.searchQuicklinks.rawValue, CommandID.createQuicklink.rawValue]
+                        .contains(app.id)
+            }
+            .filter(visibility.isVisible)
         guard isQueryEmpty, !favorites.keys.isEmpty else { return base }
         let split = favorites.ordered(base)
         return split.favorites + split.rest
     }
     private var clipResults: [ClipboardItem] { store.search(vm.query) }
     private var snippetResults: [Snippet] { snippetStore.search(vm.query) }
+    private var quicklinkResults: [Quicklink] {
+        settings.quicklinksEnabled ? quicklinkStore.search(vm.query) : []
+    }
+    private var launcherQuicklinkResults: [Quicklink] {
+        vm.mode == .launcher && settings.quicklinksEnabled ? quicklinkStore.search(vm.query) : []
+    }
     private var uninstallResults: [LeftoverItem] { uninstall.filtered(vm.query) }
     private var emojiSections: [EmojiGridSection] {
         EmojiGrid.sections(query: vm.query, index: emojiIndex, frequent: frequentEmoji)
@@ -84,11 +97,13 @@ struct RootPaletteView: View {
 
     private var resultCount: Int {
         switch vm.mode {
-        case .launcher: return appResults.count + calcCount
+        case .launcher: return appResults.count + launcherQuicklinkResults.count + calcCount
         case .clipboard: return clipResults.count
         case .emoji: return emojiResults.count
         case .snippets: return snippetResults.count
         case .snippetEditor: return 0
+        case .quicklinks: return quicklinkResults.count
+        case .quicklinkEditor: return 0
         case .uninstall: return uninstall.phase == .selecting ? uninstallResults.count : 0
         }
     }
@@ -114,6 +129,10 @@ struct RootPaletteView: View {
         let index = selection - calcCount
         return appResults.indices.contains(index) ? appResults[index] : nil
     }
+    private var selectedLauncherQuicklink: Quicklink? {
+        let index = selection - calcCount - appResults.count
+        return launcherQuicklinkResults.indices.contains(index) ? launcherQuicklinkResults[index] : nil
+    }
     private var selectedClipItem: ClipboardItem? {
         clipResults.indices.contains(selection) ? clipResults[selection] : nil
     }
@@ -122,6 +141,9 @@ struct RootPaletteView: View {
     }
     private var selectedSnippet: Snippet? {
         snippetResults.indices.contains(selection) ? snippetResults[selection] : nil
+    }
+    private var selectedQuicklink: Quicklink? {
+        quicklinkResults.indices.contains(selection) ? quicklinkResults[selection] : nil
     }
 
     /// The bottom-right Actions menu content for the current mode's selection, or nil when the selection has no actions.
@@ -144,6 +166,9 @@ struct RootPaletteView: View {
                     },
                     onToggleFavorite: { toggleFavorite(app) })
             }
+            if let quicklink = selectedLauncherQuicklink {
+                return QuicklinkActionsMenu.content(quicklink: quicklink, core: core)
+            }
             return nil
         case .clipboard:
             if let clip = selectedClipItem {
@@ -164,6 +189,13 @@ struct RootPaletteView: View {
             }
             return nil
         case .snippetEditor:
+            return nil
+        case .quicklinks:
+            if let quicklink = selectedQuicklink {
+                return QuicklinkActionsMenu.content(quicklink: quicklink, core: core)
+            }
+            return nil
+        case .quicklinkEditor:
             return nil
         case .uninstall:
             guard uninstall.phase == .selecting, !uninstallResults.isEmpty else { return nil }
@@ -202,8 +234,10 @@ struct RootPaletteView: View {
     var body: some View {
         // Filter once per render for the active mode only, so the matcher/search doesn't run several times per render (rare event handlers use the computed properties above).
         let apps = vm.mode == .launcher ? appResults : []
+        let launcherQuicklinks = vm.mode == .launcher ? launcherQuicklinkResults : []
         let clips = vm.mode == .clipboard ? clipResults : []
         let snippets = vm.mode == .snippets ? snippetResults : []
+        let quicklinks = vm.mode == .quicklinks ? quicklinkResults : []
         let emojiSections = vm.mode == .emoji ? emojiSections : []
         let emojis = emojiSections.flatMap(\.entries)
         let uninstallItems = vm.mode == .uninstall ? uninstallResults : []
@@ -213,7 +247,9 @@ struct RootPaletteView: View {
         let calc = calcResult
         let offset = calc == nil ? 0 : 1
         // Only the active mode is non-empty.
-        let count = apps.count + offset + clips.count + snippets.count + emojis.count + uninstallItems.count
+        let count =
+            apps.count + launcherQuicklinks.count + offset + clips.count + snippets.count + quicklinks.count
+            + emojis.count + uninstallItems.count
         let sel = count == 0 ? 0 : min(max(vm.selection, 0), count - 1)
         let calcSelected = calc != nil && sel == 0
         // An error card is selectable but has no action: it must not drive the Copy Answer pill, ⌘K menu, or Enter.
@@ -222,8 +258,16 @@ struct RootPaletteView: View {
         let favoriteCount =
             showSections ? apps.prefix(while: { favorites.isFavorite($0) }).count : 0
         let selectedApp = apps.indices.contains(sel - offset) ? apps[sel - offset] : nil
+        let selectedRootQuicklink =
+            launcherQuicklinks.indices.contains(sel - offset - apps.count)
+            ? launcherQuicklinks[sel - offset - apps.count]
+            : nil
         // Derive the footer label from the already-resolved selection so `bottomBar` doesn't re-run `appResults` (its filter/sort aren't memoized). The primary/Actions group is hidden when there's nothing to act on: no results in any mode, or an error calc card (selectable but action-less).
-        let pillLabel = actionPillLabel(selectedApp: selectedApp, calcActionable: calcActionable)
+        let pillLabel = actionPillLabel(
+            selectedApp: selectedApp,
+            selectedQuicklink: selectedRootQuicklink,
+            calcActionable: calcActionable
+        )
         let showActionGroup = showsActionGroup(count: count, calcBlocked: calcSelected && !calcActionable)
 
         // The `header` (and its single search field) is always attached in the same position via safeAreaInset so its focus survives the compact↔expanded swap — only the results below it toggle. Collapsed shows the bar alone; expanded floats header + action bar over the list with edge-dissolve (see docs/ui.md).
@@ -232,15 +276,16 @@ struct RootPaletteView: View {
                 Color.clear
             } else {
                 content(
-                    apps: apps, clips: clips, snippets: snippets, emojiSections: emojiSections,
-                    uninstallItems: uninstallItems, calc: calc,
+                    apps: apps, launcherQuicklinks: launcherQuicklinks, clips: clips,
+                    snippets: snippets, quicklinks: quicklinks,
+                    emojiSections: emojiSections, uninstallItems: uninstallItems, calc: calc,
                     selection: sel, favoriteCount: favoriteCount, showSections: showSections
                 )
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) { header }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isCollapsed, vm.mode != .snippetEditor {
+            if !isCollapsed, vm.mode != .snippetEditor, vm.mode != .quicklinkEditor {
                 bottomBar(pillLabel: pillLabel, showActionGroup: showActionGroup)
             }
         }
@@ -256,7 +301,7 @@ struct RootPaletteView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
-            searchFocused = vm.mode != .snippetEditor
+            searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
             vm.feedback = nil
             showActions = false
             showAppMenu = false
@@ -271,7 +316,7 @@ struct RootPaletteView: View {
             emojiScroll = EmojiScrollIntent(kind: .top)
         }
         .onChange(of: vm.mode) {
-            searchFocused = vm.mode != .snippetEditor
+            searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
             vm.selection = 0
             vm.feedback = nil
             showActions = false
@@ -297,7 +342,7 @@ struct RootPaletteView: View {
             }
             listScroll = ListScrollIntent(kind: .follow)
         }
-        .onAppear { searchFocused = vm.mode != .snippetEditor }
+        .onAppear { searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor }
         .task(id: vm.feedback?.id) {
             guard vm.feedback != nil else { return }
             try? await Task.sleep(for: .seconds(2))
@@ -393,7 +438,10 @@ struct RootPaletteView: View {
             case .snippets:
                 guard command, snippetResults.indices.contains(selection) else { return .ignored }
                 core.copySnippet(snippetResults[selection])
-            case .snippetEditor:
+            case .quicklinks:
+                guard command, quicklinkResults.indices.contains(selection) else { return .ignored }
+                core.copyQuicklink(quicklinkResults[selection])
+            case .snippetEditor, .quicklinkEditor:
                 return .ignored
             case .launcher:
                 guard command else { return .ignored }
@@ -491,7 +539,7 @@ struct RootPaletteView: View {
             switch vm.mode {
             case .clipboard:
                 deleteSelectedClip()
-            case .launcher, .emoji, .snippets, .snippetEditor, .uninstall:
+            case .launcher, .emoji, .snippets, .snippetEditor, .quicklinks, .quicklinkEditor, .uninstall:
                 return .ignored
             }
             return .handled
@@ -577,9 +625,9 @@ struct RootPaletteView: View {
                 }
             }
 
-            if vm.mode == .snippetEditor {
+            if vm.mode == .snippetEditor || vm.mode == .quicklinkEditor {
                 Spacer(minLength: 0)
-                Text("Snippets Guide")
+                Text(vm.mode == .snippetEditor ? "Snippets Guide" : "Quicklinks Guide")
                     .font(Theme.Typography.callout)
                     .underline()
                     .foregroundStyle(.secondary)
@@ -627,7 +675,8 @@ struct RootPaletteView: View {
 
     @ViewBuilder
     private func content(
-        apps: [AppEntry], clips: [ClipboardItem], snippets: [Snippet],
+        apps: [AppEntry], launcherQuicklinks: [Quicklink], clips: [ClipboardItem],
+        snippets: [Snippet], quicklinks: [Quicklink],
         emojiSections: [EmojiGridSection], uninstallItems: [LeftoverItem], calc: CalcResult?,
         selection: Int, favoriteCount: Int, showSections: Bool
     ) -> some View {
@@ -639,7 +688,13 @@ struct RootPaletteView: View {
             let selectedID = apps.indices.contains(appIndex) ? apps[appIndex].id : nil
             LauncherList(
                 results: apps,
+                quicklinks: launcherQuicklinks,
                 selectedID: calcSelected ? nil : selectedID,
+                selectedQuicklinkID: calcSelected
+                    ? nil
+                    : launcherQuicklinks.indices.contains(selection - offset - apps.count)
+                        ? launcherQuicklinks[selection - offset - apps.count].id
+                        : nil,
                 favoriteCount: favoriteCount,
                 showSections: showSections,
                 scrollIntent: listScroll,
@@ -657,6 +712,18 @@ struct RootPaletteView: View {
                 onActivate: { core.launch($0, searchQuery: vm.query) },
                 onActions: { app in
                     if let index = apps.firstIndex(of: app) { vm.selection = index + offset }
+                    openActions()
+                },
+                onActivateQuicklink: { quicklink in
+                    if let index = launcherQuicklinks.firstIndex(of: quicklink) {
+                        vm.selection = index + offset + apps.count
+                    }
+                    activateSelection()
+                },
+                onActionsQuicklink: { quicklink in
+                    if let index = launcherQuicklinks.firstIndex(of: quicklink) {
+                        vm.selection = index + offset + apps.count
+                    }
                     openActions()
                 }
             )
@@ -712,6 +779,26 @@ struct RootPaletteView: View {
             SnippetEditorView(
                 snippet: snippetStore.snippet(for: vm.snippetEditingID),
                 onSave: saveSnippet
+            )
+        case .quicklinks:
+            QuicklinkSearchView(
+                results: quicklinks,
+                selectedID: selectedQuicklink?.id,
+                scrollIntent: listScroll,
+                onSelect: { quicklink in vm.selection = quicklinks.firstIndex(of: quicklink) ?? 0 },
+                onActivate: { quicklink in
+                    if let index = quicklinks.firstIndex(of: quicklink) { vm.selection = index }
+                    activateSelection()
+                },
+                onActions: { quicklink in
+                    if let index = quicklinks.firstIndex(of: quicklink) { vm.selection = index }
+                    openActions()
+                }
+            )
+        case .quicklinkEditor:
+            QuicklinkEditorView(
+                quicklink: quicklinkStore.quicklink(for: vm.quicklinkEditingID),
+                onSave: saveQuicklink
             )
         case .emoji:
             if !emojiIndex.isLoaded {
@@ -789,7 +876,8 @@ struct RootPaletteView: View {
                     pillLabel: pillLabel,
                     destructive: vm.mode == .uninstall && uninstall.phase == .selecting,
                     showActionsToggle:
-                        vm.mode != .uninstall || uninstall.phase == .selecting
+                        resultCount > 0
+                        && (vm.mode != .uninstall || uninstall.phase == .selecting)
                 )
             }
         }
@@ -826,16 +914,23 @@ struct RootPaletteView: View {
     }
 
     /// Pill label for the current selection, derived from the selection already resolved in `body` so it never re-runs the (unmemoized) `appResults` filter/sort.
-    private func actionPillLabel(selectedApp: AppEntry?, calcActionable: Bool) -> String {
+    private func actionPillLabel(
+        selectedApp: AppEntry?, selectedQuicklink: Quicklink?, calcActionable: Bool
+    ) -> String {
         switch vm.mode {
         case .clipboard, .emoji:
             return vm.pasteTarget?.pasteTitle ?? "Paste"
         case .snippets:
-            return vm.pasteTarget?.pasteTitle ?? "Paste"
+            return snippetResults.isEmpty ? "Create Snippet" : vm.pasteTarget?.pasteTitle ?? "Paste"
         case .snippetEditor:
             return "Save Snippet"
+        case .quicklinks:
+            return quicklinkResults.isEmpty ? "Create Quicklink" : "Open Quicklink"
+        case .quicklinkEditor:
+            return "Save Quicklink"
         case .launcher:
             if calcActionable { return "Copy Answer" }
+            if selectedQuicklink != nil { return "Open Quicklink" }
             switch selectedApp?.kind {
             case .systemSettings: return "Open System Setting"
             case .command:
@@ -860,6 +955,8 @@ struct RootPaletteView: View {
             case .done: return true
             }
         }
+        if vm.mode == .snippets, snippetResults.isEmpty { return true }
+        if vm.mode == .quicklinks, quicklinkResults.isEmpty { return true }
         return count > 0 && !calcBlocked
     }
 
@@ -993,11 +1090,16 @@ struct RootPaletteView: View {
             core.exitSnippetEditor()
             return
         }
+        if vm.mode == .quicklinkEditor {
+            core.exitQuicklinkEditor()
+            return
+        }
         vm.returnToLauncher()
     }
 
     private func saveSnippet(_ draft: SnippetDraft) -> String? {
         do {
+            let isEditing = vm.snippetEditingID != nil
             if let current = snippetStore.snippet(for: vm.snippetEditingID) {
                 _ = try snippetStore.update(
                     Snippet(
@@ -1011,18 +1113,71 @@ struct RootPaletteView: View {
                     keyword: draft.keyword, icon: draft.icon
                 )
             }
-            vm.mode = .snippets
-            vm.query = ""
-            vm.selection = 0
-            vm.snippetEditingID = nil
-            vm.snippetEditorReturnsToSearch = false
-            vm.focusToken = UUID()
-            vm.resetToken = UUID()
+            if isEditing {
+                vm.mode = .snippets
+                vm.query = ""
+                vm.selection = 0
+                vm.snippetEditingID = nil
+                vm.snippetEditorReturnsToSearch = false
+                vm.focusToken = UUID()
+                vm.resetToken = UUID()
+            } else {
+                core.exitSnippetEditor()
+                Task { @MainActor in
+                    await Task.yield()
+                    vm.postFeedback("Created snippet")
+                }
+            }
             return nil
         } catch let error as SnippetValidationError {
             return error.localizedDescription
         } catch {
             return "Could not save snippet"
+        }
+    }
+
+    private func saveQuicklink(_ draft: QuicklinkDraft) -> String? {
+        do {
+            let isEditing = vm.quicklinkEditingID != nil
+            if let current = quicklinkStore.quicklink(for: vm.quicklinkEditingID) {
+                _ = try quicklinkStore.update(
+                    Quicklink(
+                        id: current.id,
+                        name: draft.name,
+                        link: draft.link,
+                        icon: draft.icon,
+                        openWithBundleID: draft.openWithBundleID,
+                        createdAt: current.createdAt
+                    )
+                )
+            } else {
+                _ = try quicklinkStore.create(
+                    name: draft.name,
+                    link: draft.link,
+                    icon: draft.icon,
+                    openWithBundleID: draft.openWithBundleID
+                )
+            }
+            if isEditing {
+                vm.mode = .quicklinks
+                vm.query = ""
+                vm.selection = 0
+                vm.quicklinkEditingID = nil
+                vm.quicklinkEditorReturnsToSearch = false
+                vm.focusToken = UUID()
+                vm.resetToken = UUID()
+            } else {
+                core.exitQuicklinkEditor()
+                Task { @MainActor in
+                    await Task.yield()
+                    vm.postFeedback("Created quicklink")
+                }
+            }
+            return nil
+        } catch let error as QuicklinkValidationError {
+            return error.localizedDescription
+        } catch {
+            return "Could not save quicklink"
         }
     }
 
@@ -1048,16 +1203,30 @@ struct RootPaletteView: View {
                 return
             }
             let index = selection - calcCount
-            guard appResults.indices.contains(index) else { return }
-            core.launch(appResults[index], searchQuery: vm.query)
+            if appResults.indices.contains(index) {
+                core.launch(appResults[index], searchQuery: vm.query)
+                return
+            }
+            let quicklinkIndex = index - appResults.count
+            guard launcherQuicklinkResults.indices.contains(quicklinkIndex) else { return }
+            core.openQuicklink(launcherQuicklinkResults[quicklinkIndex])
         case .clipboard:
             guard clipResults.indices.contains(selection) else { return }
             core.paste(clipResults[selection])
         case .snippets:
-            guard snippetResults.indices.contains(selection) else { return }
+            guard snippetResults.indices.contains(selection) else {
+                core.createSnippet()
+                return
+            }
             core.pasteSnippet(snippetResults[selection])
-        case .snippetEditor:
+        case .snippetEditor, .quicklinkEditor:
             return
+        case .quicklinks:
+            guard quicklinkResults.indices.contains(selection) else {
+                core.createQuicklink()
+                return
+            }
+            core.openQuicklink(quicklinkResults[selection])
         case .emoji:
             guard emojiResults.indices.contains(selection) else { return }
             core.pasteEmoji(emojiResults[selection])
@@ -1088,7 +1257,8 @@ private struct PaletteModeMenuButton: View {
         case .launcher: return Theme.Colors.launcherAccent
         case .clipboard: return Theme.Colors.clipboardAccent
         case .emoji: return Theme.Colors.emojiAccent
-        case .snippets, .snippetEditor: return Theme.Colors.systemAccent
+        case .snippets, .snippetEditor, .quicklinks, .quicklinkEditor:
+            return Theme.Colors.systemAccent
         case .uninstall: return Theme.Colors.textSecondary
         }
     }

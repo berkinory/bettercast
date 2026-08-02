@@ -8,13 +8,16 @@ enum SnippetActionsMenu {
             items: [
                 PopoverMenuItem(
                     title: core.palette.pasteTarget?.pasteTitle ?? "Paste",
-                    systemImage: "doc.on.clipboard",
+                    icon: .paste(core.palette.pasteTarget, fallback: "doc.on.clipboard"),
                     shortcut: "↵"
                 ) {
                     core.pasteSnippet(snippet)
                 },
                 PopoverMenuItem(title: "Copy to Clipboard", systemImage: "doc.on.doc", shortcut: "⌘↵") {
                     core.copySnippet(snippet)
+                },
+                PopoverMenuItem(title: "Duplicate Snippet", systemImage: "plus.square.on.square") {
+                    core.duplicateSnippet(snippet)
                 },
                 PopoverMenuItem(title: "Edit Snippet", systemImage: "pencil") {
                     core.editSnippet(snippet)

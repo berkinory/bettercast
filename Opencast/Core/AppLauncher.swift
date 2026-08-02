@@ -12,6 +12,26 @@ enum AppLauncher {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    @MainActor
+    static func open(_ quicklink: Quicklink) -> Bool {
+        let rawLink = NSString(string: quicklink.link).expandingTildeInPath
+        let target =
+            URL(string: rawLink).flatMap { $0.scheme == nil ? nil : $0 }
+            ?? URL(fileURLWithPath: rawLink)
+        guard
+            let applicationURL = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: quicklink.openWithBundleID
+            )
+        else { return false }
+        NSWorkspace.shared.open(
+            [target],
+            withApplicationAt: applicationURL,
+            configuration: NSWorkspace.OpenConfiguration(),
+            completionHandler: nil
+        )
+        return true
+    }
+
     /// Opens System Settings at the pane backed by the given extension bundle ID.
     @MainActor
     static func openSettingsPane(bundleID: String) {

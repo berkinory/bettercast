@@ -17,6 +17,7 @@ enum SettingsDestination: Hashable, Sendable {
     case clipboardClearHistory
     case snippetExpansion
     case snippetDisabledApps
+    case quicklinksEnabled
     case emojiShortcut
     case emojiSkinTone
     case accessibility
@@ -43,6 +44,7 @@ enum SettingsDestination: Hashable, Sendable {
         case .clipboardClearHistory: return "clipboard-clear-history"
         case .snippetExpansion: return "snippet-expansion"
         case .snippetDisabledApps: return "snippet-disabled-apps"
+        case .quicklinksEnabled: return "quicklinks-enabled"
         case .emojiShortcut: return "emoji-shortcut"
         case .emojiSkinTone: return "emoji-skin-tone"
         case .accessibility: return "accessibility"
@@ -75,6 +77,7 @@ enum SettingsSearchCatalog {
         pane(.launcher, detail: "Launcher shortcut, appearance, and behavior."),
         pane(.clipboard, detail: "History retention and excluded applications."),
         pane(.snippets, detail: "Save and paste frequently used text."),
+        pane(.quicklinks, detail: "Save and open URLs, files, and folders."),
         pane(.emoji, detail: "Emoji shortcut and preferred skin tone."),
         pane(.calculator, detail: "Inline calculations and currency conversion."),
         pane(.windowManagement, detail: "Tile, resize, and move application windows."),
@@ -174,6 +177,12 @@ enum SettingsSearchCatalog {
             .snippetDisabledApps, tab: .snippets, title: "Disabled Applications",
             detail: "Choose apps where snippets never expand.", section: "Privacy",
             keywords: ["snippets", "ignore", "password", "private"], image: "hand.raised",
+            tint: .blue
+        ),
+        item(
+            .quicklinksEnabled, tab: .quicklinks, title: "Enable Quicklinks",
+            detail: "Show and open saved quicklinks in Opencast.", section: "Quicklinks",
+            keywords: ["links", "urls", "folders", "files", "shortcuts"], image: "link",
             tint: .blue
         ),
         item(

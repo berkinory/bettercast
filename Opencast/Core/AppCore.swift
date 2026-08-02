@@ -8,6 +8,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case emoji
     case snippets
     case snippetEditor
+    case quicklinks
+    case quicklinkEditor
     case uninstall
 
     var id: String { rawValue }
@@ -18,6 +20,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .emoji: return "Emoji & Symbols"
         case .snippets: return "Snippets"
         case .snippetEditor: return "Snippet"
+        case .quicklinks: return "Quicklinks"
+        case .quicklinkEditor: return "Quicklink"
         case .uninstall: return "Uninstall"
         }
     }
@@ -27,6 +31,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .clipboard: return "doc.on.clipboard"
         case .emoji: return "face.smiling"
         case .snippets, .snippetEditor: return "text.quote"
+        case .quicklinks, .quicklinkEditor: return "link"
         case .uninstall: return "trash"
         }
     }
@@ -37,6 +42,8 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .emoji: return "Search emoji and symbols…"
         case .snippets: return "Search snippets…"
         case .snippetEditor: return ""
+        case .quicklinks: return "Search quicklinks…"
+        case .quicklinkEditor: return ""
         case .uninstall: return "Filter files and folders by name…"
         }
     }
@@ -84,6 +91,8 @@ final class PaletteViewModel: ObservableObject {
     @Published var feedback: PaletteFeedback?
     @Published var snippetEditingID: Snippet.ID?
     @Published var snippetEditorReturnsToSearch = false
+    @Published var quicklinkEditingID: Quicklink.ID?
+    @Published var quicklinkEditorReturnsToSearch = false
     /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
     @Published var followToken = UUID()
     /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
@@ -107,6 +116,8 @@ final class PaletteViewModel: ObservableObject {
         forceExpanded = false
         snippetEditingID = nil
         snippetEditorReturnsToSearch = false
+        quicklinkEditingID = nil
+        quicklinkEditorReturnsToSearch = false
         onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
@@ -122,6 +133,8 @@ final class PaletteViewModel: ObservableObject {
         forceExpanded = false
         snippetEditingID = nil
         snippetEditorReturnsToSearch = false
+        quicklinkEditingID = nil
+        quicklinkEditorReturnsToSearch = false
         onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
@@ -138,6 +151,8 @@ final class PaletteViewModel: ObservableObject {
         forceExpanded = false
         snippetEditingID = nil
         snippetEditorReturnsToSearch = false
+        quicklinkEditingID = nil
+        quicklinkEditorReturnsToSearch = false
         onCommandEnter = nil
         hoverHighlightArmed = false
         menuOpen = false
@@ -160,6 +175,7 @@ final class AppCore: ObservableObject {
     let appIndex: AppIndex
     let clipboardStore = ClipboardStore()
     let snippetStore = SnippetStore()
+    let quicklinkStore = QuicklinkStore()
     let snippetExpansionMonitor: SnippetExpansionMonitor
     let clipboardManager: ClipboardManager
     let hotKeys = HotKeyManager()
@@ -502,6 +518,23 @@ final class AppCore: ObservableObject {
         palette.enterSubscreen(.snippets)
     }
 
+    func createQuicklink() {
+        guard settings.quicklinksEnabled else { return }
+        palette.enterSubscreen(.quicklinkEditor)
+    }
+
+    func editQuicklink(_ quicklink: Quicklink) {
+        guard settings.quicklinksEnabled else { return }
+        palette.enterSubscreen(.quicklinkEditor)
+        palette.quicklinkEditingID = quicklink.id
+        palette.quicklinkEditorReturnsToSearch = true
+    }
+
+    func searchQuicklinks() {
+        guard settings.quicklinksEnabled else { return }
+        palette.enterSubscreen(.quicklinks)
+    }
+
     func exitSnippetEditor() {
         if palette.snippetEditorReturnsToSearch {
             palette.mode = .snippets
@@ -525,6 +558,64 @@ final class AppCore: ObservableObject {
     func copySnippet(_ snippet: Snippet) {
         Paster.copyString(snippet.content)
         palette.postFeedback("Copied snippet")
+    }
+
+    func duplicateSnippet(_ snippet: Snippet) {
+        do {
+            _ = try snippetStore.duplicate(snippet)
+            palette.postFeedback("Duplicated snippet")
+        } catch {
+            palette.postFeedback("Could not duplicate snippet", tone: .error)
+        }
+    }
+
+    func exitQuicklinkEditor() {
+        if palette.quicklinkEditorReturnsToSearch {
+            palette.mode = .quicklinks
+            palette.query = ""
+            palette.selection = 0
+            palette.quicklinkEditingID = nil
+            palette.quicklinkEditorReturnsToSearch = false
+            palette.focusToken = UUID()
+            palette.resetToken = UUID()
+        } else {
+            palette.returnToLauncher()
+        }
+    }
+
+    func chooseQuicklinkTarget(completion: @escaping (String) -> Void) {
+        windowController.presentFilePicker { url in
+            guard let url else { return }
+            completion(url.path)
+        }
+    }
+
+    func openQuicklink(_ quicklink: Quicklink) {
+        guard AppLauncher.open(quicklink) else {
+            palette.postFeedback("Could not open quicklink", tone: .error)
+            return
+        }
+        hidePalette(restoreFocus: false)
+    }
+
+    func copyQuicklink(_ quicklink: Quicklink) {
+        Paster.copyString(quicklink.link)
+        palette.postFeedback("Copied link")
+    }
+
+    func duplicateQuicklink(_ quicklink: Quicklink) {
+        do {
+            _ = try quicklinkStore.duplicate(quicklink)
+            palette.postFeedback("Duplicated quicklink")
+        } catch {
+            palette.postFeedback("Could not duplicate quicklink", tone: .error)
+        }
+    }
+
+    func deleteQuicklink(_ quicklink: Quicklink) {
+        quicklinkStore.delete(quicklink)
+        palette.selection = 0
+        palette.postFeedback("Deleted quicklink")
     }
 
     func deleteSnippet(_ snippet: Snippet) {
@@ -706,6 +797,10 @@ final class AppCore: ObservableObject {
             palette.enterSubscreen(.snippets)
         case .createSnippet:
             palette.enterSubscreen(.snippetEditor)
+        case .searchQuicklinks:
+            searchQuicklinks()
+        case .createQuicklink:
+            createQuicklink()
         case .searchEmoji:
             palette.enterSubscreen(.emoji)
         case .settings:

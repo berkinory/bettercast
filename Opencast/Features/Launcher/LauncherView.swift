@@ -2,7 +2,9 @@ import SwiftUI
 
 struct LauncherList: View {
     let results: [AppEntry]
+    let quicklinks: [Quicklink]
     let selectedID: AppEntry.ID?
+    let selectedQuicklinkID: Quicklink.ID?
     let favoriteCount: Int
     let showSections: Bool
     /// Present only when the list should follow selection or return to its origin.
@@ -14,6 +16,8 @@ struct LauncherList: View {
     var onCalcActions: () -> Void = {}
     let onActivate: (AppEntry) -> Void
     let onActions: (AppEntry) -> Void
+    let onActivateQuicklink: (Quicklink) -> Void
+    let onActionsQuicklink: (Quicklink) -> Void
     @EnvironmentObject private var runningApps: RunningAppsMonitor
 
     private nonisolated static let calcRowID = "calc-card"
@@ -22,11 +26,13 @@ struct LauncherList: View {
         case header(String)
         case calc(CalcResult)
         case app(AppEntry)
+        case quicklink(Quicklink)
         var id: String {
             switch self {
             case .header(let title): return "header-" + title
             case .calc: return LauncherList.calcRowID
             case .app(let app): return app.id
+            case .quicklink(let quicklink): return quicklink.id.uuidString
             }
         }
     }
@@ -35,8 +41,9 @@ struct LauncherList: View {
         var calcRows: [Row] = []
         if let calc { calcRows = [.header("Calculator"), .calc(calc)] }
         guard showSections else {
-            guard !results.isEmpty else { return calcRows }
+            guard !results.isEmpty || !quicklinks.isEmpty else { return calcRows }
             return calcRows + [.header("Results")] + results.map(Row.app)
+                + quicklinks.map(Row.quicklink)
         }
         var rows: [Row] = calcRows
         let favorites = results.prefix(favoriteCount)
@@ -53,13 +60,17 @@ struct LauncherList: View {
             rows.append(.header(title))
             rows.append(contentsOf: group.map(Row.app))
         }
+        if !quicklinks.isEmpty {
+            rows.append(.header("Quicklinks"))
+            rows.append(contentsOf: quicklinks.map(Row.quicklink))
+        }
         return rows
     }
 
     var body: some View {
         let rows = rows
         return Group {
-            if results.isEmpty && calc == nil {
+            if results.isEmpty && quicklinks.isEmpty && calc == nil {
                 EmptyResults(text: "No apps found")
             } else {
                 ScrollViewReader { proxy in
@@ -85,6 +96,14 @@ struct LauncherList: View {
                                         .contentShape(Rectangle())
                                         .onTapGesture { onActivate(app) }
                                         .onRightClick { onActions(app) }
+                                    case .quicklink(let quicklink):
+                                        QuicklinkRow(
+                                            quicklink: quicklink,
+                                            selected: quicklink.id == selectedQuicklinkID
+                                        )
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { onActivateQuicklink(quicklink) }
+                                        .onRightClick { onActionsQuicklink(quicklink) }
                                     }
                                 }
                             }
@@ -105,6 +124,8 @@ struct LauncherList: View {
                             proxy.scrollTo(Self.calcRowID)
                         } else if let selectedID {
                             proxy.scrollTo(selectedID)
+                        } else if let selectedQuicklinkID {
+                            proxy.scrollTo(selectedQuicklinkID)
                         }
                     }
                 }
@@ -207,7 +228,8 @@ struct AppIconView: View {
         switch CommandRegistry.command(for: app) {
         case .searchEmoji: return Theme.Colors.emojiAccent
         case .clipboardHistory: return Theme.Colors.clipboardAccent
-        case .searchSnippets, .createSnippet: return Theme.Colors.systemAccent
+        case .searchSnippets, .createSnippet, .searchQuicklinks, .createQuicklink:
+            return Theme.Colors.systemAccent
         case .settings: return Theme.Colors.systemAccent
         case .checkForUpdates: return Theme.Colors.systemAccent
         case .quit: return Theme.Colors.textSecondary

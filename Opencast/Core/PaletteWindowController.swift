@@ -8,6 +8,8 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private(set) var previousApp: NSRunningApplication?
     private var popToRootTimer: Timer?
     private var isPresentingConfirmation = false
+    private var filePicker: NSOpenPanel?
+    private var isPresentingFilePicker = false
     /// Left/top edge of the panel, resolved once per show and reused across compact↔expanded resizes so both states share an exact top edge (only the height changes). Cleared on hide so the next summon re-resolves for the current screen.
     private var anchor: (x: CGFloat, topEdgeY: CGFloat)?
 
@@ -117,9 +119,23 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - NSWindowDelegate
 
+    func presentFilePicker(completion: @escaping (URL?) -> Void) {
+        let picker = NSOpenPanel()
+        picker.canChooseFiles = true
+        picker.canChooseDirectories = true
+        picker.allowsMultipleSelection = false
+        filePicker = picker
+        isPresentingFilePicker = true
+        picker.beginSheetModal(for: ensurePanel()) { [weak self, picker] response in
+            self?.filePicker = nil
+            self?.isPresentingFilePicker = false
+            completion(response == .OK ? picker.url : nil)
+        }
+    }
+
     /// Dismiss when the palette loses key status (click-away, ⌘-Tab, app switch).
     func windowDidResignKey(_ notification: Notification) {
-        guard isVisible, !isPresentingConfirmation else { return }
+        guard isVisible, !isPresentingConfirmation, !isPresentingFilePicker else { return }
         hide(restoreFocus: false)
     }
 
@@ -140,6 +156,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             .environmentObject(core.appIndex)
             .environmentObject(core.clipboardStore)
             .environmentObject(core.snippetStore)
+            .environmentObject(core.quicklinkStore)
             .environmentObject(core.favorites)
             .environmentObject(core.visibility)
             .environmentObject(core.currencyRates)
@@ -159,11 +176,15 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             }
             if core.palette.mode == .uninstall {
                 core.exitUninstall()
-            } else if core.palette.mode == .snippetEditor {
+            } else if core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor {
                 guard !(panel.firstResponder is NSTextField || panel.firstResponder is NSTextView) else {
                     return false
                 }
-                core.exitSnippetEditor()
+                if core.palette.mode == .snippetEditor {
+                    core.exitSnippetEditor()
+                } else {
+                    core.exitQuicklinkEditor()
+                }
             } else {
                 core.handlePaletteEscape()
             }
@@ -180,8 +201,14 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             return true
         }
         panel.onEscape = { [weak self] in
-            guard let self, core.palette.mode == .snippetEditor else { return false }
-            core.exitSnippetEditor()
+            guard let self, core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor else {
+                return false
+            }
+            if core.palette.mode == .snippetEditor {
+                core.exitSnippetEditor()
+            } else {
+                core.exitQuicklinkEditor()
+            }
             return true
         }
         self.panel = panel
