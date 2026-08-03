@@ -60,9 +60,6 @@
         "process.cancel",
         "ports.inspect",
         "system.metrics.read",
-        "brew.read",
-        "brew.detail",
-        "brew.manage",
         "network.request",
         "menuBar.publishSnapshot"
       ]

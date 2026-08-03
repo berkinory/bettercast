@@ -17,9 +17,6 @@ The first release focuses on three local, native-backed commands:
 | Ports | List listening TCP ports, owning processes, host, protocol, and user. Copy an address or terminate the owner. | `ports.inspect`, `process.terminate`, `clipboard.write` |
 | System Monitor | Show CPU, memory, disk, network, battery, and temperature metrics in native detail cards. | `system.metrics.read` |
 
-Brew is not part of the v1 package set. Its capability bridge remains available for future
-third-party extensions, but no Brew package is built or published in v1.
-
 ## Runtime model
 
 An extension command has two halves:
@@ -34,8 +31,8 @@ broker before every request. Destructive operations require user confirmation an
 native providers.
 
 The app owns lifecycle and scheduling. View commands are started on demand. `no-view` and menu-bar
-commands are only allowed to run when their declared lifecycle policy permits them, and background
-refresh is disabled by default.
+commands are only allowed to run when their declared lifecycle policy permits them, and eligible
+background commands refresh automatically.
 
 ## Package layout
 
@@ -76,12 +73,10 @@ node Tools/extensions/build-extension.js \
 Equivalent commands are already wired into `make extensions-test` and
 `make extension-store-test`.
 
-## Install a local package
+## Test a local package
 
-1. Build the `.ocx` directory.
-2. Open **Settings → General → Extensions → Import Extension**.
-3. Choose the `.ocx` directory.
-4. Opencast validates the package before moving it into the app's extension directory.
+Build the `.ocx` directory and run the extension contract and provider checks below. Local packages
+are not exposed through the public Store until they are published in its verified catalog.
 
 Installed packages can be disabled, updated, rolled back, or removed from the same settings
 section. Extension state is isolated by the app bundle identifier, so Debug and release builds do

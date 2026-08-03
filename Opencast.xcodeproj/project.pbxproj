@@ -128,7 +128,6 @@
 		F5201B807399F1C6E0863AE3 /* ShortcutsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3A782BDD846463B97DA98A6 /* ShortcutsSettingsView.swift */; };
 		F6F0940BA37796914D5F6CEC /* EmojiGridGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 027E69A728290EA06F4016AA /* EmojiGridGeometry.swift */; };
 		F721F63A6940A983F12C41FE /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B757ECE8217E75C25E12B2 /* GeneralSettingsView.swift */; };
-		F80365F2DA05E36374D8CC19 /* ExtensionBrewProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9762897AB2230637580BD625 /* ExtensionBrewProvider.swift */; };
 		FAF439E4B55A7C8029CC2ADC /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5491D634DB3BC8C7AB21B0B9 /* FavoritesStore.swift */; };
 		FE64DBD74E48437F2AF83F4E /* SystemCommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CED9EC495D19176519299CA /* SystemCommandRunner.swift */; };
 		FF063921CF15BD46D854782C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DE7F5A23C81E47A0DFA6B2 /* OnboardingView.swift */; };
@@ -219,7 +218,6 @@
 		92D963E0C9D44A9C09838DD1 /* Bundle+AppName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+AppName.swift"; sourceTree = "<group>"; };
 		930B815EF93ADA484C381111 /* PaletteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteWindowController.swift; sourceTree = "<group>"; };
 		942081E66F360E54E14B3ECB /* OpencastApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpencastApp.swift; sourceTree = "<group>"; };
-		9762897AB2230637580BD625 /* ExtensionBrewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionBrewProvider.swift; sourceTree = "<group>"; };
 		9B3D242D623DF0D7B1A8C778 /* PaletteFooterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteFooterControls.swift; sourceTree = "<group>"; };
 		9E3A5FEA79A1C0EE2C459717 /* SnippetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetStore.swift; sourceTree = "<group>"; };
 		A3B28C27C4D1D851AF7CFA9B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -375,7 +373,6 @@
 		3B456AA9328119534C34BBA3 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
-				9762897AB2230637580BD625 /* ExtensionBrewProvider.swift */,
 				59EC0D64AF7FFA34C40B4EF4 /* ExtensionCapabilityBroker.swift */,
 				B7ADEAEA68C98C6DBCD27B5F /* ExtensionCatalog.swift */,
 				CBEB3B7F5BE97A141AD920D2 /* ExtensionHostManager.swift */,
@@ -747,7 +744,6 @@
 				28918546E9AE109851807DA8 /* EmojiGridView.swift in Sources */,
 				905502935B2CD9EA857150CB /* EmojiIndex.swift in Sources */,
 				23E5DB23DDFA2DC54550D828 /* EmojiSettingsView.swift in Sources */,
-				F80365F2DA05E36374D8CC19 /* ExtensionBrewProvider.swift in Sources */,
 				03C2586620B6484E4EDB75A6 /* ExtensionCapabilityBroker.swift in Sources */,
 				C6AC764BFFE78D1DB30E4D70 /* ExtensionCatalog.swift in Sources */,
 				B3551A4594FEFDC368655CDD /* ExtensionHostManager.swift in Sources */,

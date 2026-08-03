@@ -426,28 +426,3 @@ export const Ports = {
 export const System = {
   metrics: () => globalThis.__opencast.requestCapability("system.metrics.read", {})
 };
-
-export const Brew = {
-  search: (query, options = {}) => globalThis.__opencast.requestCapability("brew.read", {
-    operation: "search", query: String(query || ""), limit: options.limit
-  }),
-  installed: (options = {}) => globalThis.__opencast.requestCapability("brew.read", {
-    operation: "installed", limit: options.limit
-  }),
-  outdated: (options = {}) => globalThis.__opencast.requestCapability("brew.read", {
-    operation: "outdated", limit: options.limit
-  }),
-  info: (name, options = {}) => globalThis.__opencast.requestCapability("brew.detail", {
-    name: String(name || ""), kind: String(options.kind || "formula")
-  }),
-  install: (name, options = {}) => globalThis.__opencast.requestCapability("brew.manage", {
-    operation: "install", name: String(name || ""), kind: String(options.kind || "formula")
-  }),
-  upgrade: (name, options = {}) => globalThis.__opencast.requestCapability("brew.manage", {
-    operation: "upgrade", name: String(name || ""), kind: String(options.kind || "formula")
-  }),
-  cleanup: () => globalThis.__opencast.requestCapability("brew.manage", { operation: "cleanup" }),
-  service: (name, action) => globalThis.__opencast.requestCapability("brew.manage", {
-    operation: "service", name: String(name || ""), serviceAction: String(action || "")
-  })
-};

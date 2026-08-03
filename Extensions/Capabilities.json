@@ -110,24 +110,6 @@
       "description": "Read local CPU, memory, disk, power and network metrics."
     },
     {
-      "name": "brew.read",
-      "risk": "sensitive",
-      "consent": "install",
-      "description": "Read Homebrew formula and cask search, installed and outdated state without mutating packages."
-    },
-    {
-      "name": "brew.detail",
-      "risk": "sensitive",
-      "consent": "install",
-      "description": "Read detailed metadata for a Homebrew formula or cask."
-    },
-    {
-      "name": "brew.manage",
-      "risk": "sensitive",
-      "consent": "each-use",
-      "description": "Install, upgrade, clean or manage a Homebrew service after explicit confirmation."
-    },
-    {
       "name": "network.request",
       "risk": "network",
       "consent": "settings",

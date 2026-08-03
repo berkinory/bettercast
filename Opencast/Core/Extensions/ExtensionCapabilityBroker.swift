@@ -30,11 +30,8 @@ final class ExtensionCapabilityBroker: ObservableObject {
         "/bin/echo",
         "/bin/kill",
         "/bin/ps",
-        "/opt/homebrew/bin/brew",
-        "/usr/bin/brew",
         "/usr/bin/killall",
         "/usr/bin/pmset",
-        "/usr/local/bin/brew",
         "/usr/sbin/lsof",
     ]
 
@@ -43,7 +40,6 @@ final class ExtensionCapabilityBroker: ObservableObject {
     private let processProvider: ExtensionProcessProvider
     private let portProvider: ExtensionPortProvider
     private let metricsProvider: ExtensionSystemMetricsProvider
-    private let brewProvider: ExtensionBrewProvider
     private let jobManager: ExtensionProcessJobManager
     private let networkSession: URLSession
     private let networkConsentKey: String
@@ -66,7 +62,6 @@ final class ExtensionCapabilityBroker: ObservableObject {
         processProvider = ExtensionProcessProvider(protectedPIDs: [protectedPID])
         portProvider = ExtensionPortProvider()
         metricsProvider = ExtensionSystemMetricsProvider()
-        brewProvider = ExtensionBrewProvider()
         jobManager = ExtensionProcessJobManager()
 
         let configuration = URLSessionConfiguration.ephemeral
@@ -149,79 +144,12 @@ final class ExtensionCapabilityBroker: ObservableObject {
         case "system.metrics.read":
             let snapshot = await metricsProvider.snapshot()
             return encoded(snapshot)
-        case "brew.read":
-            return await readBrew(payload: payload)
-        case "brew.detail":
-            return await readBrewDetail(payload: payload)
-        case "brew.manage":
-            return await manageBrew(payload: payload, command: command)
         case "network.request":
             return await requestNetwork(payload: payload, command: command)
         case "menuBar.publishSnapshot":
             return .denied("Menu-bar publishing is handled by the scheduler, not a direct capability call.")
         default:
             return .denied("Unsupported capability: " + capability)
-        }
-    }
-
-    private func readBrew(payload: [String: Any]) async -> ExtensionCapabilityResult {
-        do {
-            let operation = payload["operation"] as? String ?? "search"
-            let limit = min(max(payload["limit"] as? Int ?? 100, 1), 500)
-            switch operation {
-            case "search":
-                let query = payload["query"] as? String ?? ""
-                return encoded(try await brewProvider.search(query: query, limit: limit))
-            case "installed":
-                return encoded(try await brewProvider.installed(limit: limit))
-            case "outdated":
-                return encoded(try await brewProvider.outdated(limit: limit))
-            default:
-                return .denied("Unsupported Brew read operation.")
-            }
-        } catch {
-            return .denied(error.localizedDescription)
-        }
-    }
-
-    private func readBrewDetail(payload: [String: Any]) async -> ExtensionCapabilityResult {
-        guard let name = payload["name"] as? String, let kind = payload["kind"] as? String else {
-            return .denied("brew.detail requires a package name and kind.")
-        }
-        do {
-            return encoded(try await brewProvider.detail(name: name, kind: kind))
-        } catch {
-            return .denied(error.localizedDescription)
-        }
-    }
-
-    private func manageBrew(payload: [String: Any], command: ExtensionCommand) async -> ExtensionCapabilityResult {
-        let operation = payload["operation"] as? String ?? ""
-        guard ["install", "upgrade", "cleanup", "service"].contains(operation) else {
-            return .denied("Unsupported Homebrew mutation.")
-        }
-        guard
-            NativeConfirmation.present(
-                message: "\(operation.capitalized) with Homebrew?",
-                informativeText: "Homebrew will change software or services on this Mac.",
-                confirmTitle: operation.capitalized
-            )
-        else {
-            return .denied("Homebrew operation was cancelled.")
-        }
-        do {
-            let result = try await brewProvider.mutate(
-                operation: operation,
-                name: payload["name"] as? String,
-                kind: payload["kind"] as? String,
-                serviceAction: payload["serviceAction"] as? String
-            )
-            audit(capability: "brew.manage", command: command, outcome: "status-" + String(result.status))
-            return .success(
-                AnySendable(value: ["stdout": result.stdout, "stderr": result.stderr, "status": result.status]))
-        } catch {
-            audit(capability: "brew.manage", command: command, outcome: "failed")
-            return .denied(error.localizedDescription)
         }
     }
 
