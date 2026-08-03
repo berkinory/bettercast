@@ -57,6 +57,7 @@
 		610B3B527018E48C36B8FA4A /* KeyShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BB05E1B378781256276460 /* KeyShortcut.swift */; };
 		62F8941AB4986C72863B3133 /* RightClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718898CF371E97E2B87386E7 /* RightClick.swift */; };
 		6C81DC37815ABE6B47AC461F /* ClipboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFFA196847EC88A7B596C25F /* ClipboardView.swift */; };
+		705450B9A4B152795595382B /* ExtensionStorePaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08DEF7ACD6FA52C73713F943 /* ExtensionStorePaletteView.swift */; };
 		70939FC6EA4A2BF8A61E53F5 /* CalcFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 903BBB85B793873B44607D0B /* CalcFormatter.swift */; };
 		76A87CDF7EADCEB0B4AB3D56 /* ExtensionSystemCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADEB576FAC85805D88D40C0B /* ExtensionSystemCommand.swift */; };
 		78687BB16A9141BA025DCAAB /* CalcParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AEDADA0CCA562D7C809437 /* CalcParser.swift */; };
@@ -65,7 +66,6 @@
 		7F511B0FA936A60A8FFDF35A /* ImageThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F74855DB60C4CE77387B40 /* ImageThumbnail.swift */; };
 		7FA75FD9CF1CC88E5613A91E /* SettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6611BAE04ECE3A8A6B2E742B /* SettingsComponents.swift */; };
 		7FD959DB96807179DA22BD5D /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31A0FDBB98365DA92EA6AFE4 /* SettingsRootView.swift */; };
-		8105B3652B8E97F73C1EAC0E /* ExtensionStoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96395A9CE263D95FC7C82DA1 /* ExtensionStoreView.swift */; };
 		815EB570E494CD1DBC851366 /* InlineArgument.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB2853308836F857CCD1F3A9 /* InlineArgument.swift */; };
 		83D6BDB6804A4D8A1B279547 /* AppLeftovers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D12B6B1D8FC9B6E369CD28 /* AppLeftovers.swift */; };
 		8752558F201BD5E1E51E6335 /* QuicklinkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC3C9115B942FC4E9128168 /* QuicklinkViews.swift */; };
@@ -150,6 +150,7 @@
 		027E69A728290EA06F4016AA /* EmojiGridGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiGridGeometry.swift; sourceTree = "<group>"; };
 		07FD0F81328FD899D97306F5 /* UninstallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UninstallView.swift; sourceTree = "<group>"; };
 		084DC160FDE00DC0FD6EC764 /* AppCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCore.swift; sourceTree = "<group>"; };
+		08DEF7ACD6FA52C73713F943 /* ExtensionStorePaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionStorePaletteView.swift; sourceTree = "<group>"; };
 		0993325B754EBE41A8B80761 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
 		0F7C7A83BA8C17671FBC984F /* AppLauncher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLauncher.swift; sourceTree = "<group>"; };
 		10D4AB52915B9E0C55F33479 /* WindowMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowMover.swift; sourceTree = "<group>"; };
@@ -218,7 +219,6 @@
 		92D963E0C9D44A9C09838DD1 /* Bundle+AppName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+AppName.swift"; sourceTree = "<group>"; };
 		930B815EF93ADA484C381111 /* PaletteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteWindowController.swift; sourceTree = "<group>"; };
 		942081E66F360E54E14B3ECB /* OpencastApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpencastApp.swift; sourceTree = "<group>"; };
-		96395A9CE263D95FC7C82DA1 /* ExtensionStoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionStoreView.swift; sourceTree = "<group>"; };
 		9762897AB2230637580BD625 /* ExtensionBrewProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionBrewProvider.swift; sourceTree = "<group>"; };
 		9B3D242D623DF0D7B1A8C778 /* PaletteFooterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteFooterControls.swift; sourceTree = "<group>"; };
 		9E3A5FEA79A1C0EE2C459717 /* SnippetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetStore.swift; sourceTree = "<group>"; };
@@ -303,7 +303,7 @@
 		116D21BD203F5BDC30A67EFB /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
-				96395A9CE263D95FC7C82DA1 /* ExtensionStoreView.swift */,
+				08DEF7ACD6FA52C73713F943 /* ExtensionStorePaletteView.swift */,
 				62D9228980985408B825D1BD /* ExtensionViews.swift */,
 			);
 			path = Extensions;
@@ -760,8 +760,8 @@
 				347B71C39804D21ADF84211B /* ExtensionScheduler.swift in Sources */,
 				2484C4AE5C9B9EDF0F39B5B2 /* ExtensionSnapshotStore.swift in Sources */,
 				3BC7C1D5657B4965A31EE0A6 /* ExtensionStoreManager.swift in Sources */,
+				705450B9A4B152795595382B /* ExtensionStorePaletteView.swift in Sources */,
 				254C59602CA8CC74461E0BE2 /* ExtensionStoreRemote.swift in Sources */,
-				8105B3652B8E97F73C1EAC0E /* ExtensionStoreView.swift in Sources */,
 				76A87CDF7EADCEB0B4AB3D56 /* ExtensionSystemCommand.swift in Sources */,
 				A522A053EBE25A5D2E1C45B4 /* ExtensionSystemMetricsProvider.swift in Sources */,
 				8D1F63DBBFA004AB085AF480 /* ExtensionViews.swift in Sources */,

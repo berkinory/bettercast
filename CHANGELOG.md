@@ -81,3 +81,14 @@
 ### Added
 
 - Independent GitHub Release publishing for verified extension packages.
+- Added the Store command with palette-based extension browsing, install, update, and uninstall flows.
+
+### Improved
+
+- Store access and background extension refresh are enabled automatically.
+- Added Store sorting by installed status or name.
+
+### Fixed
+
+- Removed uninstalled extension commands from the launcher after refresh.
+- Extension screens now show the active extension name in the footer.

@@ -8,6 +8,7 @@ enum CommandID: String, CaseIterable, Sendable {
     case searchQuicklinks = "command:search-quicklinks"
     case createQuicklink = "command:create-quicklink"
     case searchEmoji = "command:search-emoji"
+    case store = "command:store"
     case settings = "command:settings"
     case checkForUpdates = "command:check-for-updates"
     case quit = "command:quit"
@@ -23,6 +24,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .searchQuicklinks: return "Search Quicklinks"
         case .createQuicklink: return "Create Quicklink"
         case .searchEmoji: return "Search Emoji & Symbols"
+        case .store: return "Store"
         case .settings: return "Settings"
         case .checkForUpdates: return "Check for Updates"
         case .quit: return "Quit Opencast"
@@ -38,6 +40,7 @@ enum CommandID: String, CaseIterable, Sendable {
         case .searchSnippets, .createSnippet: return "text.quote"
         case .searchQuicklinks, .createQuicklink: return "link"
         case .searchEmoji: return "face.smiling"
+        case .store: return "shippingbox.fill"
         case .settings: return "gearshape"
         case .checkForUpdates: return "arrow.down.circle"
         case .quit: return "power"
@@ -58,7 +61,7 @@ enum CommandID: String, CaseIterable, Sendable {
 
     var isRunnable: Bool {
         switch self {
-        case .caffeinate, .decaffeinate, .caffeinateFor: return true
+        case .store, .caffeinate, .decaffeinate, .caffeinateFor: return true
         default: return false
         }
     }

@@ -11,6 +11,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
     case quicklinkEditor
     case uninstall
     case extensionCommand
+    case store
 
     var id: String { rawValue }
     var title: String {
@@ -24,6 +25,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .quicklinkEditor: return "Quicklink"
         case .uninstall: return "Uninstall"
         case .extensionCommand: return "Extension"
+        case .store: return "Store"
         }
     }
     var systemImage: String {
@@ -35,6 +37,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .quicklinks, .quicklinkEditor: return "link"
         case .uninstall: return "trash"
         case .extensionCommand: return "puzzlepiece.extension"
+        case .store: return "shippingbox.fill"
         }
     }
     var placeholder: String {
@@ -48,6 +51,7 @@ enum PaletteMode: String, CaseIterable, Identifiable {
         case .quicklinkEditor: return ""
         case .uninstall: return "Filter files and folders by name…"
         case .extensionCommand: return "Search extension items…"
+        case .store: return "Search extensions…"
         }
     }
 }
@@ -293,6 +297,7 @@ final class AppCore: ObservableObject {
         extensionCatalog.setDisabledNames(extensionStore.disabledNames)
         appIndex.setExtensionCommands(extensionCatalog.commands)
         extensionScheduler.reload(commands: extensionCatalog.commands)
+        Task { await appIndex.refresh() }
     }
 
     func importExtension() {
@@ -908,6 +913,9 @@ final class AppCore: ObservableObject {
             createQuicklink()
         case .searchEmoji:
             palette.enterSubscreen(.emoji)
+        case .store:
+            palette.enterSubscreen(.store)
+            extensionStore.refreshRemoteCatalog()
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()

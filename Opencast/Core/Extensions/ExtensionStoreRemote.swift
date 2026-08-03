@@ -24,7 +24,6 @@ struct ExtensionStorePackage: Codable, Equatable, Identifiable, Sendable {
 }
 
 enum ExtensionStoreError: LocalizedError {
-    case consentRequired
     case invalidCatalog
     case invalidPackageURL
     case packageTooLarge
@@ -33,7 +32,6 @@ enum ExtensionStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .consentRequired: "Extension Store network access is disabled."
         case .invalidCatalog: "The Extension Store catalog is invalid."
         case .invalidPackageURL: "The extension package URL is not trusted."
         case .packageTooLarge: "The extension package is too large."

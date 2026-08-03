@@ -17,7 +17,6 @@ final class ExtensionStoreManager: ObservableObject {
     @Published private(set) var remotePackages: [ExtensionStorePackage] = []
     @Published private(set) var isLoadingCatalog = false
     @Published private(set) var downloadingNames: Set<String> = []
-    @Published private(set) var storeNetworkConsentGranted: Bool
     @Published private(set) var lastError: String?
 
     let directory: URL
@@ -29,7 +28,6 @@ final class ExtensionStoreManager: ObservableObject {
     private let validator = ExtensionPackageValidator()
     private let fileManager = FileManager.default
     private let disabledDefaultsKey: String
-    private let storeNetworkConsentKey: String
     private let networkSession: URLSession
     private let decoder: JSONDecoder
 
@@ -39,8 +37,6 @@ final class ExtensionStoreManager: ObservableObject {
         versionsDirectory = base.appendingPathComponent(".versions", isDirectory: true)
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
         disabledDefaultsKey = "extensions.disabled.\(bundleID)"
-        storeNetworkConsentKey = "extensionStoreNetworkConsent." + bundleID
-        storeNetworkConsentGranted = UserDefaults.standard.bool(forKey: storeNetworkConsentKey)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -75,24 +71,13 @@ final class ExtensionStoreManager: ObservableObject {
         lastError = nil
     }
 
-    func setStoreNetworkConsent(_ granted: Bool) {
-        storeNetworkConsentGranted = granted
-        UserDefaults.standard.set(granted, forKey: storeNetworkConsentKey)
-        if !granted { remotePackages = [] }
-    }
-
     func refreshRemoteCatalog() {
-        guard storeNetworkConsentGranted else {
-            lastError = ExtensionStoreError.consentRequired.localizedDescription
-            return
-        }
         guard !isLoadingCatalog else { return }
         isLoadingCatalog = true
         lastError = nil
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                guard storeNetworkConsentGranted else { throw ExtensionStoreError.consentRequired }
                 var components = URLComponents(url: Self.catalogURL, resolvingAgainstBaseURL: false)
                 components?.queryItems = [URLQueryItem(name: "cache", value: UUID().uuidString)]
                 guard let catalogURL = components?.url else { throw ExtensionStoreError.invalidCatalog }
@@ -100,7 +85,6 @@ final class ExtensionStoreManager: ObservableObject {
                 request.httpMethod = "GET"
                 request.cachePolicy = .reloadIgnoringLocalCacheData
                 let (data, response) = try await networkSession.data(for: request)
-                guard storeNetworkConsentGranted else { throw ExtensionStoreError.consentRequired }
                 guard data.count <= 2 * 1024 * 1024,
                     (response as? HTTPURLResponse)?.statusCode == 200
                 else { throw ExtensionStoreError.invalidCatalog }
@@ -118,8 +102,7 @@ final class ExtensionStoreManager: ObservableObject {
     }
 
     func installRemote(_ package: ExtensionStorePackage) {
-        guard storeNetworkConsentGranted else {
-            lastError = ExtensionStoreError.consentRequired.localizedDescription
+        if installed.contains(where: { $0.name == package.name && $0.report.version == package.version }) {
             return
         }
         guard isTrustedCatalogPackage(package) else {
@@ -274,9 +257,7 @@ final class ExtensionStoreManager: ObservableObject {
 
     private func downloadAndUnpack(_ package: ExtensionStorePackage) async throws -> URL {
         guard isTrustedPackageURL(package.packageURL) else { throw ExtensionStoreError.invalidPackageURL }
-        guard storeNetworkConsentGranted else { throw ExtensionStoreError.consentRequired }
         let (data, response) = try await networkSession.data(from: package.packageURL)
-        guard storeNetworkConsentGranted else { throw ExtensionStoreError.consentRequired }
         guard data.count <= 32 * 1024 * 1024,
             (response as? HTTPURLResponse)?.statusCode == 200
         else { throw ExtensionStoreError.packageTooLarge }

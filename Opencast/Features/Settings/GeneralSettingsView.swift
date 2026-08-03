@@ -1,13 +1,9 @@
-import AppKit
 import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
     @ObservedObject private var updates = AppCore.shared.updates
-    @ObservedObject private var extensionScheduler = AppCore.shared.extensionScheduler
-    @ObservedObject private var extensionStore = AppCore.shared.extensionStore
     @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
-    @State private var showingExtensionStore = false
 
     var body: some View {
         SettingsPane(
@@ -68,74 +64,6 @@ struct GeneralSettingsView: View {
                 }
             }
 
-            SettingsSection(header: "Extensions") {
-                SettingsControlRow(
-                    title: "Import Extension",
-                    subtitle: "Install a prebuilt .ocx package. Packages are validated before activation.",
-                    systemImage: "shippingbox",
-                    tint: Theme.Colors.systemAccent
-                ) {
-                    Button("Choose…") { AppCore.shared.importExtension() }
-                        .controlSize(.small)
-                }
-                SettingsRowDivider()
-                SettingsControlRow(
-                    title: "Extension Store",
-                    subtitle: "Browse verified .ocx packages from the static GitHub Releases catalog.",
-                    systemImage: "shippingbox.fill",
-                    tint: Theme.Colors.systemAccent
-                ) {
-                    Button("Browse…") { showingExtensionStore = true }
-                        .controlSize(.small)
-                }
-                ForEach(extensionStore.installed) { installed in
-                    SettingsRowDivider()
-                    SettingsControlRow(
-                        title: installed.title,
-                        subtitle:
-                            "\(installed.report.channel.title) · \(installed.report.score)/100 · \(ByteCountFormatter.string(fromByteCount: Int64(installed.report.bundleBytes), countStyle: .file))",
-                        systemImage: installed.disabled ? "pause.circle" : "checkmark.seal",
-                        tint: installed.disabled ? .orange : .green
-                    ) {
-                        Menu("Manage") {
-                            Button(installed.disabled ? "Enable" : "Disable") {
-                                extensionStore.disable(installed.name, disabled: !installed.disabled)
-                            }
-                            if installed.rollbackAvailable {
-                                Button("Rollback") { extensionStore.rollback(installed.name) }
-                            }
-                            Button("Remove", role: .destructive) { extensionStore.remove(installed.name) }
-                        }
-                        .controlSize(.small)
-                    }
-                }
-                if let error = extensionStore.lastError {
-                    SettingsRowDivider()
-                    SettingsControlRow(
-                        title: "Extension error",
-                        subtitle: error,
-                        systemImage: "exclamationmark.triangle",
-                        tint: .orange
-                    ) {
-                        Button("Dismiss") { extensionStore.clearError() }
-                            .controlSize(.small)
-                    }
-                }
-                SettingsRowDivider()
-                SettingsControlRow(
-                    title: "Allow background refresh",
-                    subtitle:
-                        "Run interval and menu-bar extensions only when enabled. Background work is disabled by default.",
-                    systemImage: "arrow.clockwise",
-                    tint: Theme.Colors.systemAccent
-                ) {
-                    Toggle("", isOn: $extensionScheduler.backgroundEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                }
-            }
-
             SettingsSection(header: "Setup") {
                 SettingsControlRow(
                     title: "Welcome Guide",
@@ -148,9 +76,6 @@ struct GeneralSettingsView: View {
                         .controlSize(.small)
                 }
             }
-        }
-        .sheet(isPresented: $showingExtensionStore) {
-            ExtensionStoreView()
         }
     }
 

@@ -28,7 +28,8 @@ final class ExtensionScheduler: ObservableObject {
         self.snapshotStore = snapshotStore
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
         enabledKey = "extensionBackgroundEnabled.\(bundleID)"
-        backgroundEnabled = defaults.bool(forKey: enabledKey)
+        backgroundEnabled = true
+        defaults.set(true, forKey: enabledKey)
     }
 
     func start(commands: [ExtensionCommand]) {
