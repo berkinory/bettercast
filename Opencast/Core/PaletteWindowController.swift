@@ -101,10 +101,34 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     func presentConfirmation(
         message: String, informativeText: String, confirmTitle: String
     ) -> Bool {
+        presentConfirmationResponse(
+            message: message,
+            informativeText: informativeText,
+            primaryTitle: confirmTitle,
+            secondaryTitle: "Cancel",
+            style: .warning,
+            primaryIsDestructive: true
+        ) == .primary
+    }
+
+    func presentConfirmationResponse(
+        message: String,
+        informativeText: String,
+        primaryTitle: String,
+        secondaryTitle: String? = nil,
+        style: NSAlert.Style = .informational,
+        primaryIsDestructive: Bool = false
+    ) -> NativeConfirmation.Response {
         isPresentingConfirmation = true
         defer { isPresentingConfirmation = false }
-        return NativeConfirmation.present(
-            message: message, informativeText: informativeText, confirmTitle: confirmTitle)
+        return NativeConfirmation.show(
+            message: message,
+            informativeText: informativeText,
+            primaryTitle: primaryTitle,
+            secondaryTitle: secondaryTitle,
+            style: style,
+            primaryIsDestructive: primaryIsDestructive
+        )
     }
 
     /// Paste into the previously focused app while leaving the palette frontmost (keystroke delivered straight to that app's process).

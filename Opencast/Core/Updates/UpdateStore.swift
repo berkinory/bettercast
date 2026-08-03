@@ -1,6 +1,7 @@
 import Combine
 import CryptoKit
 import Foundation
+import OSLog
 
 @MainActor
 final class UpdateStore: ObservableObject {
@@ -166,6 +167,10 @@ final class UpdateStore: ObservableObject {
     private let defaults = UserDefaults.standard
     private let consentKey: String
     private let currentVersion: String
+    private let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.opencast.app",
+        category: "updates"
+    )
 
     @Published private(set) var state: State = .idle
     @Published private(set) var networkConsentGranted: Bool
@@ -217,6 +222,7 @@ final class UpdateStore: ObservableObject {
         }
 
         state = .checking
+        logger.info("Checking for updates from GitHub. Current version: \(self.currentVersion, privacy: .public)")
         do {
             let release = try await Self.fetchLatestRelease()
             guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
@@ -248,16 +254,20 @@ final class UpdateStore: ObservableObject {
                 notes: release.body ?? ""
             )
             state = .available(info)
+            logger.info("Update available: \(info.version, privacy: .public)")
             return info
         } catch {
             state = .failed(error.localizedDescription)
+            logger.error("Update check failed: \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
 
     func downloadAndPrepare(_ update: UpdateInfo) async throws -> PreparedUpdate {
         guard networkConsentGranted else { throw Error.consentRequired }
-        guard !isHomebrewManaged else { throw Error.consentRequired }
+        let homebrewManaged = isHomebrewManaged
+        guard !homebrewManaged else { throw Error.consentRequired }
+        logger.info("Preparing update \(update.version, privacy: .public) from \(update.downloadURL.absoluteString, privacy: .public)")
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
@@ -266,43 +276,30 @@ final class UpdateStore: ObservableObject {
         defer { session.invalidateAndCancel() }
         var request = URLRequest(url: update.downloadURL)
         request.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
-        let (bytes, response) = try await session.bytes(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse,
             (200..<300).contains(response.statusCode)
         else { throw Error.invalidResponse }
+        logger.info(
+            "Update download response: HTTP \(response.statusCode, privacy: .public), bytes: \(data.count, privacy: .public)"
+        )
         guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
 
         state = .downloading
         let archiveExtension = update.archiveKind == .zip ? "zip" : "dmg"
         let archiveURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("OpencastUpdate-\(UUID().uuidString).\(archiveExtension)")
-        FileManager.default.createFile(atPath: archiveURL.path, contents: nil)
         defer { try? FileManager.default.removeItem(at: archiveURL) }
-        let handle = try FileHandle(forWritingTo: archiveURL)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        var buffer = Data()
-        buffer.reserveCapacity(64 * 1024)
-        for try await byte in bytes {
-            try Task.checkCancellation()
-            guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
-            buffer.append(byte)
-            if buffer.count >= 64 * 1024 {
-                try handle.write(contentsOf: buffer)
-                hasher.update(data: buffer)
-                buffer.removeAll(keepingCapacity: true)
-            }
-        }
-        if !buffer.isEmpty {
-            try handle.write(contentsOf: buffer)
-            hasher.update(data: buffer)
-        }
+        let actualDigest = try await Task.detached(priority: .utility) {
+            try data.write(to: archiveURL, options: .atomic)
+            return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        }.value
         guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
-        let actualDigest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
         guard actualDigest.caseInsensitiveCompare(update.sha256) == .orderedSame else {
             throw Error.invalidDigest
         }
-        guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
+        logger.info("Update archive digest verified for \(update.version, privacy: .public)")
+        guard networkConsentGranted, !homebrewManaged else { throw Error.consentRequired }
         state = .preparing
 
         let currentAppURL = Bundle.main.bundleURL
@@ -322,15 +319,18 @@ final class UpdateStore: ObservableObject {
                 throw Error.consentRequired
             }
             try? FileManager.default.removeItem(at: archiveURL)
+            logger.info("Update archive prepared: \(update.version, privacy: .public)")
             return prepared
         } catch {
             try? FileManager.default.removeItem(at: archiveURL)
+            logger.error("Update preparation failed: \(error.localizedDescription, privacy: .public)")
             throw error
         }
     }
 
     func install(_ update: PreparedUpdate) throws {
         guard networkConsentGranted, !isHomebrewManaged else { throw Error.consentRequired }
+        logger.info("Launching updater for \(update.version, privacy: .public)")
         try UpdateInstaller.launchApply(update)
     }
 

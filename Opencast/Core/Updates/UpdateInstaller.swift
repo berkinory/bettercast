@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import OSLog
 import Security
 
 struct PreparedUpdate: Sendable {
@@ -10,6 +11,11 @@ struct PreparedUpdate: Sendable {
 }
 
 enum UpdateInstaller {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "com.opencast.app",
+        category: "updates"
+    )
+
     enum Failure: LocalizedError {
         case invalidArchive
         case invalidSignature
@@ -70,6 +76,7 @@ enum UpdateInstaller {
 
     static func launchApply(_ update: PreparedUpdate) throws {
         guard let executableURL = Bundle.main.executableURL else { throw Failure.invalidArchive }
+        logger.info("Starting updater process for \(update.version, privacy: .public)")
         let process = Process()
         process.executableURL = executableURL
         process.arguments = [
@@ -91,6 +98,7 @@ enum UpdateInstaller {
         else { return false }
 
         let currentAppURL = Bundle.main.bundleURL
+        logger.info("Updater process started for \(expectedVersion, privacy: .public)")
         waitForExit(parentPID)
         do {
             let apps = try FileManager.default.contentsOfDirectory(
@@ -106,8 +114,17 @@ enum UpdateInstaller {
             else { throw Failure.wrongVersion }
             try verifySignature(currentAppURL: currentAppURL, updateURL: updateURL)
             try replaceApp(at: currentAppURL, with: updateURL)
+            logger.info("Replaced app bundle with update \(expectedVersion, privacy: .public)")
             NSWorkspace.shared.openApplication(at: currentAppURL, configuration: .init())
         } catch {
+            logger.error("Update installation failed: \(error.localizedDescription, privacy: .public)")
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "Could not install the update"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
             NSWorkspace.shared.openApplication(at: currentAppURL, configuration: .init())
         }
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: stagingPath))

@@ -367,7 +367,7 @@ final class AppCore: ObservableObject {
             return
         }
         if !updates.networkConsentGranted {
-            let response = NativeConfirmation.show(
+            let response = windowController.presentConfirmationResponse(
                 message: "Allow update checks?",
                 informativeText:
                     "Opencast will contact GitHub to check for a newer release. No data about your usage is sent.",
@@ -388,7 +388,7 @@ final class AppCore: ObservableObject {
                     }
                     return
                 }
-                let response = NativeConfirmation.show(
+                let response = windowController.presentConfirmationResponse(
                     message: "Opencast \(update.version) is available",
                     informativeText: "Download and prepare the update from GitHub?",
                     primaryTitle: "Update",
@@ -398,7 +398,7 @@ final class AppCore: ObservableObject {
 
                 do {
                     let prepared = try await updates.downloadAndPrepare(update)
-                    let installResponse = NativeConfirmation.show(
+                    let installResponse = windowController.presentConfirmationResponse(
                         message: "Ready to install Opencast \(update.version)",
                         informativeText: "Opencast will restart automatically to finish the update.",
                         primaryTitle: "Install & Relaunch",
@@ -413,15 +413,25 @@ final class AppCore: ObservableObject {
                 } catch is CancellationError {
                     return
                 } catch {
-                    palette.postFeedback("Could not prepare the update", tone: .error)
+                    showUpdateError(error)
                 }
             } catch is CancellationError {
                 return
             } catch {
-                palette.postFeedback("Could not check for updates", tone: .error)
+                showUpdateError(error)
             }
         }
         updateTask = task
+    }
+
+    private func showUpdateError(_ error: Error) {
+        let message = error.localizedDescription
+        palette.postFeedback("Update failed: \(message)", tone: .error)
+        _ = windowController.presentConfirmationResponse(
+            message: "Could not update Opencast",
+            informativeText: message,
+            primaryTitle: "OK"
+        )
     }
 
     private func checkHomebrewUpdates() {
@@ -432,7 +442,7 @@ final class AppCore: ObservableObject {
                 palette.postFeedback("Homebrew reports Opencast is up to date")
             case let .updateAvailable(current, latest):
                 let command = "brew update && brew upgrade --cask opencast"
-                if NativeConfirmation.show(
+                if windowController.presentConfirmationResponse(
                     message: "Opencast \(latest) is available",
                     informativeText: "Homebrew manages this installation. Installed: \(current). Run:\n\(command)",
                     primaryTitle: "Copy Command",
