@@ -93,7 +93,10 @@ final class ExtensionStoreManager: ObservableObject {
             guard let self else { return }
             do {
                 guard storeNetworkConsentGranted else { throw ExtensionStoreError.consentRequired }
-                var request = URLRequest(url: Self.catalogURL)
+                var components = URLComponents(url: Self.catalogURL, resolvingAgainstBaseURL: false)
+                components?.queryItems = [URLQueryItem(name: "cache", value: UUID().uuidString)]
+                guard let catalogURL = components?.url else { throw ExtensionStoreError.invalidCatalog }
+                var request = URLRequest(url: catalogURL)
                 request.httpMethod = "GET"
                 request.cachePolicy = .reloadIgnoringLocalCacheData
                 let (data, response) = try await networkSession.data(for: request)
