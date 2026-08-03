@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 enum PaletteMode: String, CaseIterable, Identifiable {
@@ -198,7 +197,6 @@ final class AppCore: ObservableObject {
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
     private var updateTask: Task<Void, Never>?
-    private var cancellables = Set<AnyCancellable>()
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -212,15 +210,7 @@ final class AppCore: ObservableObject {
         // AppKit's default tooltip delay is ~2–3s; shorten it (in ms) so the compact-bar favorite tooltips appear promptly. Registration domain — never overrides a user default.
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
         NSApp.setActivationPolicy(.accessory)
-        applyAppearance(settings.appearance)
-        settings.$appearance
-            .dropFirst()
-            .sink { [weak self] appearance in
-                MainActor.assumeIsolated {
-                    self?.applyAppearance(appearance)
-                }
-            }
-            .store(in: &cancellables)
+        applyDarkAppearance()
 
         clipboardStore.maxAge = settings.clipboardRetention.maxAge
         // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
@@ -251,10 +241,11 @@ final class AppCore: ObservableObject {
         }
     }
 
-    private func applyAppearance(_ appearance: AppAppearance) {
-        NSApp.appearance = appearance.nsAppearance
+    private func applyDarkAppearance() {
+        let appearance = NSAppearance(named: .darkAqua)
+        NSApp.appearance = appearance
         for window in NSApp.windows {
-            window.appearance = appearance.nsAppearance
+            window.appearance = appearance
         }
     }
 

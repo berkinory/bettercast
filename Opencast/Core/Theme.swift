@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Central design tokens for the palette UI (dark-first design system per `docs/ui.md`; neutral colors adapt to the selected appearance).
+/// Central design tokens for the palette UI (dark design system per `docs/ui.md`).
 enum Theme {
     enum Spacing {
         static let xxs: CGFloat = 2
@@ -219,6 +219,14 @@ enum Theme {
                     : NSColor(calibratedWhite: 0.99, alpha: 0.90)
             }
         )
+        static let menuSurface = Color(
+            nsColor: NSColor(name: "OpencastMenuSurface") { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                return isDark
+                    ? NSColor(calibratedWhite: 0.16, alpha: 1)
+                    : NSColor(calibratedWhite: 0.99, alpha: 1)
+            }
+        )
         static let footerStroke = contentBase.opacity(0.16)
         static let textPrimary = contentBase
         static let textOnPrimary = surfaceBase
@@ -347,14 +355,14 @@ struct KeyCapChip: View {
 }
 
 extension View {
-    /// A floating Liquid Glass control surface on Tahoe, with an appearance-aware fallback on older supported systems.
+    /// A floating Liquid Glass control surface on Tahoe, with an opaque fallback on older supported systems.
     @ViewBuilder
     func frosted<S: Shape>(in shape: S) -> some View {
         if #available(macOS 26.0, *) {
             glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
                 .tint(.clear)
         } else {
-            background(shape.fill(Theme.Colors.controlSurface))
+            background(shape.fill(Theme.Colors.menuSurface))
                 .overlay(shape.stroke(Theme.Colors.border, lineWidth: 1))
                 .tint(.clear)
         }

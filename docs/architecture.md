@@ -35,8 +35,8 @@ imperatively from AppKit.
   The primary action is on the right and bound to Return; the secondary action is on the left and bound
   to Escape. Do not add direct `NSAlert` or SwiftUI `confirmationDialog` calls elsewhere.
 
-The app uses a dark-first appearance globally; users can opt into the light appearance from General
-Settings. Liquid Glass and neutral theme tokens adapt with the selected appearance.
+The app uses a dark appearance globally. Liquid Glass and neutral theme tokens resolve against that
+appearance.
 
 ## Concurrency
 

@@ -220,13 +220,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		059CCA5CCA2AEE1BE3B7777A /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
 		0A9CF0EDF6E04195D99499AF /* Emoji */ = {
 			isa = PBXGroup;
 			children = (
@@ -465,7 +458,6 @@
 				74FCDAED59B8DFDFCFEA8C6C /* App */,
 				2D8FA43301B9BA33C0ACFFCA /* Core */,
 				D8363B78AFE28A08542A5A14 /* Features */,
-				059CCA5CCA2AEE1BE3B7777A /* Resources */,
 				B8243C4190704B957722DE7C /* Assets.xcassets */,
 				6EE41A3AF3116D7D65F0F12F /* Info.plist */,
 				5D8BB112B36CE62BCA249E30 /* Opencast.entitlements */,
@@ -726,7 +718,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -793,7 +785,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				OTHER_CODE_SIGN_FLAGS = "--timestamp";

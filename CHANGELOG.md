@@ -45,4 +45,15 @@
 
 - Quicklinks can now be added to and removed from launcher favorites.
 - Palette-level command shortcuts now handle Settings, close, and return-to-root actions reliably.
-- Refined the palette surface, footer controls, action keycaps, row spacing, and appearance-aware light/dark styling.
+- Refined the palette surface, footer controls, action keycaps, row spacing, and dark-only styling.
+- Settings navigation now scrolls independently from the selected pane.
+
+### Fixed
+
+- Prevented Actions menus from showing the underlying palette rows on older macOS versions.
+- Removed the leftover top spacing after removing the Settings sidebar search field.
+
+### Removed
+
+- Removed the light appearance option. Opencast now uses the dark appearance only.
+- Removed the Settings-wide search field and search results view.

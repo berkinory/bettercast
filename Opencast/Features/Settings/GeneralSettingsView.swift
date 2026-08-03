@@ -41,25 +41,6 @@ struct GeneralSettingsView: View {
                 }
             }
 
-            SettingsSection(header: "Appearance") {
-                SettingsControlRow(
-                    title: "Interface",
-                    subtitle: "Choose the default dark or light appearance.",
-                    systemImage: "circle.lefthalf.filled",
-                    tint: Theme.Colors.generalAccent,
-                    destination: .appearance
-                ) {
-                    Picker("", selection: $settings.appearance) {
-                        ForEach(AppAppearance.allCases) { appearance in
-                            Text(appearance.title).tag(appearance)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .controlSize(.small)
-                }
-            }
-
             SettingsSection(header: "Updates") {
                 SettingsControlRow(
                     title: "Allow update checks",

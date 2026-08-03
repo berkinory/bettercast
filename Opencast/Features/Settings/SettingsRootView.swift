@@ -103,40 +103,22 @@ enum SettingsGroup: String, CaseIterable, Identifiable, Sendable {
 @MainActor
 private final class SettingsNavigationModel: ObservableObject {
     @Published var route: SettingsRoute
-    @Published var searchQuery = ""
-    @Published var selectedSearchResultID: String?
-    @Published var searchScrollToken = UUID()
 
     init(route: SettingsRoute) {
         self.route = route
     }
 
     func navigate(to route: SettingsRoute) {
-        searchQuery = ""
-        selectedSearchResultID = nil
         self.route = route
     }
 
     func select(_ tab: SettingsTab) {
         navigate(to: SettingsRoute(tab: tab))
     }
-
-    func reconcileSearchSelection(with ids: [String]) {
-        selectedSearchResultID = ids.first
-        searchScrollToken = UUID()
-    }
-
-    func moveSearchSelection(by offset: Int, ids: [String]) {
-        guard !ids.isEmpty else { return }
-        let current = selectedSearchResultID.flatMap { ids.firstIndex(of: $0) } ?? 0
-        selectedSearchResultID = ids[min(max(current + offset, 0), ids.count - 1)]
-        searchScrollToken = UUID()
-    }
 }
 
 struct SettingsRootView: View {
     @StateObject private var navigation: SettingsNavigationModel
-    @FocusState private var searchFocused: Bool
 
     private struct SidebarGroup: Identifiable {
         let group: SettingsGroup
@@ -152,25 +134,6 @@ struct SettingsRootView: View {
         SettingsGroup.allCases.map { SidebarGroup(group: $0, tabs: $0.tabs) }
     }
 
-    private var isSearching: Bool {
-        !navigation.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var searchItems: [SettingsSearchItem] {
-        SettingsSearchCatalog.staticItems
-    }
-
-    private var searchResults: [SettingsSearchItem] {
-        let items = searchItems
-        let itemsByID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
-        return SettingsSearchIndex.search(
-            navigation.searchQuery,
-            in: items.map(\.record)
-        ).compactMap { itemsByID[$0.record.id] }
-    }
-
-    private var searchResultIDs: [String] { searchResults.map(\.id) }
-
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -185,47 +148,13 @@ struct SettingsRootView: View {
             guard let route = note.object as? SettingsRoute else { return }
             navigation.navigate(to: route)
         }
-        .onChange(of: searchResultIDs, initial: true) { _, ids in
-            navigation.reconcileSearchSelection(with: ids)
-        }
-        .onKeyPress(keys: ["f"], phases: .down) { press in
-            guard press.modifiers.contains(.command) else { return .ignored }
-            searchFocused = true
-            return .handled
-        }
     }
 
     private var content: some View {
-        ZStack {
-            if isSearching {
-                SettingsSearchView(
-                    query: navigation.searchQuery,
-                    items: searchResults,
-                    selectedID: navigation.selectedSearchResultID,
-                    scrollToken: navigation.searchScrollToken,
-                    onSelect: { navigation.selectedSearchResultID = $0 },
-                    onActivate: activateSearchResult
-                )
-            } else {
-                pane(for: navigation.route.tab)
-                    .environment(\.settingsDestination, navigation.route.destination)
-                    .id(navigation.route.tab)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func activateSearchResult(_ item: SettingsSearchItem) {
-        searchFocused = false
-        navigation.navigate(to: item.route)
-    }
-
-    private func activateSelectedSearchResult() {
-        let selected = navigation.selectedSearchResultID.flatMap { id in
-            searchResults.first { $0.id == id }
-        }
-        guard let item = selected ?? searchResults.first else { return }
-        activateSearchResult(item)
+        pane(for: navigation.route.tab)
+            .environment(\.settingsDestination, navigation.route.destination)
+            .id(navigation.route.tab)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -246,18 +175,7 @@ struct SettingsRootView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SidebarSearchField(
-                query: $navigation.searchQuery,
-                isFocused: $searchFocused,
-                onMove: {
-                    navigation.moveSearchSelection(by: $0, ids: searchResultIDs)
-                },
-                onActivate: activateSelectedSearchResult,
-                onCancel: { navigation.searchQuery = "" }
-            )
-            .padding(.horizontal, Theme.Settings.Layout.sidebarInset)
-
+        ScrollView {
             VStack(alignment: .leading, spacing: Theme.Settings.Layout.groupSpacing) {
                 ForEach(sidebarGroups) { section in
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -274,10 +192,10 @@ struct SettingsRootView: View {
                 }
             }
             .padding(.vertical, Theme.Spacing.xxl)
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, Theme.Settings.Layout.sidebarTopInset)
+        .overlayScroller(disablesElasticity: true)
         .frame(width: Theme.Settings.Size.sidebarWidth)
         .frame(maxHeight: .infinity)
         .background(
@@ -299,66 +217,8 @@ struct SettingsRootView: View {
             tint: item.tint,
             isSelected: navigation.route.tab == item
         ) {
-            searchFocused = false
             navigation.select(item)
         }
-    }
-}
-
-private struct SidebarSearchField: View {
-    @Binding var query: String
-    var isFocused: FocusState<Bool>.Binding
-    let onMove: (Int) -> Void
-    let onActivate: () -> Void
-    let onCancel: () -> Void
-
-    var body: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: Theme.Settings.Radius.search,
-            style: .continuous
-        )
-
-        HStack(spacing: Theme.Spacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .font(Theme.Typography.iconMedium)
-                .foregroundStyle(isFocused.wrappedValue ? .primary : .secondary)
-            TextField("Search settings", text: $query, onCommit: onActivate)
-                .textFieldStyle(.plain)
-                .font(Theme.Typography.callout)
-                .focused(isFocused)
-                .onCommand(#selector(NSResponder.moveDown(_:))) { onMove(1) }
-                .onCommand(#selector(NSResponder.moveUp(_:))) { onMove(-1) }
-                .onCommand(#selector(NSResponder.cancelOperation(_:))) {
-                    if query.isEmpty {
-                        isFocused.wrappedValue = false
-                    } else {
-                        onCancel()
-                    }
-                }
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(Theme.Typography.iconSmall)
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-                .help("Clear search")
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .frame(height: Theme.Settings.Size.searchHeight)
-        .background(shape.fill(Theme.Settings.Colors.searchFill))
-        .overlay(
-            shape.strokeBorder(
-                isFocused.wrappedValue
-                    ? Theme.Settings.Colors.searchFocus : Theme.Settings.Colors.searchStroke,
-                lineWidth: 1
-            )
-        )
     }
 }
 

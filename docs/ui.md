@@ -15,7 +15,7 @@ just the OS behind-window blur under an adaptive dark surface — there is no gr
 surface uses an appearance-aware neutral ramp. The header and bottom bar **float over the list as fully
 transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
 bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Popover menus use **Liquid Glass on macOS 26+**; footer controls use a stable appearance-aware neutral surface so their contrast does not shift with wallpaper.
-and an appearance-aware fallback on older supported systems. Dark remains the default, while Light is an explicit user choice.
+and an opaque dark fallback on older supported systems. The app always uses its dark appearance.
 
 Five load-bearing ideas, in priority order:
 
@@ -31,7 +31,7 @@ Five load-bearing ideas, in priority order:
 
 These are the things that quietly break the look if changed. Preserve them unless the task is explicitly to change them.
 
-- **Dark by default, light by choice.** `AppSettings` persists the selected appearance; `AppCore` applies it globally and `Theme.Colors` resolves neutral tokens from the selected content/surface base. Brand accents remain fixed across both appearances.
+- **Dark only.** `AppCore` applies the dark appearance globally. Theme tokens keep their neutral ramp for system color resolution, while brand accents remain fixed.
 - **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (appearance-aware neutral alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
 - **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
 - **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(adaptive panel surface) → .background(VisualEffectView(.hudWindow)) → .overlay(stroke) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the surface goes _over_ the vibrancy, and the clip is last.
@@ -104,7 +104,7 @@ explicit size (18pt regular). Use `rowTitle` (`.body`), `sectionHeader` (`.subhe
 | `glassFrost`     | content base 0.10 | appearance-aware tint layered into glass      |
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
-the selected appearance). **Selection always beats hover** when a row is both.
+the dark surface). **Selection always beats hover** when a row is both.
 
 ---
 
@@ -161,9 +161,9 @@ leading gap. Headers are non-selectable display rows, so selection (keyed by id)
 
 Glass is **only** for floating controls, never the main surface.
 
-- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and an appearance-aware solid surface with a border below it. Used by popover menus; footer controls use `paletteFooterSurface(in:)` so they stay visually stable in both appearances.
+- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and an opaque dark surface with a border below it on older systems. Used by popover menus; footer controls use `paletteFooterSurface(in:)`.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a bottom corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's.
-- **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback uses the selected appearance's surface and border.
+- **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback is opaque so rows behind an open menu cannot bleed through.
 - `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.
 - The glyph is a `PopoverMenuIcon`: `.symbol` uses the shared `FeatureIcon` tile (primary — or **red** when `isDestructive`) and `.file` uses a real app icon via `IconCache` for paste targets. `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
 - **Both glyph kinds share one square `menuIcon` (20) slot**, which pins one row height. `FeatureIcon` owns the system glass/tile treatment for symbols; `IconCache` supplies the platform app icon for file-backed rows.
@@ -186,7 +186,7 @@ pane use the native `.overlayScroller()`. Don't reintroduce native scrollers on 
 
 ## Settings — `Features/Settings/SettingsComponents.swift`
 
-Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) and uses the palette's own surface language: behind-window blur under the same 40% appearance-aware scrim, the same neutral ramp, and the same row/keycap grammar. Its navigation is specific rather than catch-all: General; Launcher, Clipboard, Emoji & Symbols, Calculator; Shortcuts, Permissions; About. Networked currency conversion lives under Calculator.
+Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is unreliable for accessory apps) and uses the palette's own surface language: behind-window blur under the same dark scrim, the same neutral ramp, and the same row/keycap grammar. Its navigation is specific rather than catch-all: General; Launcher, Clipboard, Emoji & Symbols, Calculator; Shortcuts, Permissions; About. Networked currency conversion lives under Calculator.
 
 - **Sidebar** is compact: 14pt monochrome symbols in 24pt rounded feature-icon tiles, 34pt rows inset 8pt from both edges, one `selection` fill, and no scroll container. Feature tabs use muted accent colors; other Settings scrollers disable AppKit elasticity.
 - **`SettingsPane`** owns scrolling, destination jumps, fixed insets, and a compact `SettingsFeatureHeader`: a 28pt feature-icon tile beside a `.title3.semibold` title and one-line subtitle.
@@ -196,7 +196,6 @@ Settings runs in a fixed `760×560` `NSWindow` (the SwiftUI `Settings` scene is 
 - **`SettingsStatusCard`** keeps a neutral card surface and uses semantic color only on its status glyph.
 - Feature controls do not have to collapse into rows: Launcher uses visual Standard/Compact tiles, Clipboard uses app chips, Emoji uses direct tone swatches, and per-item shortcuts use an aligned table with eye buttons instead of a wall of switches. Their selection surfaces stay neutral.
 - `ShortcutRecorder` follows the Raycast-style two-layer model: its fixed monochrome trigger always shows a neutral border around `Record Hotkey` or one combined glyph value, and a bound shortcut shows its clear `×` whenever it is idle, without changing the footprint; capture hides the clear segment and releases its reserved content space. Recording opens an instant anchored capture popover above the field with modifier preview and a target footer whose icon matches the target row. Conflict feedback resolves on the next key press; success enters quickly, then fades into the neutral editing state. Feedback color animates independently while foreground content always changes immediately. Space or Return starts capture, Escape closes it, and Delete clears the binding.
-- Settings search indexes panes and actual setting targets only. It deliberately excludes every application, command, and System Settings item listed inside Shortcuts; those belong to the Shortcuts pane's local search.
 - Custom Settings controls use the shared neutral `settingsFocusRing` modifier so they remain visible and operable in the full keyboard-access loop.
 - Settings navigation, hover, search mode, and destination scrolling update immediately. The only deliberate animation is the short destination highlight fade; do not add springs or slow pane transitions.
 
