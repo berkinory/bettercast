@@ -106,6 +106,7 @@ extension-store-test: extension-host-build
 	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/kill-process --out build/extensions/kill-process.ocx --capability process.inspect --capability process.terminate --capability process.restart
 	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/port-manager --out build/extensions/port-manager.ocx --capability ports.inspect --capability process.terminate --capability clipboard.write
 	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/system-monitor --out build/extensions/system-monitor.ocx --capability system.metrics.read
+	@mkdir -p $(TEST_BIN_DIR)
 	cp Tools/extensions/store-test.swift $(TEST_BIN_DIR)/main.swift
 	swiftc -swift-version 6 Opencast/Core/Extensions/ExtensionModels.swift Opencast/Core/Extensions/ExtensionPackageValidator.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/extension-store-test
 	$(TEST_BIN_DIR)/extension-store-test build/extensions/list-clipboard.ocx
