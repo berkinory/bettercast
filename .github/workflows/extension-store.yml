@@ -11,6 +11,7 @@ on:
       - Extensions/Capabilities.json
       - Store/approved-extensions.json
       - Tools/extensions/**
+      - Makefile
       - .github/workflows/extension-store.yml
   workflow_dispatch:
 
