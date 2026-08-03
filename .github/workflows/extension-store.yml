@@ -10,8 +10,9 @@ on:
       - Extensions/Runtime/**
       - Extensions/Capabilities.json
       - Store/approved-extensions.json
-      - Tools/extensions/**
-      - Makefile
+      - Tools/extensions/build-extension.js
+      - Tools/extensions/build-store.js
+      - Tools/extensions/changed-store-extensions.js
       - .github/workflows/extension-store.yml
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       - name: Select Xcode 26
         run: |
@@ -44,23 +47,61 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Detect changed extensions
+        id: changes
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "mode=all" >> "$GITHUB_OUTPUT"
+            echo "only=" >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "$BEFORE" "$GITHUB_SHA" | node Tools/extensions/changed-store-extensions.js >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download current catalog
+        if: steps.changes.outputs.mode != 'none'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/catalog"
+          gh release download extensions \
+            --pattern extensions-catalog.json \
+            --dir "$RUNNER_TEMP/catalog" \
+            --clobber || true
+
       - name: Run extension validation
+        if: steps.changes.outputs.mode != 'none'
         run: make extension-store-test
 
       - name: Build store packages
+        if: steps.changes.outputs.mode != 'none'
         run: |
-          node Tools/extensions/build-store.js \
-            --out "$RUNNER_TEMP/extensions" \
-            --catalog "$RUNNER_TEMP/extensions-catalog.json" \
+          set -euo pipefail
+          args=(
+            --out "$RUNNER_TEMP/extensions"
+            --catalog "$RUNNER_TEMP/extensions-catalog.json"
             --release-base "https://github.com/${GITHUB_REPOSITORY}/releases/download/extensions"
+          )
+          if [ -f "$RUNNER_TEMP/catalog/extensions-catalog.json" ]; then
+            args+=(--catalog-input "$RUNNER_TEMP/catalog/extensions-catalog.json")
+          fi
+          if [ "${{ steps.changes.outputs.mode }}" = "only" ]; then
+            args+=(--only "${{ steps.changes.outputs.only }}")
+          fi
+          node Tools/extensions/build-store.js "${args[@]}"
 
       - name: Validate store packages
+        if: steps.changes.outputs.mode != 'none'
         run: |
           for package in "$RUNNER_TEMP/extensions"/*.ocx; do
             build/tests/extension-store-test "$package"
           done
 
       - name: Create or update store release
+        if: steps.changes.outputs.mode != 'none'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,16 +112,6 @@ jobs:
               --notes "Verified extension packages for Opencast." \
               --latest=false
           fi
-
-          assets="$(gh release view extensions --json assets --jq '.assets[].name' 2>/dev/null || true)"
-          while IFS= read -r asset; do
-            [ -z "$asset" ] && continue
-            case "$asset" in
-              extensions-catalog.json|*.ocx.zip)
-                gh release delete-asset extensions "$asset" --yes
-                ;;
-            esac
-          done <<< "$assets"
 
           gh release upload extensions "$RUNNER_TEMP/extensions"/*.ocx.zip --clobber
           gh release upload extensions "$RUNNER_TEMP/extensions-catalog.json" --clobber

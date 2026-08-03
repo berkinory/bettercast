@@ -15,7 +15,10 @@ function argument(name, fallback) {
 
 const output = path.resolve(argument("--out", "build/extension-store"));
 const catalogPath = path.resolve(argument("--catalog", path.join(output, "extensions-catalog.json")));
+const catalogInputArgument = argument("--catalog-input");
+const catalogInput = catalogInputArgument ? path.resolve(catalogInputArgument) : null;
 const releaseBase = argument("--release-base");
+const only = new Set((argument("--only", "") || "").split(",").filter(Boolean));
 
 if (!releaseBase) {
   throw new Error("usage: build-store.js --release-base https://github.com/.../releases/download/extensions [--out build/extension-store] [--catalog build/extensions-catalog.json]");
@@ -92,13 +95,44 @@ function buildPackage(entry) {
   };
 }
 
+function catalogFromInput() {
+  if (!catalogInput) return null;
+  if (!fs.existsSync(catalogInput)) return null;
+  const catalog = readJSON(catalogInput);
+  if (catalog.schemaVersion !== 1 || !Array.isArray(catalog.packages)) {
+    throw new Error("existing extension catalog is invalid");
+  }
+  return catalog;
+}
+
 function main() {
   const allowlist = readJSON(allowlistPath);
   if (allowlist.schemaVersion !== 1 || !Array.isArray(allowlist.extensions) || allowlist.extensions.length === 0) {
     throw new Error("approved extension allowlist is invalid");
   }
   fs.mkdirSync(output, { recursive: true });
-  const packages = allowlist.extensions.map(buildPackage);
+  const existingCatalog = catalogFromInput();
+  const partialBuild = only.size > 0 && existingCatalog !== null;
+  const entries = allowlist.extensions.filter((entry) => {
+    const name = readJSON(path.join(root, entry.fixture, "package.json")).name;
+    return !partialBuild || only.has(name);
+  });
+  if (partialBuild && entries.length !== only.size) {
+    throw new Error("changed extension list contains an unapproved package");
+  }
+  const builtPackages = entries.map(buildPackage);
+  const builtByName = new Map(builtPackages.map((item) => [item.name, item]));
+  const previousByName = new Map((existingCatalog?.packages || []).map((item) => [item.name, item]));
+  for (const packageInfo of builtPackages) {
+    const previous = previousByName.get(packageInfo.name);
+    if (previous && previous.bundleHash !== packageInfo.bundleHash && previous.version === packageInfo.version) {
+      throw new Error(`${packageInfo.name} changed without a version bump`);
+    }
+  }
+  const packages = allowlist.extensions
+    .map((entry) => readJSON(path.join(root, entry.fixture, "package.json")).name)
+    .map((name) => builtByName.get(name) || previousByName.get(name))
+    .filter(Boolean);
   writeJSON(catalogPath, {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
