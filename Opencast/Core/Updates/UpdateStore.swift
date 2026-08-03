@@ -267,7 +267,9 @@ final class UpdateStore: ObservableObject {
         guard networkConsentGranted else { throw Error.consentRequired }
         let homebrewManaged = isHomebrewManaged
         guard !homebrewManaged else { throw Error.consentRequired }
-        logger.info("Preparing update \(update.version, privacy: .public) from \(update.downloadURL.absoluteString, privacy: .public)")
+        logger.info(
+            "Preparing update \(update.version, privacy: .public) from \(update.downloadURL.absoluteString, privacy: .public)"
+        )
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil

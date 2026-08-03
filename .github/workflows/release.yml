@@ -1,12 +1,13 @@
 name: Release
 
-# The release is automatic only for a version change pushed to main by berkinory.
+# Automatic releases require an owner version change. Manual dispatches republish the current version.
 run-name: "Opencast release #${{ github.run_number }}"
 
 on:
   push:
     branches: [main]
     paths: [project.yml]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,6 +27,7 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
           ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           if [ "$ACTOR" != "berkinory" ]; then
@@ -34,8 +36,18 @@ jobs:
             exit 0
           fi
 
-          old_version="$(git show "$BEFORE:project.yml" 2>/dev/null | sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
           new_version="$(sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' project.yml | head -n1)"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if ! [[ "$new_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::project.yml MARKETING_VERSION must be x.y.z; got '$new_version'"
+              exit 1
+            fi
+            echo "Manually releasing $new_version"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          old_version="$(git show "$BEFORE:project.yml" 2>/dev/null | sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1 || true)"
           if [ "$old_version" = "$new_version" ]; then
             echo "Skipping release: MARKETING_VERSION did not change."
             echo "release=false" >> "$GITHUB_OUTPUT"
@@ -116,7 +128,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" \
             OTHER_CODE_SIGN_FLAGS="--timestamp" \
-            PRODUCT_NAME="$DISPLAY_NAME" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             ONLY_ACTIVE_ARCH=NO build
 
