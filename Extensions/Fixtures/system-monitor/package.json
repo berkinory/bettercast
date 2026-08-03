@@ -1,0 +1,16 @@
+{
+  "name": "system-monitor",
+  "title": "System Monitor",
+  "description": "Monitor CPU, memory, disk, network and battery state.",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "system-monitor",
+      "title": "System Monitor",
+      "description": "Monitor CPU, memory, disk, network and battery state.",
+      "icon": "gauge.with.dots.needle.67percent",
+      "mode": "view",
+      "src": "src/index.tsx"
+    }
+  ]
+}

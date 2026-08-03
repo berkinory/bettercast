@@ -169,15 +169,6 @@ private struct AppRow: View {
     let running: Bool
     /// Observed so a hotkey set/cleared in Settings re-renders the row's keycaps immediately.
     @EnvironmentObject private var hotKeys: HotKeyManager
-    @State private var hovered = false
-
-    /// Selection wins over hover when a row is both; otherwise hover shows its fainter layer.
-    private var fill: Color {
-        if selected { return Theme.Colors.selection }
-        if hovered { return Theme.Colors.rowHover }
-        return .clear
-    }
-
     /// Keycaps for this entry's hotkey, or `nil` if none is bound.
     private var shortcutCaps: [String]? {
         guard let action = app.hotKeyAction,
@@ -187,39 +178,37 @@ private struct AppRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            AppIconView(app: app)
-                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
-                .overlay(alignment: .bottom) {
-                    if running {
-                        Circle()
-                            .fill(.secondary)
-                            .frame(width: 3, height: 3)
-                            .offset(y: 3)
+        PaletteRow(
+            selected: selected,
+            leading: {
+                AppIconView(app: app)
+                    .overlay(alignment: .bottom) {
+                        if running {
+                            Circle()
+                                .fill(.secondary)
+                                .frame(width: 3, height: 3)
+                                .offset(y: 3)
+                        }
+                    }
+            },
+            content: {
+                Text(app.name)
+                    .font(Theme.Typography.rowTitle)
+                    .lineLimit(1)
+                if let caps = shortcutCaps {
+                    HStack(spacing: Theme.Spacing.xxs) {
+                        ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
+                            KeyCapChip(text: cap, style: .outline)
+                        }
                     }
                 }
-            Text(app.name)
-                .font(Theme.Typography.rowTitle)
-                .lineLimit(1)
-            if let caps = shortcutCaps {
-                HStack(spacing: Theme.Spacing.xxs) {
-                    ForEach(Array(caps.enumerated()), id: \.offset) { _, cap in
-                        KeyCapChip(text: cap, style: .outline)
-                    }
-                }
+            },
+            trailing: {
+                Text(app.kindLabel)
+                    .font(Theme.Typography.rowTrailing)
+                    .foregroundStyle(Theme.Colors.rowKind)
             }
-            Spacer()
-            Text(app.kindLabel)
-                .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(Theme.Colors.rowKind)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.rowVertical)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                .fill(fill)
         )
-        .armedHover($hovered)
     }
 }
 

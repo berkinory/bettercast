@@ -196,14 +196,6 @@ private struct UninstallRow: View {
     let checked: Bool
     let selected: Bool
     let icon: NSImage?
-    @State private var hovered = false
-
-    private var fill: Color {
-        if selected { return Theme.Colors.selection }
-        if hovered { return Theme.Colors.rowHover }
-        return .clear
-    }
-
     private var directory: String {
         (item.url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
     }
@@ -214,40 +206,42 @@ private struct UninstallRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            UninstallCheckbox(checked: checked)
-            Text(item.url.lastPathComponent)
-                .font(Theme.Typography.rowTitle)
-                .lineLimit(1)
-                .foregroundStyle(checked ? Color.primary : Theme.Colors.textSecondary)
-            Text(directory)
-                .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(Theme.Colors.textTertiary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: Theme.Spacing.md)
-            if let size = item.size {
-                Text(UninstallFormat.size(size))
+        PaletteRow(
+            selected: selected,
+            leading: {
+                UninstallCheckbox(checked: checked)
+            },
+            content: {
+                Text(item.url.lastPathComponent)
+                    .font(Theme.Typography.rowTitle)
+                    .lineLimit(1)
+                    .foregroundStyle(checked ? Color.primary : Theme.Colors.textSecondary)
+                Text(directory)
                     .font(Theme.Typography.rowTrailing)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            Group {
-                if let icon {
-                    Image(nsImage: icon).resizable()
-                } else {
-                    Image(systemName: trailingSymbol)
-                        .font(Theme.Typography.menuIcon)
-                        .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            },
+            trailing: {
+                if let size = item.size {
+                    Text(UninstallFormat.size(size))
+                        .font(Theme.Typography.rowTrailing)
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
+                Group {
+                    if let icon {
+                        Image(nsImage: icon).resizable()
+                    } else {
+                        Image(systemName: trailingSymbol)
+                            .font(Theme.Typography.menuIcon)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
             }
-            .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(fill))
-        .armedHover($hovered)
+        )
     }
 }
 

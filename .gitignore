@@ -27,6 +27,10 @@ buildServer.json
 build/
 dist/
 
+# Extension build artifacts
+Extensions/node_modules/
+Extensions/dist/
+
 # Apple signing secrets
 *.p8
 *.cer

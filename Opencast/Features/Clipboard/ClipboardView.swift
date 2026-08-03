@@ -186,31 +186,19 @@ private struct ClipboardRow: View {
     let item: ClipboardItem
     let selected: Bool
     let imageURL: URL?
-    @State private var hovered = false
-
-    /// Selection wins over hover when a row is both; otherwise hover shows its fainter layer.
-    private var fill: Color {
-        if selected { return Theme.Colors.selection }
-        if hovered { return Theme.Colors.rowHover }
-        return .clear
-    }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            thumbnail
-            Text(previewText)
-                .font(Theme.Typography.menuRow)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.rowVertical)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                .fill(fill)
+        PaletteRow(
+            selected: selected,
+            leading: { thumbnail },
+            content: {
+                Text(previewText)
+                    .font(Theme.Typography.menuRow)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            },
+            trailing: { EmptyView() }
         )
-        .armedHover($hovered)
     }
 
     private var previewText: String {

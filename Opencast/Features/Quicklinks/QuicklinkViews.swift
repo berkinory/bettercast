@@ -459,26 +459,24 @@ private struct QuicklinkList: View {
 struct QuicklinkRow: View {
     let quicklink: Quicklink
     let selected: Bool
-    @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            FeatureIcon(systemImage: quicklink.icon, tint: Theme.Colors.systemAccent, size: Theme.Size.rowIcon)
-            Text(quicklink.name)
-                .font(Theme.Typography.rowTitle)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            Text("Quicklink")
-                .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(Theme.Colors.rowKind)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                .fill(selected ? Theme.Colors.selection : hovered ? Theme.Colors.rowHover : .clear)
+        PaletteRow(
+            selected: selected,
+            leading: {
+                FeatureIcon(systemImage: quicklink.icon, tint: Theme.Colors.systemAccent)
+            },
+            content: {
+                Text(quicklink.name)
+                    .font(Theme.Typography.rowTitle)
+                    .lineLimit(1)
+            },
+            trailing: {
+                Text("Quicklink")
+                    .font(Theme.Typography.rowTrailing)
+                    .foregroundStyle(Theme.Colors.rowKind)
+            }
         )
-        .armedHover($hovered)
     }
 }
 

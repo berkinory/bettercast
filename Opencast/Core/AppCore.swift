@@ -2,1016 +2,1104 @@ import AppKit
 import SwiftUI
 
 enum PaletteMode: String, CaseIterable, Identifiable {
-    case launcher
-    case clipboard
-    case emoji
-    case snippets
-    case snippetEditor
-    case quicklinks
-    case quicklinkEditor
-    case uninstall
+  case launcher
+  case clipboard
+  case emoji
+  case snippets
+  case snippetEditor
+  case quicklinks
+  case quicklinkEditor
+  case uninstall
+  case extensionCommand
 
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .launcher: return "Apps"
-        case .clipboard: return "Clipboard History"
-        case .emoji: return "Emoji & Symbols"
-        case .snippets: return "Snippets"
-        case .snippetEditor: return "Snippet"
-        case .quicklinks: return "Quicklinks"
-        case .quicklinkEditor: return "Quicklink"
-        case .uninstall: return "Uninstall"
-        }
+  var id: String { rawValue }
+  var title: String {
+    switch self {
+    case .launcher: return "Apps"
+    case .clipboard: return "Clipboard History"
+    case .emoji: return "Emoji & Symbols"
+    case .snippets: return "Snippets"
+    case .snippetEditor: return "Snippet"
+    case .quicklinks: return "Quicklinks"
+    case .quicklinkEditor: return "Quicklink"
+    case .uninstall: return "Uninstall"
+    case .extensionCommand: return "Extension"
     }
-    var systemImage: String {
-        switch self {
-        case .launcher: return "magnifyingglass"
-        case .clipboard: return "doc.on.clipboard"
-        case .emoji: return "face.smiling"
-        case .snippets, .snippetEditor: return "text.quote"
-        case .quicklinks, .quicklinkEditor: return "link"
-        case .uninstall: return "trash"
-        }
+  }
+  var systemImage: String {
+    switch self {
+    case .launcher: return "magnifyingglass"
+    case .clipboard: return "doc.on.clipboard"
+    case .emoji: return "face.smiling"
+    case .snippets, .snippetEditor: return "text.quote"
+    case .quicklinks, .quicklinkEditor: return "link"
+    case .uninstall: return "trash"
+    case .extensionCommand: return "puzzlepiece.extension"
     }
-    var placeholder: String {
-        switch self {
-        case .launcher: return "Search for apps and commands…"
-        case .clipboard: return "Type to filter entries…"
-        case .emoji: return "Search emoji and symbols…"
-        case .snippets: return "Search snippets…"
-        case .snippetEditor: return ""
-        case .quicklinks: return "Search quicklinks…"
-        case .quicklinkEditor: return ""
-        case .uninstall: return "Filter files and folders by name…"
-        }
+  }
+  var placeholder: String {
+    switch self {
+    case .launcher: return "Search for apps and commands…"
+    case .clipboard: return "Type to filter entries…"
+    case .emoji: return "Search emoji and symbols…"
+    case .snippets: return "Search snippets…"
+    case .snippetEditor: return ""
+    case .quicklinks: return "Search quicklinks…"
+    case .quicklinkEditor: return ""
+    case .uninstall: return "Filter files and folders by name…"
+    case .extensionCommand: return "Search extension items…"
     }
+  }
 }
 
 /// The app a paste will land in, resolved once per palette show so the footer pill and menu rows can name it without re-reading `NSWorkspace` on every render.
 struct PaletteFeedback: Equatable, Identifiable {
-    enum Tone: Equatable {
-        case success
-        case warning
-        case error
-    }
+  enum Tone: Equatable {
+    case success
+    case warning
+    case error
+  }
 
-    let id = UUID()
-    let message: String
-    let tone: Tone
+  let id = UUID()
+  let message: String
+  let tone: Tone
 }
 
 struct PasteTarget: Equatable {
-    let name: String
-    /// Bundle path for `IconCache` — nil for a target with no on-disk bundle.
-    let iconPath: String?
+  let name: String
+  /// Bundle path for `IconCache` — nil for a target with no on-disk bundle.
+  let iconPath: String?
 
-    init?(app: NSRunningApplication?) {
-        guard let app, let name = app.localizedName else { return nil }
-        self.name = name
-        iconPath = app.bundleURL?.path
-    }
+  init?(app: NSRunningApplication?) {
+    guard let app, let name = app.localizedName else { return nil }
+    self.name = name
+    iconPath = app.bundleURL?.path
+  }
 
-    var pasteTitle: String { "Paste to \(name)" }
+  var pasteTitle: String { "Paste to \(name)" }
 }
 
 /// View-model shared between the panel's SwiftUI tree and the coordinator.
 @MainActor
 final class PaletteViewModel: ObservableObject {
-    @Published var mode: PaletteMode = .launcher
-    @Published var query: String = ""
-    @Published var selection: Int = 0
-    /// Changes every time the palette is shown so the search field can re-focus.
-    @Published var focusToken = UUID()
-    /// Changes only when `prepare` resets the palette, so the lists snap their scroll to the top even when query/mode were already at their defaults (`focusToken` can't serve: it bumps on every reopen, which must preserve a within-timeout scroll).
-    @Published var resetToken = UUID()
-    /// Changes when returning to the launcher so the search field can select its restored query.
-    @Published var selectQueryToken = UUID()
-    @Published var feedback: PaletteFeedback?
-    @Published var snippetEditingID: Snippet.ID?
-    @Published var snippetEditorReturnsToSearch = false
-    @Published var quicklinkEditingID: Quicklink.ID?
-    @Published var quicklinkEditorReturnsToSearch = false
-    /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
-    @Published var followToken = UUID()
-    /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
-    @Published var forceExpanded = false
-    private var launcherQueryForReturn: String?
-    /// The app a paste would land in, mirrored from `PaletteWindowController.previousApp` on every show. Deliberately *not* cleared by `prepare` — pop-to-root resets the screen, not the paste target.
-    @Published var pasteTarget: PasteTarget?
-    /// Gates the mouse-hover highlight: true only while the pointer is physically moving (armed on `.mouseMoved`, disarmed on any `.keyDown` in `PalettePanel.sendEvent`). Plain, not `@Published` — read at hover time, never drives a re-render.
-    var hoverHighlightArmed = false
-    /// True while a footer popover menu (⌘K Actions or the app menu) is open, so `PalettePanel.sendEvent` swallows text-editing keystrokes the field editor would otherwise consume — the query must stay frozen while a menu owns the keyboard (matches Raycast). Plain, not `@Published` — read at event time, mirrored from the view's menu state.
-    var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
-    /// Fired when `menuOpen` flips so `PalettePanel` can hide/show the search field's caret while it keeps first-responder status (no focus swap, so the placeholder never reflows).
-    var onMenuOpenChanged: ((Bool) -> Void)?
-    var onCommandEnter: (() -> Bool)?
-    var onInlineArgumentsTab: (() -> Bool)?
-    var onInlineArgumentsEscape: (() -> Bool)?
-    var onInlineArgumentsVerticalArrow: ((Int) -> Bool)?
+  @Published var mode: PaletteMode = .launcher
+  @Published var query: String = ""
+  @Published var selection: Int = 0
+  /// Changes every time the palette is shown so the search field can re-focus.
+  @Published var focusToken = UUID()
+  /// Changes only when `prepare` resets the palette, so the lists snap their scroll to the top even when query/mode were already at their defaults (`focusToken` can't serve: it bumps on every reopen, which must preserve a within-timeout scroll).
+  @Published var resetToken = UUID()
+  /// Changes when returning to the launcher so the search field can select its restored query.
+  @Published var selectQueryToken = UUID()
+  @Published var feedback: PaletteFeedback?
+  @Published var snippetEditingID: Snippet.ID?
+  @Published var snippetEditorReturnsToSearch = false
+  @Published var quicklinkEditingID: Quicklink.ID?
+  @Published var quicklinkEditorReturnsToSearch = false
+  @Published var extensionCommand: ExtensionCommand?
+  /// Changes when an action reorders the list under the selection (pinning a clip lifts it into the Pinned section), so the list scrolls the highlight back into view.
+  @Published var followToken = UUID()
+  /// Set by the compact bar's "…" overflow to expand into the full launcher without a query; cleared on every `prepare`.
+  @Published var forceExpanded = false
+  private var launcherQueryForReturn: String?
+  /// The app a paste would land in, mirrored from `PaletteWindowController.previousApp` on every show. Deliberately *not* cleared by `prepare` — pop-to-root resets the screen, not the paste target.
+  @Published var pasteTarget: PasteTarget?
+  /// Gates the mouse-hover highlight: true only while the pointer is physically moving (armed on `.mouseMoved`, disarmed on any `.keyDown` in `PalettePanel.sendEvent`). Plain, not `@Published` — read at hover time, never drives a re-render.
+  var hoverHighlightArmed = false
+  /// True while a footer popover menu (⌘K Actions or the app menu) is open, so `PalettePanel.sendEvent` swallows text-editing keystrokes the field editor would otherwise consume — the query must stay frozen while a menu owns the keyboard (matches Raycast). Plain, not `@Published` — read at event time, mirrored from the view's menu state.
+  var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
+  /// Fired when `menuOpen` flips so `PalettePanel` can hide/show the search field's caret while it keeps first-responder status (no focus swap, so the placeholder never reflows).
+  var onMenuOpenChanged: ((Bool) -> Void)?
+  var onCommandEnter: (() -> Bool)?
+  var onInlineArgumentsTab: (() -> Bool)?
+  var onInlineArgumentsEscape: (() -> Bool)?
+  var onInlineArgumentsVerticalArrow: ((Int) -> Bool)?
 
-    func prepare(mode: PaletteMode) {
-        launcherQueryForReturn = nil
-        self.mode = mode
-        query = ""
-        selection = 0
-        forceExpanded = false
-        snippetEditingID = nil
-        snippetEditorReturnsToSearch = false
-        quicklinkEditingID = nil
-        quicklinkEditorReturnsToSearch = false
-        onCommandEnter = nil
-        hoverHighlightArmed = false
-        menuOpen = false
-        focusToken = UUID()
-        resetToken = UUID()
-    }
+  func prepare(mode: PaletteMode) {
+    launcherQueryForReturn = nil
+    self.mode = mode
+    query = ""
+    selection = 0
+    forceExpanded = false
+    snippetEditingID = nil
+    snippetEditorReturnsToSearch = false
+    quicklinkEditingID = nil
+    quicklinkEditorReturnsToSearch = false
+    extensionCommand = nil
+    onCommandEnter = nil
+    hoverHighlightArmed = false
+    menuOpen = false
+    focusToken = UUID()
+    resetToken = UUID()
+  }
 
-    func enterSubscreen(_ mode: PaletteMode) {
-        launcherQueryForReturn = self.mode == .launcher ? query : launcherQueryForReturn
-        self.mode = mode
-        query = ""
-        selection = 0
-        forceExpanded = false
-        snippetEditingID = nil
-        snippetEditorReturnsToSearch = false
-        quicklinkEditingID = nil
-        quicklinkEditorReturnsToSearch = false
-        onCommandEnter = nil
-        hoverHighlightArmed = false
-        menuOpen = false
-        focusToken = UUID()
-        resetToken = UUID()
-    }
+  func enterSubscreen(_ mode: PaletteMode) {
+    launcherQueryForReturn = self.mode == .launcher ? query : launcherQueryForReturn
+    self.mode = mode
+    query = ""
+    selection = 0
+    forceExpanded = false
+    snippetEditingID = nil
+    snippetEditorReturnsToSearch = false
+    quicklinkEditingID = nil
+    quicklinkEditorReturnsToSearch = false
+    extensionCommand = nil
+    onCommandEnter = nil
+    hoverHighlightArmed = false
+    menuOpen = false
+    focusToken = UUID()
+    resetToken = UUID()
+  }
 
-    func returnToLauncher() {
-        let queryToRestore = launcherQueryForReturn ?? query
-        launcherQueryForReturn = nil
-        mode = .launcher
-        query = queryToRestore
-        selection = 0
-        forceExpanded = false
-        snippetEditingID = nil
-        snippetEditorReturnsToSearch = false
-        quicklinkEditingID = nil
-        quicklinkEditorReturnsToSearch = false
-        onCommandEnter = nil
-        hoverHighlightArmed = false
-        menuOpen = false
-        focusToken = UUID()
-        resetToken = UUID()
-        selectQueryToken = UUID()
-    }
+  func returnToLauncher() {
+    let queryToRestore = launcherQueryForReturn ?? query
+    launcherQueryForReturn = nil
+    mode = .launcher
+    query = queryToRestore
+    selection = 0
+    forceExpanded = false
+    snippetEditingID = nil
+    snippetEditorReturnsToSearch = false
+    quicklinkEditingID = nil
+    quicklinkEditorReturnsToSearch = false
+    extensionCommand = nil
+    onCommandEnter = nil
+    hoverHighlightArmed = false
+    menuOpen = false
+    focusToken = UUID()
+    resetToken = UUID()
+    selectQueryToken = UUID()
+  }
 
-    func postFeedback(_ message: String, tone: PaletteFeedback.Tone = .success) {
-        feedback = PaletteFeedback(message: message, tone: tone)
-    }
+  func enterExtension(_ command: ExtensionCommand) {
+    launcherQueryForReturn = self.mode == .launcher ? query : launcherQueryForReturn
+    extensionCommand = command
+    mode = .extensionCommand
+    query = ""
+    selection = 0
+    forceExpanded = false
+    snippetEditingID = nil
+    snippetEditorReturnsToSearch = false
+    quicklinkEditingID = nil
+    quicklinkEditorReturnsToSearch = false
+    onCommandEnter = nil
+    hoverHighlightArmed = false
+    menuOpen = false
+    focusToken = UUID()
+    resetToken = UUID()
+  }
+
+  func postFeedback(_ message: String, tone: PaletteFeedback.Tone = .success) {
+    feedback = PaletteFeedback(message: message, tone: tone)
+  }
 }
 
 /// Single owner of every long-lived manager. Wired up once from the app delegate.
 @MainActor
 final class AppCore: ObservableObject {
-    static let shared = AppCore()
+  static let shared = AppCore()
 
-    let launcherRanking: LauncherRankingStore
-    let appIndex: AppIndex
-    let clipboardStore = ClipboardStore()
-    let snippetStore = SnippetStore()
-    let quicklinkStore = QuicklinkStore()
-    let snippetExpansionMonitor: SnippetExpansionMonitor
-    let clipboardManager: ClipboardManager
-    let hotKeys = HotKeyManager()
-    let settings = AppSettings()
-    let favorites = FavoritesStore()
-    let visibility = VisibilityStore()
-    let currencyRates = CurrencyRateStore()
-    let emojiIndex = EmojiIndex()
-    let frequentEmoji = FrequentEmojiStore()
-    let runningApps = RunningAppsMonitor()
-    let uninstall = UninstallSession()
-    let windowMover = WindowMover()
-    let updates = UpdateStore()
-    let palette = PaletteViewModel()
+  let launcherRanking: LauncherRankingStore
+  let appIndex: AppIndex
+  let clipboardStore = ClipboardStore()
+  let snippetStore = SnippetStore()
+  let quicklinkStore = QuicklinkStore()
+  let snippetExpansionMonitor: SnippetExpansionMonitor
+  let clipboardManager: ClipboardManager
+  let hotKeys = HotKeyManager()
+  let settings = AppSettings()
+  let favorites = FavoritesStore()
+  let visibility = VisibilityStore()
+  let currencyRates = CurrencyRateStore()
+  let emojiIndex = EmojiIndex()
+  let frequentEmoji = FrequentEmojiStore()
+  let runningApps = RunningAppsMonitor()
+  let uninstall = UninstallSession()
+  let windowMover = WindowMover()
+  let updates = UpdateStore()
+  let palette = PaletteViewModel()
+  let extensionCatalog: ExtensionCatalog
+  let extensionStore: ExtensionStoreManager
+  let extensionCapabilities: ExtensionCapabilityBroker
+  let extensionHost: ExtensionHostManager
+  let extensionScheduler: ExtensionScheduler
 
-    private lazy var windowController = PaletteWindowController(core: self)
-    private let auxWindows = AuxWindowController()
-    private var systemCommandState = SystemCommandRunner.State()
-    private var updateTask: Task<Void, Never>?
+  private lazy var windowController = PaletteWindowController(core: self)
+  private let auxWindows = AuxWindowController()
+  private var systemCommandState = SystemCommandRunner.State()
+  private var updateTask: Task<Void, Never>?
 
-    private init() {
-        let launcherRanking = LauncherRankingStore()
-        self.launcherRanking = launcherRanking
-        appIndex = AppIndex(ranking: launcherRanking)
-        clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
-        snippetExpansionMonitor = SnippetExpansionMonitor(store: snippetStore, settings: settings)
+  private init() {
+    let launcherRanking = LauncherRankingStore()
+    self.launcherRanking = launcherRanking
+    appIndex = AppIndex(ranking: launcherRanking)
+    clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
+    snippetExpansionMonitor = SnippetExpansionMonitor(store: snippetStore, settings: settings)
+    extensionCatalog = ExtensionCatalog()
+    extensionStore = ExtensionStoreManager(directory: extensionCatalog.directory)
+    extensionCapabilities = ExtensionCapabilityBroker()
+    extensionHost = ExtensionHostManager(capabilityBroker: extensionCapabilities)
+    extensionScheduler = ExtensionScheduler(capabilityBroker: extensionCapabilities)
+    extensionHost.onNoViewFinished = { [weak self] in
+      self?.hidePalette()
+    }
+    extensionStore.onChange = { [weak self] in
+      self?.reloadExtensions()
+    }
+  }
+
+  func start() {
+    // AppKit's default tooltip delay is ~2–3s; shorten it (in ms) so the compact-bar favorite tooltips appear promptly. Registration domain — never overrides a user default.
+    UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
+    NSApp.setActivationPolicy(.accessory)
+    applyDarkAppearance()
+
+    clipboardStore.maxAge = settings.clipboardRetention.maxAge
+    // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
+    Task { clipboardStore.load() }
+    clipboardManager.start()
+    snippetExpansionMonitor.start()
+
+    extensionStore.start()
+    extensionCatalog.setDisabledNames(extensionStore.disabledNames)
+    appIndex.setExtensionCommands(extensionCatalog.commands)
+    extensionScheduler.start(commands: extensionCatalog.commands)
+
+    appIndex.start(settings: settings)
+    Task {
+      appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
+      await appIndex.refresh()
+    }
+    Task { await emojiIndex.load() }
+    if settings.currencyConversionEnabled {
+      currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
     }
 
-    func start() {
-        // AppKit's default tooltip delay is ~2–3s; shorten it (in ms) so the compact-bar favorite tooltips appear promptly. Registration domain — never overrides a user default.
-        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 250])
-        NSApp.setActivationPolicy(.accessory)
-        applyDarkAppearance()
+    hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
+    hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
+    hotKeys.onToggleEmoji = { [weak self] in self?.toggleEmoji() }
+    hotKeys.onRunWindowCommand = { [weak self] id in self?.runWindowCommand(id: id) }
+    hotKeys.start()
 
-        clipboardStore.maxAge = settings.clipboardRetention.maxAge
-        // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
-        Task { clipboardStore.load() }
-        clipboardManager.start()
-        snippetExpansionMonitor.start()
-
-        appIndex.start(settings: settings)
-        Task {
-            appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
-            await appIndex.refresh()
-        }
-        Task { await emojiIndex.load() }
-        if settings.currencyConversionEnabled {
-            currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
-        }
-
-        hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
-        hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
-        hotKeys.onToggleEmoji = { [weak self] in self?.toggleEmoji() }
-        hotKeys.onRunWindowCommand = { [weak self] id in self?.runWindowCommand(id: id) }
-        hotKeys.start()
-
-        // First launch has no palette hotkey bound and shows nothing but the menu-bar icon; guide the user once. Marker is written at show-time so it stays one-time even if they Cmd-Q mid-flow.
-        if !OnboardingState.hasOnboarded {
-            OnboardingState.markShown()
-            showOnboarding()
-        }
+    // First launch has no palette hotkey bound and shows nothing but the menu-bar icon; guide the user once. Marker is written at show-time so it stays one-time even if they Cmd-Q mid-flow.
+    if !OnboardingState.hasOnboarded {
+      OnboardingState.markShown()
+      showOnboarding()
     }
+  }
 
-    private func applyDarkAppearance() {
-        let appearance = NSAppearance(named: .darkAqua)
-        NSApp.appearance = appearance
-        for window in NSApp.windows {
-            window.appearance = appearance
-        }
+  func reloadExtensions() {
+    extensionHost.stop()
+    extensionCatalog.setDisabledNames(extensionStore.disabledNames)
+    appIndex.setExtensionCommands(extensionCatalog.commands)
+    extensionScheduler.reload(commands: extensionCatalog.commands)
+  }
+
+  func importExtension() {
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = true
+    panel.allowsMultipleSelection = false
+    panel.message = "Choose an .ocx extension package"
+    guard panel.runModal() == .OK, let url = panel.url else { return }
+    extensionStore.install(from: url)
+  }
+
+  private func applyDarkAppearance() {
+    let appearance = NSAppearance(named: .darkAqua)
+    NSApp.appearance = appearance
+    for window in NSApp.windows {
+      window.appearance = appearance
     }
+  }
 
-    // MARK: - Palette control
+  // MARK: - Palette control
 
-    func togglePalette() {
-        if windowController.isVisible {
-            hidePalette()
-        } else {
-            showPalette(mode: .launcher, restoreAnyMode: true)
-        }
+  func togglePalette() {
+    if windowController.isVisible {
+      hidePalette()
+    } else {
+      showPalette(mode: .launcher, restoreAnyMode: true)
     }
+  }
 
-    func toggleClipboard() {
-        if windowController.isVisible, palette.mode == .clipboard {
-            hidePalette()
-        } else {
-            showPalette(mode: .clipboard)
-        }
+  func toggleClipboard() {
+    if windowController.isVisible, palette.mode == .clipboard {
+      hidePalette()
+    } else {
+      showPalette(mode: .clipboard)
     }
+  }
 
-    func toggleEmoji() {
-        if windowController.isVisible, palette.mode == .emoji {
-            hidePalette()
-        } else {
-            showPalette(mode: .emoji)
-        }
+  func toggleEmoji() {
+    if windowController.isVisible, palette.mode == .emoji {
+      hidePalette()
+    } else {
+      showPalette(mode: .emoji)
     }
+  }
 
-    /// Shows the palette, honoring Pop to Root Search: a reopen within the timeout restores the pre-close state — any mode for the generic summon (`restoreAnyMode`), else only when the preserved mode already matches the requested one.
-    func showPalette(mode: PaletteMode, restoreAnyMode: Bool = false) {
-        if uninstall.target != nil {
-            if restoreAnyMode || mode == .uninstall {
-                _ = windowController.consumePreservedState()
-                palette.mode = .uninstall
-                windowController.show()
-                return
-            }
-            uninstall.end()
-        }
-        let preserved = windowController.consumePreservedState()
-        if !(preserved && (restoreAnyMode || palette.mode == mode)) {
-            palette.prepare(mode: mode)
-        }
+  /// Shows the palette, honoring Pop to Root Search: a reopen within the timeout restores the pre-close state — any mode for the generic summon (`restoreAnyMode`), else only when the preserved mode already matches the requested one.
+  func showPalette(mode: PaletteMode, restoreAnyMode: Bool = false) {
+    if uninstall.target != nil {
+      if restoreAnyMode || mode == .uninstall {
+        _ = windowController.consumePreservedState()
+        palette.mode = .uninstall
         windowController.show()
-        // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
-        if palette.mode == .launcher {
-            Task {
-                appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
-                await appIndex.refresh()
-            }
-        }
+        return
+      }
+      uninstall.end()
     }
-
-    func hidePalette(restoreFocus: Bool = true) {
-        windowController.hide(restoreFocus: restoreFocus)
+    let previousMode = palette.mode
+    let preserved = windowController.consumePreservedState()
+    if !(preserved && (restoreAnyMode || palette.mode == mode)) {
+      if previousMode == .extensionCommand { extensionHost.stop() }
+      palette.prepare(mode: mode)
     }
-
-    func handlePaletteEscape() {
-        if !palette.query.isEmpty {
-            palette.query = ""
-            palette.selection = 0
-            return
-        }
-        if palette.mode != .launcher {
-            palette.returnToLauncher()
-            return
-        }
-        hidePalette()
+    windowController.show()
+    // Re-scan on open so an app uninstalled since the last scan drops out of the launcher.
+    if palette.mode == .launcher {
+      Task {
+        appIndex.setCaffeinationActive(await SystemCommandRunner.isCaffeinateRunning())
+        await appIndex.refresh()
+      }
     }
+  }
 
-    /// True when the palette should render as the slim compact bar: compact mode on, launcher root, empty query, and not force-expanded via the "…" overflow.
-    var paletteIsCollapsed: Bool {
-        settings.compactMode
-            && !palette.forceExpanded
-            && palette.mode == .launcher
-            && palette.query.trimmingCharacters(in: .whitespaces).isEmpty
+  func hidePalette(restoreFocus: Bool = true) {
+    windowController.hide(restoreFocus: restoreFocus)
+  }
+
+  func resetPaletteToLauncher() {
+    extensionHost.stop()
+    palette.prepare(mode: .launcher)
+  }
+
+  func handlePaletteEscape() {
+    if !palette.query.isEmpty {
+      palette.query = ""
+      palette.selection = 0
+      return
     }
-
-    /// The compact bar's "…" overflow: expand into the full favorites-pinned launcher without typing.
-    func expandFromCompact() {
-        palette.forceExpanded = true
+    if palette.mode != .launcher {
+      if palette.mode == .extensionCommand {
+        extensionHost.stop()
+      }
+      palette.returnToLauncher()
+      return
     }
+    hidePalette()
+  }
 
-    /// Resize the panel to match the current collapsed state; called by the view when `paletteIsCollapsed` flips while open.
-    func syncPaletteSize() {
-        windowController.applyCollapsed(paletteIsCollapsed)
-    }
+  /// True when the palette should render as the slim compact bar: compact mode on, launcher root, empty query, and not force-expanded via the "…" overflow.
+  var paletteIsCollapsed: Bool {
+    settings.compactMode
+      && !palette.forceExpanded
+      && palette.mode == .launcher
+      && palette.query.trimmingCharacters(in: .whitespaces).isEmpty
+  }
 
-    /// Dock-icon / reopen: focus an open aux window (About/Settings/Onboarding), else summon the launcher. Decoupled from the individual show paths so activation always works.
-    func handleReopen() {
-        if auxWindows.focusExisting() { return }
-        showPalette(mode: .launcher, restoreAnyMode: true)
-    }
+  /// The compact bar's "…" overflow: expand into the full favorites-pinned launcher without typing.
+  func expandFromCompact() {
+    palette.forceExpanded = true
+  }
 
-    /// Settings runs in its own window (the SwiftUI `Settings` scene is unreliable for accessory apps). A fresh window mounts directly on its route; an already-open one navigates in place.
-    func showSettings(route: SettingsRoute = .general) {
-        let isNew = auxWindows.show(
-            id: "settings", title: "Settings", size: Theme.Settings.Size.window,
-            seamlessTitleBar: true, transparentBackground: true
-        ) {
-            SettingsRootView(initialRoute: route)
-                .environmentObject(self.appIndex)
-                .environmentObject(self.visibility)
-        }
-        if !isNew {
-            NotificationCenter.default.post(name: .opencastSelectSettingsRoute, object: route)
-        }
-    }
+  /// Resize the panel to match the current collapsed state; called by the view when `paletteIsCollapsed` flips while open.
+  func syncPaletteSize() {
+    windowController.applyCollapsed(paletteIsCollapsed)
+  }
 
-    func showAbout() {
-        showSettings(route: .about)
-    }
+  /// Dock-icon / reopen: focus an open aux window (About/Settings/Onboarding), else summon the launcher. Decoupled from the individual show paths so activation always works.
+  func handleReopen() {
+    if auxWindows.focusExisting() { return }
+    showPalette(mode: .launcher, restoreAnyMode: true)
+  }
 
-    func checkForUpdates() {
-        guard updateTask == nil else { return }
-        if updates.isHomebrewManaged {
-            checkHomebrewUpdates()
-            return
-        }
-        if !updates.networkConsentGranted {
-            let response = windowController.presentConfirmationResponse(
-                message: "Allow update checks?",
-                informativeText:
-                    "Opencast will contact GitHub to check for a newer release. No data about your usage is sent.",
-                primaryTitle: "Allow",
-                secondaryTitle: "Cancel"
-            )
-            guard response == .primary else { return }
-            updates.grantNetworkConsent()
-        }
-
-        let task = Task { [weak self] in
-            guard let self else { return }
-            defer { updateTask = nil }
-            do {
-                guard let update = try await updates.checkNow() else {
-                    if case .upToDate = updates.state {
-                        palette.postFeedback("Opencast is up to date")
-                    }
-                    return
-                }
-                let response = windowController.presentConfirmationResponse(
-                    message: "Opencast \(update.version) is available",
-                    informativeText: "Download and prepare the update from GitHub?",
-                    primaryTitle: "Update",
-                    secondaryTitle: "Later"
-                )
-                guard response == .primary else { return }
-
-                do {
-                    let prepared = try await updates.downloadAndPrepare(update)
-                    let installResponse = windowController.presentConfirmationResponse(
-                        message: "Ready to install Opencast \(update.version)",
-                        informativeText: "Opencast will restart automatically to finish the update.",
-                        primaryTitle: "Install & Relaunch",
-                        secondaryTitle: "Later"
-                    )
-                    guard installResponse == .primary else {
-                        UpdateInstaller.discard(prepared)
-                        return
-                    }
-                    try updates.install(prepared)
-                    NSApp.terminate(nil)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    showUpdateError(error)
-                }
-            } catch is CancellationError {
-                return
-            } catch {
-                showUpdateError(error)
-            }
-        }
-        updateTask = task
-    }
-
-    private func showUpdateError(_ error: Error) {
-        let message = error.localizedDescription
-        palette.postFeedback("Update failed: \(message)", tone: .error)
-        _ = windowController.presentConfirmationResponse(
-            message: "Could not update Opencast",
-            informativeText: message,
-            primaryTitle: "OK"
-        )
-    }
-
-    private func checkHomebrewUpdates() {
-        Task { [weak self] in
-            guard let self else { return }
-            switch await updates.checkHomebrew() {
-            case .upToDate:
-                palette.postFeedback("Homebrew reports Opencast is up to date")
-            case let .updateAvailable(current, latest):
-                let command = "brew update && brew upgrade --cask opencast"
-                if windowController.presentConfirmationResponse(
-                    message: "Opencast \(latest) is available",
-                    informativeText: "Homebrew manages this installation. Installed: \(current). Run:\n\(command)",
-                    primaryTitle: "Copy Command",
-                    secondaryTitle: "Later"
-                ) == .primary {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(command, forType: .string)
-                    palette.postFeedback("Homebrew command copied")
-                }
-            case let .unavailable(message):
-                palette.postFeedback(message, tone: .warning)
-            }
-        }
-    }
-
-    /// The first-run wizard: palette shortcut and Accessibility. Also re-runnable from Settings.
-    func showOnboarding() {
-        auxWindows.show(
-            id: "onboarding", title: "Welcome to Opencast",
-            size: OnboardingView.windowSize, seamlessTitleBar: true
-        ) {
-            OnboardingView()
-        }
-    }
-
-    /// Final onboarding step: close the wizard and drop straight into the launcher.
-    func finishOnboarding() {
-        auxWindows.close(id: "onboarding")
-        showPalette(mode: .launcher)
-    }
-
-    // MARK: - Actions invoked from the palette UI
-
-    func launch(
-        _ app: AppEntry,
-        searchQuery: String? = nil,
-        inlineArgumentValues: [String] = []
+  /// Settings runs in its own window (the SwiftUI `Settings` scene is unreliable for accessory apps). A fresh window mounts directly on its route; an already-open one navigates in place.
+  func showSettings(route: SettingsRoute = .general) {
+    let isNew = auxWindows.show(
+      id: "settings", title: "Settings", size: Theme.Settings.Size.window,
+      seamlessTitleBar: true, transparentBackground: true
     ) {
-        // Every palette launch teaches weak global usage; typed launches additionally teach the submitted query and each of its prefixes.
-        launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery ?? "")
-        // Commands dispatch before the palette hides: mode-switching commands keep it open.
-        if app.kind == .command {
-            runCommand(app, inlineArgumentValues: inlineArgumentValues)
-            return
+      SettingsRootView(initialRoute: route)
+        .environmentObject(self.appIndex)
+        .environmentObject(self.visibility)
+    }
+    if !isNew {
+      NotificationCenter.default.post(name: .opencastSelectSettingsRoute, object: route)
+    }
+  }
+
+  func showAbout() {
+    showSettings(route: .about)
+  }
+
+  func checkForUpdates() {
+    guard updateTask == nil else { return }
+    if updates.isHomebrewManaged {
+      checkHomebrewUpdates()
+      return
+    }
+    if !updates.networkConsentGranted {
+      let response = windowController.presentConfirmationResponse(
+        message: "Allow update checks?",
+        informativeText:
+          "Opencast will contact GitHub to check for a newer release. No data about your usage is sent.",
+        primaryTitle: "Allow",
+        secondaryTitle: "Cancel"
+      )
+      guard response == .primary else { return }
+      updates.grantNetworkConsent()
+    }
+
+    let task = Task { [weak self] in
+      guard let self else { return }
+      defer { updateTask = nil }
+      do {
+        guard let update = try await updates.checkNow() else {
+          if case .upToDate = updates.state {
+            palette.postFeedback("Opencast is up to date")
+          }
+          return
         }
-        hidePalette(restoreFocus: false)
-        switch app.kind {
-        case .application:
-            AppLauncher.launch(app.url)
-        case .systemSettings:
-            guard let bundleID = app.bundleID else { return }
-            AppLauncher.openSettingsPane(bundleID: bundleID)
-        case .command:
-            break  // handled above
-        }
-    }
+        let response = windowController.presentConfirmationResponse(
+          message: "Opencast \(update.version) is available",
+          informativeText: "Download and prepare the update from GitHub?",
+          primaryTitle: "Update",
+          secondaryTitle: "Later"
+        )
+        guard response == .primary else { return }
 
-    func resetRanking(for app: AppEntry) {
-        launcherRanking.reset(itemKey: app.preferenceKey)
-    }
-
-    // MARK: - Uninstall
-
-    func beginUninstall(_ app: AppEntry) {
-        guard app.kind == .application,
-            app.url.standardizedFileURL.path != Bundle.main.bundleURL.standardizedFileURL.path,
-            AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
-        else { return }
-        uninstall.begin(app: app)
-        palette.enterSubscreen(.uninstall)
-    }
-
-    func cancelUninstall() {
-        uninstall.end()
-        palette.returnToLauncher()
-    }
-
-    func createSnippet() {
-        palette.enterSubscreen(.snippetEditor)
-    }
-
-    func editSnippet(_ snippet: Snippet) {
-        palette.enterSubscreen(.snippetEditor)
-        palette.snippetEditingID = snippet.id
-        palette.snippetEditorReturnsToSearch = true
-    }
-
-    func searchSnippets() {
-        palette.enterSubscreen(.snippets)
-    }
-
-    func createQuicklink() {
-        guard settings.quicklinksEnabled else { return }
-        palette.enterSubscreen(.quicklinkEditor)
-    }
-
-    func editQuicklink(_ quicklink: Quicklink) {
-        guard settings.quicklinksEnabled else { return }
-        palette.enterSubscreen(.quicklinkEditor)
-        palette.quicklinkEditingID = quicklink.id
-        palette.quicklinkEditorReturnsToSearch = true
-    }
-
-    func searchQuicklinks() {
-        guard settings.quicklinksEnabled else { return }
-        palette.enterSubscreen(.quicklinks)
-    }
-
-    func exitSnippetEditor() {
-        if palette.snippetEditorReturnsToSearch {
-            palette.mode = .snippets
-            palette.query = ""
-            palette.selection = 0
-            palette.snippetEditingID = nil
-            palette.snippetEditorReturnsToSearch = false
-            palette.focusToken = UUID()
-            palette.resetToken = UUID()
-        } else {
-            palette.returnToLauncher()
-        }
-    }
-
-    func pasteSnippet(_ snippet: Snippet) {
-        let previous = windowController.previousApp
-        hidePalette(restoreFocus: false)
-        Paster.pasteString(snippet.content, previousApp: previous)
-    }
-
-    func copySnippet(_ snippet: Snippet) {
-        Paster.copyString(snippet.content)
-        palette.postFeedback("Copied snippet")
-    }
-
-    func duplicateSnippet(_ snippet: Snippet) {
         do {
-            _ = try snippetStore.duplicate(snippet)
-            palette.postFeedback("Duplicated snippet")
+          let prepared = try await updates.downloadAndPrepare(update)
+          let installResponse = windowController.presentConfirmationResponse(
+            message: "Ready to install Opencast \(update.version)",
+            informativeText: "Opencast will restart automatically to finish the update.",
+            primaryTitle: "Install & Relaunch",
+            secondaryTitle: "Later"
+          )
+          guard installResponse == .primary else {
+            UpdateInstaller.discard(prepared)
+            return
+          }
+          try updates.install(prepared)
+          NSApp.terminate(nil)
+        } catch is CancellationError {
+          return
         } catch {
-            palette.postFeedback("Could not duplicate snippet", tone: .error)
+          showUpdateError(error)
         }
+      } catch is CancellationError {
+        return
+      } catch {
+        showUpdateError(error)
+      }
     }
+    updateTask = task
+  }
 
-    func exitQuicklinkEditor() {
-        if palette.quicklinkEditorReturnsToSearch {
-            palette.mode = .quicklinks
-            palette.query = ""
-            palette.selection = 0
-            palette.quicklinkEditingID = nil
-            palette.quicklinkEditorReturnsToSearch = false
-            palette.focusToken = UUID()
-            palette.resetToken = UUID()
-        } else {
-            palette.returnToLauncher()
+  private func showUpdateError(_ error: Error) {
+    let message = error.localizedDescription
+    palette.postFeedback("Update failed: \(message)", tone: .error)
+    _ = windowController.presentConfirmationResponse(
+      message: "Could not update Opencast",
+      informativeText: message,
+      primaryTitle: "OK"
+    )
+  }
+
+  private func checkHomebrewUpdates() {
+    Task { [weak self] in
+      guard let self else { return }
+      switch await updates.checkHomebrew() {
+      case .upToDate:
+        palette.postFeedback("Homebrew reports Opencast is up to date")
+      case .updateAvailable(let current, let latest):
+        let command = "brew update && brew upgrade --cask opencast"
+        if windowController.presentConfirmationResponse(
+          message: "Opencast \(latest) is available",
+          informativeText:
+            "Homebrew manages this installation. Installed: \(current). Run:\n\(command)",
+          primaryTitle: "Copy Command",
+          secondaryTitle: "Later"
+        ) == .primary {
+          NSPasteboard.general.clearContents()
+          NSPasteboard.general.setString(command, forType: .string)
+          palette.postFeedback("Homebrew command copied")
         }
+      case .unavailable(let message):
+        palette.postFeedback(message, tone: .warning)
+      }
     }
+  }
 
-    func chooseQuicklinkTarget(completion: @escaping (String) -> Void) {
-        windowController.presentFilePicker { url in
-            guard let url else { return }
-            completion(url.path)
-        }
+  /// The first-run wizard: palette shortcut and Accessibility. Also re-runnable from Settings.
+  func showOnboarding() {
+    auxWindows.show(
+      id: "onboarding", title: "Welcome to Opencast",
+      size: OnboardingView.windowSize, seamlessTitleBar: true
+    ) {
+      OnboardingView()
     }
+  }
 
-    func openQuicklink(_ quicklink: Quicklink) {
-        guard AppLauncher.open(quicklink) else {
-            palette.postFeedback("Could not open quicklink", tone: .error)
-            return
-        }
-        hidePalette(restoreFocus: false)
+  /// Final onboarding step: close the wizard and drop straight into the launcher.
+  func finishOnboarding() {
+    auxWindows.close(id: "onboarding")
+    showPalette(mode: .launcher)
+  }
+
+  // MARK: - Actions invoked from the palette UI
+
+  func launch(
+    _ app: AppEntry,
+    searchQuery: String? = nil,
+    inlineArgumentValues: [String] = []
+  ) {
+    // Every palette launch teaches weak global usage; typed launches additionally teach the submitted query and each of its prefixes.
+    launcherRanking.record(itemKey: app.preferenceKey, query: searchQuery ?? "")
+    // Commands dispatch before the palette hides: mode-switching commands keep it open.
+    if let command = extensionCatalog.command(forEntryID: app.id) {
+      openExtension(command)
+      return
     }
-
-    func copyQuicklink(_ quicklink: Quicklink) {
-        Paster.copyString(quicklink.link)
-        palette.postFeedback("Copied link")
+    if app.kind == .command {
+      runCommand(app, inlineArgumentValues: inlineArgumentValues)
+      return
     }
-
-    func duplicateQuicklink(_ quicklink: Quicklink) {
-        do {
-            _ = try quicklinkStore.duplicate(quicklink)
-            palette.postFeedback("Duplicated quicklink")
-        } catch {
-            palette.postFeedback("Could not duplicate quicklink", tone: .error)
-        }
+    hidePalette(restoreFocus: false)
+    switch app.kind {
+    case .application:
+      AppLauncher.launch(app.url)
+    case .systemSettings:
+      guard let bundleID = app.bundleID else { return }
+      AppLauncher.openSettingsPane(bundleID: bundleID)
+    case .command:
+      break  // handled above
     }
+  }
 
-    func deleteQuicklink(_ quicklink: Quicklink) {
-        quicklinkStore.delete(quicklink)
-        favorites.remove(quicklink)
-        palette.selection = 0
-        palette.postFeedback("Deleted quicklink")
+  func openExtension(_ command: ExtensionCommand) {
+    palette.enterExtension(command)
+    extensionHost.start(command)
+  }
+
+  func resetRanking(for app: AppEntry) {
+    launcherRanking.reset(itemKey: app.preferenceKey)
+  }
+
+  // MARK: - Uninstall
+
+  func beginUninstall(_ app: AppEntry) {
+    guard app.kind == .application,
+      app.url.standardizedFileURL.path != Bundle.main.bundleURL.standardizedFileURL.path,
+      AppLeftovers.canUninstall(url: app.url, bundleID: app.bundleID)
+    else { return }
+    uninstall.begin(app: app)
+    palette.enterSubscreen(.uninstall)
+  }
+
+  func cancelUninstall() {
+    uninstall.end()
+    palette.returnToLauncher()
+  }
+
+  func createSnippet() {
+    palette.enterSubscreen(.snippetEditor)
+  }
+
+  func editSnippet(_ snippet: Snippet) {
+    palette.enterSubscreen(.snippetEditor)
+    palette.snippetEditingID = snippet.id
+    palette.snippetEditorReturnsToSearch = true
+  }
+
+  func searchSnippets() {
+    palette.enterSubscreen(.snippets)
+  }
+
+  func createQuicklink() {
+    guard settings.quicklinksEnabled else { return }
+    palette.enterSubscreen(.quicklinkEditor)
+  }
+
+  func editQuicklink(_ quicklink: Quicklink) {
+    guard settings.quicklinksEnabled else { return }
+    palette.enterSubscreen(.quicklinkEditor)
+    palette.quicklinkEditingID = quicklink.id
+    palette.quicklinkEditorReturnsToSearch = true
+  }
+
+  func searchQuicklinks() {
+    guard settings.quicklinksEnabled else { return }
+    palette.enterSubscreen(.quicklinks)
+  }
+
+  func exitSnippetEditor() {
+    if palette.snippetEditorReturnsToSearch {
+      palette.mode = .snippets
+      palette.query = ""
+      palette.selection = 0
+      palette.snippetEditingID = nil
+      palette.snippetEditorReturnsToSearch = false
+      palette.focusToken = UUID()
+      palette.resetToken = UUID()
+    } else {
+      palette.returnToLauncher()
     }
+  }
 
-    func deleteSnippet(_ snippet: Snippet) {
-        snippetStore.delete(snippet)
-        palette.selection = 0
-        palette.postFeedback("Deleted snippet")
+  func pasteSnippet(_ snippet: Snippet) {
+    let previous = windowController.previousApp
+    hidePalette(restoreFocus: false)
+    Paster.pasteString(snippet.content, previousApp: previous)
+  }
+
+  func copySnippet(_ snippet: Snippet) {
+    Paster.copyString(snippet.content)
+    palette.postFeedback("Copied snippet")
+  }
+
+  func duplicateSnippet(_ snippet: Snippet) {
+    do {
+      _ = try snippetStore.duplicate(snippet)
+      palette.postFeedback("Duplicated snippet")
+    } catch {
+      palette.postFeedback("Could not duplicate snippet", tone: .error)
     }
+  }
 
-    func confirmUninstall(permanently: Bool = false) {
-        guard let app = uninstall.target, !uninstall.checkedItems.isEmpty,
-            uninstall.phase == .selecting
-        else { return }
-        let targets = uninstall.checkedItems
-        let bundlePath = app.url.resolvingSymlinksInPath().path
-        let removesBundle = targets.contains { $0.url.path == bundlePath }
-        if permanently {
-            let confirmed = windowController.presentConfirmation(
-                message: targets.count == 1
-                    ? "Permanently delete 1 item?"
-                    : "Permanently delete \(targets.count) items?",
-                informativeText:
-                    "“\(app.name)” and the files you checked will be erased immediately. This can’t be undone.",
-                confirmTitle: "Delete"
-            )
-            guard confirmed else { return }
-        }
-        Task { [weak self] in
-            guard let self else { return }
-            let outcome = await uninstall.remove(permanently: permanently)
-            if removesBundle, !outcome.failures.contains(where: { $0.url.path == bundlePath }) {
-                forgetUninstalledApp(app)
-            }
-            await appIndex.refresh()
-        }
+  func exitQuicklinkEditor() {
+    if palette.quicklinkEditorReturnsToSearch {
+      palette.mode = .quicklinks
+      palette.query = ""
+      palette.selection = 0
+      palette.quicklinkEditingID = nil
+      palette.quicklinkEditorReturnsToSearch = false
+      palette.focusToken = UUID()
+      palette.resetToken = UUID()
+    } else {
+      palette.returnToLauncher()
     }
+  }
 
-    func exitUninstall() {
-        switch uninstall.phase {
-        case .selecting: cancelUninstall()
-        case .removing: break
-        case .done: finishUninstall()
-        }
+  func chooseQuicklinkTarget(completion: @escaping (String) -> Void) {
+    windowController.presentFilePicker { url in
+      guard let url else { return }
+      completion(url.path)
     }
+  }
 
-    func finishUninstall() {
-        uninstall.end()
-        palette.prepare(mode: .launcher)
+  func openQuicklink(_ quicklink: Quicklink) {
+    guard AppLauncher.open(quicklink) else {
+      palette.postFeedback("Could not open quicklink", tone: .error)
+      return
     }
+    hidePalette(restoreFocus: false)
+  }
 
-    func setUninstallSort(_ sort: UninstallSort) {
-        uninstall.setSort(sort)
-        palette.selection = 0
+  func copyQuicklink(_ quicklink: Quicklink) {
+    Paster.copyString(quicklink.link)
+    palette.postFeedback("Copied link")
+  }
+
+  func duplicateQuicklink(_ quicklink: Quicklink) {
+    do {
+      _ = try quicklinkStore.duplicate(quicklink)
+      palette.postFeedback("Duplicated quicklink")
+    } catch {
+      palette.postFeedback("Could not duplicate quicklink", tone: .error)
     }
+  }
 
-    func showLeftoverInFinder(_ item: LeftoverItem) {
-        hidePalette(restoreFocus: false)
-        AppLauncher.showInFinder(item.url)
+  func deleteQuicklink(_ quicklink: Quicklink) {
+    quicklinkStore.delete(quicklink)
+    favorites.remove(quicklink)
+    palette.selection = 0
+    palette.postFeedback("Deleted quicklink")
+  }
+
+  func deleteSnippet(_ snippet: Snippet) {
+    snippetStore.delete(snippet)
+    palette.selection = 0
+    palette.postFeedback("Deleted snippet")
+  }
+
+  func confirmUninstall(permanently: Bool = false) {
+    guard let app = uninstall.target, !uninstall.checkedItems.isEmpty,
+      uninstall.phase == .selecting
+    else { return }
+    let targets = uninstall.checkedItems
+    let bundlePath = app.url.resolvingSymlinksInPath().path
+    let removesBundle = targets.contains { $0.url.path == bundlePath }
+    if permanently {
+      let confirmed = windowController.presentConfirmation(
+        message: targets.count == 1
+          ? "Permanently delete 1 item?"
+          : "Permanently delete \(targets.count) items?",
+        informativeText:
+          "“\(app.name)” and the files you checked will be erased immediately. This can’t be undone.",
+        confirmTitle: "Delete"
+      )
+      guard confirmed else { return }
     }
-
-    private func forgetUninstalledApp(_ app: AppEntry) {
-        if favorites.isFavorite(app) { favorites.toggle(app) }
-        visibility.setItemVisible(true, for: app)
-        launcherRanking.reset(itemKey: app.preferenceKey)
-        if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
+    Task { [weak self] in
+      guard let self else { return }
+      let outcome = await uninstall.remove(permanently: permanently)
+      if removesBundle, !outcome.failures.contains(where: { $0.url.path == bundlePath }) {
+        forgetUninstalledApp(app)
+      }
+      await appIndex.refresh()
     }
+  }
 
-    /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
-    func quit(_ app: AppEntry) {
-        guard app.kind == .application, let bundleID = app.bundleID else { return }
-        // Unlike `launch`, nothing here takes focus on its own — hand it back to where the user was, unless that's the app now on its way out.
-        let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
-        guard AppLauncher.quit(bundleID: bundleID) else { return }
-        hidePalette(restoreFocus: !quittingPreviousApp)
+  func exitUninstall() {
+    switch uninstall.phase {
+    case .selecting: cancelUninstall()
+    case .removing: break
+    case .done: finishUninstall()
     }
+  }
 
-    /// Quit All: the one action whose blast radius reaches outside Opencast, so it confirms first. The target list is resolved once and both counted and terminated, so the set the user approves is the set that quits.
-    private func quitAllApps() {
-        let targets = AppLauncher.quitAllTargets()
-        guard !targets.isEmpty, confirmQuitAll(count: targets.count) else { return }
-        for app in targets { app.terminate() }
+  func finishUninstall() {
+    uninstall.end()
+    palette.prepare(mode: .launcher)
+  }
+
+  func setUninstallSort(_ sort: UninstallSort) {
+    uninstall.setSort(sort)
+    palette.selection = 0
+  }
+
+  func showLeftoverInFinder(_ item: LeftoverItem) {
+    hidePalette(restoreFocus: false)
+    AppLauncher.showInFinder(item.url)
+  }
+
+  private func forgetUninstalledApp(_ app: AppEntry) {
+    if favorites.isFavorite(app) { favorites.toggle(app) }
+    visibility.setItemVisible(true, for: app)
+    launcherRanking.reset(itemKey: app.preferenceKey)
+    if let action = app.hotKeyAction { hotKeys.setShortcut(nil, for: action) }
+  }
+
+  /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
+  func quit(_ app: AppEntry) {
+    guard app.kind == .application, let bundleID = app.bundleID else { return }
+    // Unlike `launch`, nothing here takes focus on its own — hand it back to where the user was, unless that's the app now on its way out.
+    let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
+    guard AppLauncher.quit(bundleID: bundleID) else { return }
+    hidePalette(restoreFocus: !quittingPreviousApp)
+  }
+
+  /// Quit All: the one action whose blast radius reaches outside Opencast, so it confirms first. The target list is resolved once and both counted and terminated, so the set the user approves is the set that quits.
+  private func quitAllApps() {
+    let targets = AppLauncher.quitAllTargets()
+    guard !targets.isEmpty, confirmQuitAll(count: targets.count) else { return }
+    for app in targets { app.terminate() }
+  }
+
+  private func confirmQuitAll(count: Int) -> Bool {
+    return windowController.presentConfirmation(
+      message: count == 1 ? "Quit 1 application?" : "Quit \(count) applications?",
+      informativeText: "Applications with unsaved changes will ask you to save.",
+      confirmTitle: "Quit All"
+    )
+  }
+
+  private func runSystemCommand(_ entry: AppEntry) {
+    guard let command = SystemCommandCatalog.command(forEntryID: entry.id) else { return }
+    let previousApp = windowController.previousApp
+    hidePalette(restoreFocus: false)
+    Task { [weak self] in
+      guard let self else { return }
+      if command.id == .quitAllApps {
+        quitAllApps()
+        return
+      }
+      guard command.confirmation == .none || confirmSystemCommand(command) else { return }
+      do {
+        systemCommandState = try await SystemCommandRunner.run(
+          command.id, previousApp: previousApp, state: systemCommandState)
+      } catch let failure as SystemCommandFailure {
+        presentSystemCommandFailure(name: command.name, failure: failure)
+      } catch {
+        presentSystemCommandFailure(
+          name: command.name,
+          failure: SystemCommandFailure(error.localizedDescription))
+      }
     }
+  }
 
-    private func confirmQuitAll(count: Int) -> Bool {
-        return windowController.presentConfirmation(
-            message: count == 1 ? "Quit 1 application?" : "Quit \(count) applications?",
-            informativeText: "Applications with unsaved changes will ask you to save.",
-            confirmTitle: "Quit All"
-        )
+  private func confirmSystemCommand(_ command: SystemCommand) -> Bool {
+    let informativeText: String
+    switch command.id {
+    case .restart:
+      informativeText = "Open applications will be closed and your Mac will restart."
+    case .shutDown:
+      informativeText = "Open applications will be closed and your Mac will shut down."
+    case .logOut:
+      informativeText = "You will be logged out of your Mac."
+    case .emptyTrash:
+      informativeText = "Items in the Trash will be permanently deleted."
+    case .ejectAllDisks:
+      informativeText = "All ejectable local disks will be unmounted."
+    default:
+      informativeText = "This system action will affect your current session."
     }
+    return windowController.presentConfirmation(
+      message: "\(command.name)?",
+      informativeText: informativeText,
+      confirmTitle: command.name
+    )
+  }
 
-    private func runSystemCommand(_ entry: AppEntry) {
-        guard let command = SystemCommandCatalog.command(forEntryID: entry.id) else { return }
-        let previousApp = windowController.previousApp
-        hidePalette(restoreFocus: false)
-        Task { [weak self] in
-            guard let self else { return }
-            if command.id == .quitAllApps {
-                quitAllApps()
-                return
-            }
-            guard command.confirmation == .none || confirmSystemCommand(command) else { return }
-            do {
-                systemCommandState = try await SystemCommandRunner.run(
-                    command.id, previousApp: previousApp, state: systemCommandState)
-            } catch let failure as SystemCommandFailure {
-                presentSystemCommandFailure(name: command.name, failure: failure)
-            } catch {
-                presentSystemCommandFailure(
-                    name: command.name,
-                    failure: SystemCommandFailure(error.localizedDescription))
-            }
-        }
+  private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {
+    let settingsTitle: String? =
+      if let settings = failure.settings {
+        settings == .accessibility
+          ? "Open Accessibility Settings…" : "Open Automation Settings…"
+      } else {
+        nil
+      }
+    let response = NativeConfirmation.show(
+      message: "“\(name)” Failed",
+      informativeText: failure.message,
+      primaryTitle: "OK",
+      secondaryTitle: settingsTitle,
+      style: .critical
+    )
+    guard response == .secondary, let settings = failure.settings else { return }
+    switch settings {
+    case .accessibility:
+      Permissions.openAccessibilitySettings()
+    case .automation:
+      if let url = URL(
+        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+      {
+        NSWorkspace.shared.open(url)
+      }
     }
+  }
 
-    private func confirmSystemCommand(_ command: SystemCommand) -> Bool {
-        let informativeText: String
-        switch command.id {
-        case .restart:
-            informativeText = "Open applications will be closed and your Mac will restart."
-        case .shutDown:
-            informativeText = "Open applications will be closed and your Mac will shut down."
-        case .logOut:
-            informativeText = "You will be logged out of your Mac."
-        case .emptyTrash:
-            informativeText = "Items in the Trash will be permanently deleted."
-        case .ejectAllDisks:
-            informativeText = "All ejectable local disks will be unmounted."
-        default:
-            informativeText = "This system action will affect your current session."
-        }
-        return windowController.presentConfirmation(
-            message: "\(command.name)?",
-            informativeText: informativeText,
-            confirmTitle: command.name
-        )
+  private func runCommand(_ entry: AppEntry, inlineArgumentValues: [String] = []) {
+    if let command = extensionCatalog.command(forEntryID: entry.id) {
+      openExtension(command)
+      return
     }
-
-    private func presentSystemCommandFailure(name: String, failure: SystemCommandFailure) {
-        let settingsTitle: String? =
-            if let settings = failure.settings {
-                settings == .accessibility
-                    ? "Open Accessibility Settings…" : "Open Automation Settings…"
-            } else {
-                nil
-            }
-        let response = NativeConfirmation.show(
-            message: "“\(name)” Failed",
-            informativeText: failure.message,
-            primaryTitle: "OK",
-            secondaryTitle: settingsTitle,
-            style: .critical
-        )
-        guard response == .secondary, let settings = failure.settings else { return }
-        switch settings {
-        case .accessibility:
-            Permissions.openAccessibilitySettings()
-        case .automation:
-            if let url = URL(
-                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
-            {
-                NSWorkspace.shared.open(url)
-            }
-        }
+    if let command = WindowCommandCatalog.command(forEntryID: entry.id) {
+      runWindowCommand(id: command.id)
+      return
     }
-
-    private func runCommand(_ entry: AppEntry, inlineArgumentValues: [String] = []) {
-        if let command = WindowCommandCatalog.command(forEntryID: entry.id) {
-            runWindowCommand(id: command.id)
-            return
-        }
-        if SystemCommandCatalog.command(forEntryID: entry.id) != nil {
-            runSystemCommand(entry)
-            return
-        }
-        switch CommandRegistry.command(for: entry) {
-        case .clipboardHistory:
-            palette.enterSubscreen(.clipboard)
-        case .searchSnippets:
-            palette.enterSubscreen(.snippets)
-        case .createSnippet:
-            palette.enterSubscreen(.snippetEditor)
-        case .searchQuicklinks:
-            searchQuicklinks()
-        case .createQuicklink:
-            createQuicklink()
-        case .searchEmoji:
-            palette.enterSubscreen(.emoji)
-        case .settings:
-            hidePalette(restoreFocus: false)
-            showSettings()
-        case .checkForUpdates:
-            checkForUpdates()
-        case .quit:
-            NSApp.terminate(nil)
-        case .caffeinate:
-            runCaffeinate(duration: nil)
-        case .decaffeinate:
-            runDecaffeinate()
-        case .caffeinateFor:
-            guard let duration = caffeinateDuration(from: inlineArgumentValues) else { return }
-            runCaffeinate(duration: duration)
-        case nil:
-            break
-        }
+    if SystemCommandCatalog.command(forEntryID: entry.id) != nil {
+      runSystemCommand(entry)
+      return
     }
-
-    private func runCaffeinate(duration: Int?) {
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await SystemCommandRunner.caffeinate(for: duration)
-                appIndex.setCaffeinationActive(true)
-                await appIndex.refresh()
-                palette.postFeedback(
-                    duration == nil ? "Your Mac is now caffeinated" : "Your Mac is caffeinated")
-            } catch let failure as SystemCommandFailure {
-                presentSystemCommandFailure(
-                    name: duration == nil ? "Caffeinate" : "Caffeinate For", failure: failure)
-            } catch {
-                presentSystemCommandFailure(
-                    name: duration == nil ? "Caffeinate" : "Caffeinate For",
-                    failure: SystemCommandFailure(error.localizedDescription))
-            }
-        }
+    switch CommandRegistry.command(for: entry) {
+    case .clipboardHistory:
+      palette.enterSubscreen(.clipboard)
+    case .searchSnippets:
+      palette.enterSubscreen(.snippets)
+    case .createSnippet:
+      palette.enterSubscreen(.snippetEditor)
+    case .searchQuicklinks:
+      searchQuicklinks()
+    case .createQuicklink:
+      createQuicklink()
+    case .searchEmoji:
+      palette.enterSubscreen(.emoji)
+    case .settings:
+      hidePalette(restoreFocus: false)
+      showSettings()
+    case .checkForUpdates:
+      checkForUpdates()
+    case .quit:
+      NSApp.terminate(nil)
+    case .caffeinate:
+      runCaffeinate(duration: nil)
+    case .decaffeinate:
+      runDecaffeinate()
+    case .caffeinateFor:
+      guard let duration = caffeinateDuration(from: inlineArgumentValues) else { return }
+      runCaffeinate(duration: duration)
+    case nil:
+      break
     }
+  }
 
-    private func runDecaffeinate() {
-        Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await SystemCommandRunner.decaffeinate()
-                appIndex.setCaffeinationActive(false)
-                await appIndex.refresh()
-                palette.postFeedback("Your Mac is now decaffeinated")
-            } catch let failure as SystemCommandFailure {
-                presentSystemCommandFailure(name: "Decaffeinate", failure: failure)
-            } catch {
-                presentSystemCommandFailure(
-                    name: "Decaffeinate", failure: SystemCommandFailure(error.localizedDescription))
-            }
-        }
+  private func runCaffeinate(duration: Int?) {
+    Task { [weak self] in
+      guard let self else { return }
+      do {
+        try await SystemCommandRunner.caffeinate(for: duration)
+        appIndex.setCaffeinationActive(true)
+        await appIndex.refresh()
+        palette.postFeedback(
+          duration == nil ? "Your Mac is now caffeinated" : "Your Mac is caffeinated")
+      } catch let failure as SystemCommandFailure {
+        presentSystemCommandFailure(
+          name: duration == nil ? "Caffeinate" : "Caffeinate For", failure: failure)
+      } catch {
+        presentSystemCommandFailure(
+          name: duration == nil ? "Caffeinate" : "Caffeinate For",
+          failure: SystemCommandFailure(error.localizedDescription))
+      }
     }
+  }
 
-    private func caffeinateDuration(from values: [String]) -> Int? {
-        let components = (0..<3).map { index in
-            values.indices.contains(index)
-                ? values[index].trimmingCharacters(in: .whitespacesAndNewlines)
-                : ""
-        }
-        guard components.contains(where: { !$0.isEmpty }) else {
-            return nil
-        }
-        let numbers = components.map { $0.isEmpty ? 0 : Int($0) }
-        guard numbers.allSatisfy({ $0 != nil && $0! >= 0 }) else {
-            presentSystemCommandFailure(
-                name: "Caffeinate For",
-                failure: SystemCommandFailure("Duration values must be whole numbers."))
-            return nil
-        }
-        let hours = numbers[0]!
-        let minutes = numbers[1]!
-        let seconds = numbers[2]!
-        let (hoursSeconds, hoursOverflow) = hours.multipliedReportingOverflow(by: 3_600)
-        let (minutesSeconds, minutesOverflow) = minutes.multipliedReportingOverflow(by: 60)
-        let (partial, additionOverflow) = hoursSeconds.addingReportingOverflow(minutesSeconds)
-        let (totalSeconds, secondsOverflow) = partial.addingReportingOverflow(seconds)
-        guard !hoursOverflow, !minutesOverflow, !additionOverflow, !secondsOverflow,
-            totalSeconds > 0
-        else {
-            presentSystemCommandFailure(
-                name: "Caffeinate For",
-                failure: SystemCommandFailure("Duration is too large or empty."))
-            return nil
-        }
-        return totalSeconds
+  private func runDecaffeinate() {
+    Task { [weak self] in
+      guard let self else { return }
+      do {
+        try await SystemCommandRunner.decaffeinate()
+        appIndex.setCaffeinationActive(false)
+        await appIndex.refresh()
+        palette.postFeedback("Your Mac is now decaffeinated")
+      } catch let failure as SystemCommandFailure {
+        presentSystemCommandFailure(name: "Decaffeinate", failure: failure)
+      } catch {
+        presentSystemCommandFailure(
+          name: "Decaffeinate", failure: SystemCommandFailure(error.localizedDescription))
+      }
     }
+  }
 
-    private func runWindowCommand(id: WindowCommand.ID) {
-        guard settings.windowManagementEnabled else { return }
-        let wasVisible = windowController.isVisible
-        let target =
-            wasVisible
-            ? windowController.previousApp
-            : NSWorkspace.shared.frontmostApplication
-        if wasVisible { hidePalette(restoreFocus: true) }
-        _ = windowMover.perform(
-            id,
-            target: target,
-            gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins))
+  private func caffeinateDuration(from values: [String]) -> Int? {
+    let components = (0..<3).map { index in
+      values.indices.contains(index)
+        ? values[index].trimmingCharacters(in: .whitespacesAndNewlines)
+        : ""
     }
-
-    /// Enter on the inline calculator card: copy the answer and dismiss.
-    func copyCalculatorResult(_ result: CalcResult) {
-        guard case .value(_, let copyText) = result.payload else { return }
-        hidePalette(restoreFocus: false)
-        Paster.copyPlainText(copyText)
+    guard components.contains(where: { !$0.isEmpty }) else {
+      return nil
     }
-
-    func showInFinder(_ app: AppEntry) {
-        hidePalette(restoreFocus: false)
-        AppLauncher.showInFinder(app.url)
+    let numbers = components.map { $0.isEmpty ? 0 : Int($0) }
+    guard numbers.allSatisfy({ $0 != nil && $0! >= 0 }) else {
+      presentSystemCommandFailure(
+        name: "Caffeinate For",
+        failure: SystemCommandFailure("Duration values must be whole numbers."))
+      return nil
     }
-
-    func copyPath(_ app: AppEntry) {
-        hidePalette(restoreFocus: false)
-        Paster.copyPlainText(app.url.path)
+    let hours = numbers[0]!
+    let minutes = numbers[1]!
+    let seconds = numbers[2]!
+    let (hoursSeconds, hoursOverflow) = hours.multipliedReportingOverflow(by: 3_600)
+    let (minutesSeconds, minutesOverflow) = minutes.multipliedReportingOverflow(by: 60)
+    let (partial, additionOverflow) = hoursSeconds.addingReportingOverflow(minutesSeconds)
+    let (totalSeconds, secondsOverflow) = partial.addingReportingOverflow(seconds)
+    guard !hoursOverflow, !minutesOverflow, !additionOverflow, !secondsOverflow,
+      totalSeconds > 0
+    else {
+      presentSystemCommandFailure(
+        name: "Caffeinate For",
+        failure: SystemCommandFailure("Duration is too large or empty."))
+      return nil
     }
+    return totalSeconds
+  }
 
-    func paste(_ item: ClipboardItem) {
-        let previous = windowController.previousApp
-        hidePalette(restoreFocus: false)
-        // A successful write promotes the item to the head of its section; follow it so any preserved (pop-to-root) or open clipboard state highlights the row that moved.
-        if Paster.paste(item, store: clipboardStore, previousApp: previous) {
-            selectClip(item)
-        }
+  private func runWindowCommand(id: WindowCommand.ID) {
+    guard settings.windowManagementEnabled else { return }
+    let wasVisible = windowController.isVisible
+    let target =
+      wasVisible
+      ? windowController.previousApp
+      : NSWorkspace.shared.frontmostApplication
+    if wasVisible { hidePalette(restoreFocus: true) }
+    _ = windowMover.perform(
+      id,
+      target: target,
+      gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins))
+  }
+
+  /// Enter on the inline calculator card: copy the answer and dismiss.
+  func copyCalculatorResult(_ result: CalcResult) {
+    guard case .value(_, let copyText) = result.payload else { return }
+    hidePalette(restoreFocus: false)
+    Paster.copyPlainText(copyText)
+  }
+
+  func showInFinder(_ app: AppEntry) {
+    hidePalette(restoreFocus: false)
+    AppLauncher.showInFinder(app.url)
+  }
+
+  func copyPath(_ app: AppEntry) {
+    hidePalette(restoreFocus: false)
+    Paster.copyPlainText(app.url.path)
+  }
+
+  func paste(_ item: ClipboardItem) {
+    let previous = windowController.previousApp
+    hidePalette(restoreFocus: false)
+    // A successful write promotes the item to the head of its section; follow it so any preserved (pop-to-root) or open clipboard state highlights the row that moved.
+    if Paster.paste(item, store: clipboardStore, previousApp: previous) {
+      selectClip(item)
     }
+  }
 
-    func pasteKeepingWindowOpen(_ item: ClipboardItem) {
-        if windowController.pasteKeepingWindowOpen(item, store: clipboardStore) {
-            selectClip(item)
-        }
+  func pasteKeepingWindowOpen(_ item: ClipboardItem) {
+    if windowController.pasteKeepingWindowOpen(item, store: clipboardStore) {
+      selectClip(item)
     }
+  }
 
-    func copyToClipboard(_ item: ClipboardItem) {
-        hidePalette(restoreFocus: false)
-        if Paster.copy(item, store: clipboardStore) {
-            selectClip(item)
-        }
+  func copyToClipboard(_ item: ClipboardItem) {
+    hidePalette(restoreFocus: false)
+    if Paster.copy(item, store: clipboardStore) {
+      selectClip(item)
     }
+  }
 
-    func revealClipboardImage(_ item: ClipboardItem) {
-        guard let url = clipboardStore.imageURL(for: item) else { return }
-        hidePalette(restoreFocus: false)
-        AppLauncher.showInFinder(url)
+  func revealClipboardImage(_ item: ClipboardItem) {
+    guard let url = clipboardStore.imageURL(for: item) else { return }
+    hidePalette(restoreFocus: false)
+    AppLauncher.showInFinder(url)
+  }
+
+  /// Pin or unpin a clipboard entry: the row jumps into (or out of) the Pinned section at the top, so the selection and the scroll follow it.
+  func togglePinnedClip(_ item: ClipboardItem) {
+    clipboardStore.togglePinned(item)
+    selectClip(item)
+    palette.followToken = UUID()
+  }
+
+  func deleteClipboardEntry(_ item: ClipboardItem) {
+    clipboardStore.remove(item)
+  }
+
+  func confirmAndDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      windowController.confirmDeleteAllClipboardEntries { [weak self] in
+        self?.clipboardStore.clearAll()
+        onConfirmed()
+      }
     }
+  }
 
-    /// Pin or unpin a clipboard entry: the row jumps into (or out of) the Pinned section at the top, so the selection and the scroll follow it.
-    func togglePinnedClip(_ item: ClipboardItem) {
-        clipboardStore.togglePinned(item)
-        selectClip(item)
-        palette.followToken = UUID()
-    }
+  /// Put the selection on `item`'s row in the list as currently filtered — pinned rows hold the top, so a row that moved isn't always index 0.
+  private func selectClip(_ item: ClipboardItem) {
+    palette.selection = clipboardStore.rowIndex(of: item, in: palette.query) ?? 0
+  }
 
-    func deleteClipboardEntry(_ item: ClipboardItem) {
-        clipboardStore.remove(item)
-    }
+  // MARK: - Emoji actions (frequency is tallied on the base glyph; the configured tone is applied at copy time)
 
-    func confirmAndDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            windowController.confirmDeleteAllClipboardEntries { [weak self] in
-                self?.clipboardStore.clearAll()
-                onConfirmed()
-            }
-        }
-    }
+  func pasteEmoji(_ entry: EmojiEntry) {
+    frequentEmoji.record(entry.glyph)
+    let previous = windowController.previousApp
+    hidePalette(restoreFocus: false)
+    Paster.pasteString(entry.display(tone: settings.emojiSkinTone), previousApp: previous)
+  }
 
-    /// Put the selection on `item`'s row in the list as currently filtered — pinned rows hold the top, so a row that moved isn't always index 0.
-    private func selectClip(_ item: ClipboardItem) {
-        palette.selection = clipboardStore.rowIndex(of: item, in: palette.query) ?? 0
-    }
+  func copyEmoji(_ entry: EmojiEntry) {
+    frequentEmoji.record(entry.glyph)
+    hidePalette(restoreFocus: false)
+    Paster.copyString(entry.display(tone: settings.emojiSkinTone))
+  }
 
-    // MARK: - Emoji actions (frequency is tallied on the base glyph; the configured tone is applied at copy time)
-
-    func pasteEmoji(_ entry: EmojiEntry) {
-        frequentEmoji.record(entry.glyph)
-        let previous = windowController.previousApp
-        hidePalette(restoreFocus: false)
-        Paster.pasteString(entry.display(tone: settings.emojiSkinTone), previousApp: previous)
-    }
-
-    func copyEmoji(_ entry: EmojiEntry) {
-        frequentEmoji.record(entry.glyph)
-        hidePalette(restoreFocus: false)
-        Paster.copyString(entry.display(tone: settings.emojiSkinTone))
-    }
-
-    func pasteEmojiKeepingWindowOpen(_ entry: EmojiEntry) {
-        frequentEmoji.record(entry.glyph)
-        windowController.pasteStringKeepingWindowOpen(entry.display(tone: settings.emojiSkinTone))
-    }
+  func pasteEmojiKeepingWindowOpen(_ entry: EmojiEntry) {
+    frequentEmoji.record(entry.glyph)
+    windowController.pasteStringKeepingWindowOpen(entry.display(tone: settings.emojiSkinTone))
+  }
 }

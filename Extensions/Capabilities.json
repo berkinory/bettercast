@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [
+    {
+      "name": "clipboard.read",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Read the current clipboard contents."
+    },
+    {
+      "name": "clipboard.write",
+      "risk": "local",
+      "consent": "none",
+      "description": "Write text or an image to the clipboard."
+    },
+    {
+      "name": "clipboard.paste",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Paste into the previously focused application."
+    },
+    {
+      "name": "selectedText.read",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Read selected text through the Accessibility permission."
+    },
+    {
+      "name": "open.url",
+      "risk": "local",
+      "consent": "none",
+      "description": "Open a URL in the default browser."
+    },
+    {
+      "name": "open.application",
+      "risk": "local",
+      "consent": "none",
+      "description": "Open an installed application."
+    },
+    {
+      "name": "finder.reveal",
+      "risk": "local",
+      "consent": "none",
+      "description": "Reveal a local path in Finder."
+    },
+    {
+      "name": "storage.read",
+      "risk": "local",
+      "consent": "none",
+      "description": "Read extension-scoped persistent storage."
+    },
+    {
+      "name": "storage.write",
+      "risk": "local",
+      "consent": "none",
+      "description": "Write extension-scoped persistent storage."
+    },
+    {
+      "name": "storage.delete",
+      "risk": "local",
+      "consent": "none",
+      "description": "Delete an extension-scoped storage value."
+    },
+    {
+      "name": "preferences.read",
+      "risk": "local",
+      "consent": "none",
+      "description": "Read declared extension preferences."
+    },
+    {
+      "name": "process.execute",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Run an allowlisted process with argument and output limits."
+    },
+    {
+      "name": "process.inspect",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read a bounded snapshot of running process metadata."
+    },
+    {
+      "name": "process.terminate",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Terminate an explicitly selected process or its descendants."
+    },
+    {
+      "name": "process.restart",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Terminate and relaunch an explicitly selected process."
+    },
+    {
+      "name": "process.cancel",
+      "risk": "local",
+      "consent": "none",
+      "description": "Cancel a running extension process job owned by this extension."
+    },
+    {
+      "name": "ports.inspect",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read listening TCP ports and their owning process IDs."
+    },
+    {
+      "name": "system.metrics.read",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read local CPU, memory, disk, power and network metrics."
+    },
+    {
+      "name": "brew.read",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read Homebrew formula and cask search, installed and outdated state without mutating packages."
+    },
+    {
+      "name": "brew.detail",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read detailed metadata for a Homebrew formula or cask."
+    },
+    {
+      "name": "brew.manage",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Install, upgrade, clean or manage a Homebrew service after explicit confirmation."
+    },
+    {
+      "name": "network.request",
+      "risk": "network",
+      "consent": "settings",
+      "description": "Make a network request after the provider and data flow are disclosed."
+    },
+    {
+      "name": "menuBar.publishSnapshot",
+      "risk": "local",
+      "consent": "install",
+      "description": "Publish a native menu-bar snapshot for this extension."
+    }
+  ]
+}

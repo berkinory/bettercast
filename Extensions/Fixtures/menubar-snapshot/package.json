@@ -1,0 +1,16 @@
+{
+  "name": "menubar-snapshot",
+  "title": "Coffee Status",
+  "description": "Expose a small menu-bar status snapshot.",
+  "commands": [
+    {
+      "name": "menubar-snapshot",
+      "title": "Coffee Status",
+      "description": "Expose a small menu-bar status snapshot.",
+      "mode": "view",
+      "menuBar": true,
+      "interval": "1 hour",
+      "src": "src/index.tsx"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "kill-process",
+  "title": "Kill Process",
+  "description": "Inspect running processes and terminate one safely.",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "kill-process",
+      "title": "Kill Process",
+      "description": "Inspect running processes and terminate one safely.",
+      "mode": "view",
+      "src": "src/index.tsx"
+    }
+  ]
+}

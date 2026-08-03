@@ -131,13 +131,14 @@ the `ScrollView`, **before `.thinScrollbar()`** (so the scrollbar overlay stays 
 
 ---
 
-## Rows, selection, hover — `Launcher/LauncherView.swift`, `Clipboard/ClipboardView.swift`
+## Rows, selection, hover — `Features/PaletteRow.swift`
 
-All lists share one row grammar so launcher and clipboard look identical:
+All standard palette lists use the shared `PaletteRow` shell so launcher, clipboard, snippets,
+quicklinks, uninstall and extensions keep the same geometry:
 
 - `HStack(spacing: lg)`: leading 24pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical rowVertical`.
-- Background is a `RoundedRectangle(row, .continuous)` filled by `fill`: **selection → hover → clear**, in that precedence. This `fill` computed property is copy-identical across `AppRow`, `ClipboardRow`, `CalculatorCard` — keep them in sync.
-- **Hover state lives on the row**, not the list, so a mouse sweep repaints only the rows entering/leaving (a list-level hover rebuilds every row per move — don't do that).
+- Background is a `RoundedRectangle(row, .continuous)` filled by `PaletteRow`: **selection → hover → clear**, in that precedence. Card and grid views keep their own surfaces because they are not standard list rows.
+- **Hover state lives in `PaletteRow`**, not the list, so a mouse sweep repaints only the rows entering/leaving (a list-level hover rebuilds every row per move — don't do that).
 - **Scroll follows explicit intent only**, driven by a cancellable `ListScrollIntent` — mouse selection never yanks scroll and keyboard navigation minimally reveals rows. Top intents reset the backing clip view to the exact inset-aware origin, including after compact mode expands.
 - **Keycaps** use `KeyCapChip`: `.outline` (white-0.20 border) for hotkey hints on rows, `.filled` (white-0.10 fill) for footer shortcuts.
 

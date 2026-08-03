@@ -1,0 +1,15 @@
+{
+  "name": "port-manager",
+  "title": "Ports",
+  "description": "Inspect listening TCP ports and their owning processes.",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "port-manager",
+      "title": "Ports",
+      "description": "Inspect listening TCP ports and their owning processes.",
+      "mode": "view",
+      "src": "src/index.tsx"
+    }
+  ]
+}

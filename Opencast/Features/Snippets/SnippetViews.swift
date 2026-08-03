@@ -335,15 +335,19 @@ private struct SnippetList: View {
 private struct SnippetRow: View {
     let snippet: Snippet
     let selected: Bool
-    @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            FeatureIcon(systemImage: snippet.icon, tint: Theme.Colors.systemAccent, size: Theme.Size.rowIcon)
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+        PaletteRow(
+            selected: selected,
+            leading: {
+                FeatureIcon(systemImage: snippet.icon, tint: Theme.Colors.systemAccent)
+            },
+            content: {
                 Text(snippet.name)
                     .font(Theme.Typography.rowTitle)
                     .lineLimit(1)
+            },
+            trailing: {
                 if !snippet.keyword.isEmpty {
                     Text(snippet.keyword)
                         .font(Theme.Typography.rowTrailing)
@@ -351,15 +355,7 @@ private struct SnippetRow: View {
                         .lineLimit(1)
                 }
             }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                .fill(selected ? Theme.Colors.selection : hovered ? Theme.Colors.rowHover : .clear)
         )
-        .armedHover($hovered)
     }
 }
 

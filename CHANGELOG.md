@@ -60,6 +60,18 @@
 
 ## [0.1.4]
 
+### Added
+
+- Added the JavaScriptCore extension host and native capability bridge without bundling Node, Bun, or an extension runtime.
+- Added v1 extension packages for Kill Process, Ports, and System Monitor.
+- Added local `.ocx` validation, atomic install, disable, rollback, removal, and static GitHub Release catalog tooling.
+- Added shared `PaletteRow` geometry and interaction styling across launcher, clipboard, snippets, quicklinks, uninstall, and extension lists.
+
+### Improved
+
+- Added native process, listening-port, system-metrics, cancellation, and bounded process-job providers for extension commands.
+- Added Raycast-shaped list, detail, form, action, dropdown, preference, and menu-bar compatibility surfaces.
+
 ### Fixed
 
 - Fixed the self-update flow so downloads complete reliably and the install confirmation appears as expected.

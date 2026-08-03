@@ -1,0 +1,14 @@
+{
+  "name": "detail-open",
+  "title": "Open Detail",
+  "description": "Render markdown and open a related page.",
+  "commands": [
+    {
+      "name": "detail-open",
+      "title": "Open Detail",
+      "description": "Render markdown and open a related page.",
+      "mode": "view",
+      "src": "src/index.tsx"
+    }
+  ]
+}

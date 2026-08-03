@@ -1,0 +1,22 @@
+{
+  "name": "form-preferences",
+  "title": "Save Preference",
+  "description": "Read a declared preference and submit a form.",
+  "commands": [
+    {
+      "name": "form-preferences",
+      "title": "Save Preference",
+      "description": "Read a declared preference and submit a form.",
+      "mode": "view",
+      "src": "src/index.tsx"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "defaultLabel",
+      "title": "Default Label",
+      "type": "textfield",
+      "required": false
+    }
+  ]
+}

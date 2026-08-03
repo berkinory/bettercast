@@ -4,295 +4,297 @@ import SwiftUI
 
 @MainActor
 final class PaletteWindowController: NSObject, NSWindowDelegate {
-    private unowned let core: AppCore
-    private var panel: PalettePanel?
-    private(set) var previousApp: NSRunningApplication?
-    private var popToRootTimer: Timer?
-    private var isPresentingConfirmation = false
-    private var filePicker: NSOpenPanel?
-    private var isPresentingFilePicker = false
-    /// Left/top edge of the panel, resolved once per show and reused across compact↔expanded resizes so both states share an exact top edge (only the height changes). Cleared on hide so the next summon re-resolves for the current screen.
-    private var anchor: (x: CGFloat, topEdgeY: CGFloat)?
+  private unowned let core: AppCore
+  private var panel: PalettePanel?
+  private(set) var previousApp: NSRunningApplication?
+  private var popToRootTimer: Timer?
+  private var isPresentingConfirmation = false
+  private var filePicker: NSOpenPanel?
+  private var isPresentingFilePicker = false
+  /// Left/top edge of the panel, resolved once per show and reused across compact↔expanded resizes so both states share an exact top edge (only the height changes). Cleared on hide so the next summon re-resolves for the current screen.
+  private var anchor: (x: CGFloat, topEdgeY: CGFloat)?
 
-    init(core: AppCore) {
-        self.core = core
+  init(core: AppCore) {
+    self.core = core
+  }
+
+  var isVisible: Bool { panel?.isVisible ?? false }
+
+  func show() {
+    // Ignore ourselves as the "previous" app (e.g. summoned while Settings/About/Onboarding is frontmost) so paste/focus-restore always targets the user's real app, never Opencast's own field.
+    let frontmost = NSWorkspace.shared.frontmostApplication
+    if frontmost?.processIdentifier != NSRunningApplication.current.processIdentifier {
+      previousApp = frontmost
     }
-
-    var isVisible: Bool { panel?.isVisible ?? false }
-
-    func show() {
-        // Ignore ourselves as the "previous" app (e.g. summoned while Settings/About/Onboarding is frontmost) so paste/focus-restore always targets the user's real app, never Opencast's own field.
-        let frontmost = NSWorkspace.shared.frontmostApplication
-        if frontmost?.processIdentifier != NSRunningApplication.current.processIdentifier {
-            previousApp = frontmost
-        }
-        // Resolve the name/icon path once per summon rather than per render; reading `previousApp` (not `frontmost`) keeps the label naming the same app paste will actually target.
-        core.palette.pasteTarget = PasteTarget(app: previousApp)
-        let panel = ensurePanel()
-        // Open disarmed: the pointer may already sit over a row, but nothing should be highlighted until the user actually moves it.
-        core.palette.hoverHighlightArmed = false
-        // Re-resolve the anchor for wherever the user is summoning now, then hold it for the whole session so compact↔expanded resizes never move the window.
-        anchor = nil
-        // Size + place the panel to the current collapsed state before ordering front, so a compact summon never flashes at full size.
-        positionPanel(panel, collapsed: core.paletteIsCollapsed)
-        // Flush the hosting view's first-mount layout while still off-screen, so the one-time safe-area settle of the `safeAreaInset` header doesn't nudge the search placeholder on the first visible frame.
-        panel.contentView?.layoutSubtreeIfNeeded()
-        // The `.nonactivatingPanel` takes key focus without activating the app, so summoning the palette never raises the app's Settings/onboarding windows behind it.
-        panel.makeKeyAndOrderFront(nil)
-        panel.orderFrontRegardless()
-        // A never-activated login-item process can drop the first key request before the window is registered with the window server; re-assert next turn once it is (same pattern as AuxWindowController).
-        DispatchQueue.main.async { [weak panel] in
-            guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
-            panel.makeKeyAndOrderFront(nil)
-        }
+    // Resolve the name/icon path once per summon rather than per render; reading `previousApp` (not `frontmost`) keeps the label naming the same app paste will actually target.
+    core.palette.pasteTarget = PasteTarget(app: previousApp)
+    let panel = ensurePanel()
+    // Open disarmed: the pointer may already sit over a row, but nothing should be highlighted until the user actually moves it.
+    core.palette.hoverHighlightArmed = false
+    // Re-resolve the anchor for wherever the user is summoning now, then hold it for the whole session so compact↔expanded resizes never move the window.
+    anchor = nil
+    // Size + place the panel to the current collapsed state before ordering front, so a compact summon never flashes at full size.
+    positionPanel(panel, collapsed: core.paletteIsCollapsed)
+    // Flush the hosting view's first-mount layout while still off-screen, so the one-time safe-area settle of the `safeAreaInset` header doesn't nudge the search placeholder on the first visible frame.
+    panel.contentView?.layoutSubtreeIfNeeded()
+    // The `.nonactivatingPanel` takes key focus without activating the app, so summoning the palette never raises the app's Settings/onboarding windows behind it.
+    panel.makeKeyAndOrderFront(nil)
+    panel.orderFrontRegardless()
+    // A never-activated login-item process can drop the first key request before the window is registered with the window server; re-assert next turn once it is (same pattern as AuxWindowController).
+    DispatchQueue.main.async { [weak panel] in
+      guard let panel, panel.isVisible, !panel.isKeyWindow else { return }
+      panel.makeKeyAndOrderFront(nil)
     }
+  }
 
-    func hide(restoreFocus: Bool) {
-        panel?.orderOut(nil)
-        // Drop the session anchor so the next summon re-resolves for the screen the user is on then.
-        anchor = nil
-        // Drop the multi-MB clipboard preview bitmaps now the window is gone, so idle RAM returns near baseline (row thumbnails stay cached).
-        ImageThumbnail.purgePreviews()
-        schedulePopToRoot()
-        if restoreFocus { previousApp?.activate() }
+  func hide(restoreFocus: Bool) {
+    panel?.orderOut(nil)
+    // Drop the session anchor so the next summon re-resolves for the screen the user is on then.
+    anchor = nil
+    // Drop the multi-MB clipboard preview bitmaps now the window is gone, so idle RAM returns near baseline (row thumbnails stay cached).
+    ImageThumbnail.purgePreviews()
+    schedulePopToRoot()
+    if restoreFocus { previousApp?.activate() }
+  }
+
+  /// Pop to Root Search: reset immediately (also releases heavy sub-screens — a fully scrolled emoji grid is ~2k realized views), or keep state and reset after the configured delay unless a reopen consumes it first.
+  private func schedulePopToRoot() {
+    popToRootTimer?.invalidate()
+    guard core.uninstall.target == nil else {
+      popToRootTimer = nil
+      return
     }
-
-    /// Pop to Root Search: reset immediately (also releases heavy sub-screens — a fully scrolled emoji grid is ~2k realized views), or keep state and reset after the configured delay unless a reopen consumes it first.
-    private func schedulePopToRoot() {
-        popToRootTimer?.invalidate()
-        guard core.uninstall.target == nil else {
-            popToRootTimer = nil
-            return
-        }
-        let timeout = core.settings.popToRootTimeout
-        guard timeout != .immediately else {
-            core.palette.prepare(mode: .launcher)
-            return
-        }
-        popToRootTimer = Timer.scheduledTimer(withTimeInterval: timeout.interval, repeats: false) {
-            [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.popToRootTimer = nil
-                self?.core.palette.prepare(mode: .launcher)
-            }
-        }
+    let timeout = core.settings.popToRootTimeout
+    guard timeout != .immediately else {
+      core.resetPaletteToLauncher()
+      return
     }
+    popToRootTimer = Timer.scheduledTimer(withTimeInterval: timeout.interval, repeats: false) {
+      [weak self] _ in
+      MainActor.assumeIsolated {
+        self?.popToRootTimer = nil
+        self?.core.resetPaletteToLauncher()
+      }
+    }
+  }
 
-    /// True when a hidden palette still holds pre-close state (pending pop-to-root); consuming cancels the reset either way — the caller decides whether to restore or re-prepare.
-    func consumePreservedState() -> Bool {
-        guard let timer = popToRootTimer else { return false }
-        timer.invalidate()
-        popToRootTimer = nil
+  /// True when a hidden palette still holds pre-close state (pending pop-to-root); consuming cancels the reset either way — the caller decides whether to restore or re-prepare.
+  func consumePreservedState() -> Bool {
+    guard let timer = popToRootTimer else { return false }
+    timer.invalidate()
+    popToRootTimer = nil
+    return true
+  }
+
+  /// Present a native confirmation dialog while keeping the floating palette visible.
+  func confirmDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
+    guard
+      presentConfirmation(
+        message: "Delete all clipboard entries?",
+        informativeText: "This can't be undone.",
+        confirmTitle: "Delete All Entries"
+      )
+    else { return }
+    onConfirmed()
+  }
+
+  func presentConfirmation(
+    message: String, informativeText: String, confirmTitle: String
+  ) -> Bool {
+    presentConfirmationResponse(
+      message: message,
+      informativeText: informativeText,
+      primaryTitle: confirmTitle,
+      secondaryTitle: "Cancel",
+      style: .warning,
+      primaryIsDestructive: true
+    ) == .primary
+  }
+
+  func presentConfirmationResponse(
+    message: String,
+    informativeText: String,
+    primaryTitle: String,
+    secondaryTitle: String? = nil,
+    style: NSAlert.Style = .informational,
+    primaryIsDestructive: Bool = false
+  ) -> NativeConfirmation.Response {
+    isPresentingConfirmation = true
+    defer { isPresentingConfirmation = false }
+    return NativeConfirmation.show(
+      message: message,
+      informativeText: informativeText,
+      primaryTitle: primaryTitle,
+      secondaryTitle: secondaryTitle,
+      style: style,
+      primaryIsDestructive: primaryIsDestructive
+    )
+  }
+
+  /// Paste into the previously focused app while leaving the palette frontmost (keystroke delivered straight to that app's process).
+  @discardableResult
+  func pasteKeepingWindowOpen(_ item: ClipboardItem, store: ClipboardStore) -> Bool {
+    Paster.pasteInPlace(item, store: store, into: previousApp)
+  }
+
+  /// String flavor of the above, for emoji/symbol pastes.
+  func pasteStringKeepingWindowOpen(_ text: String) {
+    Paster.pasteStringInPlace(text, into: previousApp)
+  }
+
+  // MARK: - NSWindowDelegate
+
+  func presentFilePicker(completion: @escaping (URL?) -> Void) {
+    let picker = NSOpenPanel()
+    picker.canChooseFiles = true
+    picker.canChooseDirectories = true
+    picker.allowsMultipleSelection = false
+    filePicker = picker
+    isPresentingFilePicker = true
+    picker.beginSheetModal(for: ensurePanel()) { [weak self, picker] response in
+      self?.filePicker = nil
+      self?.isPresentingFilePicker = false
+      completion(response == .OK ? picker.url : nil)
+    }
+  }
+
+  /// Dismiss when the palette loses key status (click-away, ⌘-Tab, app switch).
+  func windowDidResignKey(_ notification: Notification) {
+    guard isVisible, !isPresentingConfirmation, !isPresentingFilePicker else { return }
+    hide(restoreFocus: false)
+  }
+
+  /// Re-bump focusToken a turn after the panel becomes key: on the first-ever show this fires mid-mount, before the SwiftUI tree has registered its onChange, so a synchronous bump is silently lost.
+  func windowDidBecomeKey(_ notification: Notification) {
+    DispatchQueue.main.async { [weak self] in
+      self?.core.palette.focusToken = UUID()
+    }
+  }
+
+  // MARK: - Private
+
+  private func ensurePanel() -> PalettePanel {
+    if let panel { return panel }
+    let root = RootPaletteView()
+      .environmentObject(core)
+      .environmentObject(core.palette)
+      .environmentObject(core.appIndex)
+      .environmentObject(core.clipboardStore)
+      .environmentObject(core.snippetStore)
+      .environmentObject(core.quicklinkStore)
+      .environmentObject(core.favorites)
+      .environmentObject(core.visibility)
+      .environmentObject(core.currencyRates)
+      .environmentObject(core.emojiIndex)
+      .environmentObject(core.frequentEmoji)
+      .environmentObject(core.runningApps)
+      .environmentObject(core.hotKeys)
+      .environmentObject(core.uninstall)
+      .environmentObject(core.extensionHost)
+    let panel = PalettePanel(rootView: root)
+    panel.delegate = self
+    panel.paletteViewModel = core.palette
+    // Backspace in an already-empty search backs out of a sub-screen to a fresh root launcher; `prepare` clears state and re-focuses the field.
+    panel.onBareBackspace = { [weak self] in
+      guard let self, core.palette.mode != .launcher, core.palette.query.isEmpty
+      else {
+        return false
+      }
+      if core.palette.mode == .uninstall {
+        core.exitUninstall()
+      } else if core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor {
+        guard !(panel.firstResponder is NSTextField || panel.firstResponder is NSTextView) else {
+          return false
+        }
+        if core.palette.mode == .snippetEditor {
+          core.exitSnippetEditor()
+        } else {
+          core.exitQuicklinkEditor()
+        }
+      } else {
+        core.handlePaletteEscape()
+      }
+      return true
+    }
+    panel.onBareSpace = { [weak self] in
+      guard let self, core.palette.mode == .uninstall,
+        core.uninstall.phase == .selecting
+      else { return false }
+      let items = core.uninstall.filtered(core.palette.query)
+      guard !items.isEmpty else { return true }
+      let selection = min(max(core.palette.selection, 0), items.count - 1)
+      core.uninstall.toggle(items[selection])
+      return true
+    }
+    panel.onCommandShortcut = { [weak self] event in
+      guard let self,
+        !event.isARepeat,
+        event.modifierFlags.intersection([.command, .option, .control, .shift]) == .command
+      else { return false }
+      if Int(event.keyCode) == kVK_Escape {
+        self.core.palette.prepare(mode: .launcher)
         return true
+      }
+      guard let character = event.charactersIgnoringModifiers?.lowercased() else {
+        return false
+      }
+      switch character {
+      case ",":
+        self.core.showSettings()
+        return true
+      case "w":
+        self.core.hidePalette()
+        return true
+      default:
+        return false
+      }
     }
-
-    /// Present a native confirmation dialog while keeping the floating palette visible.
-    func confirmDeleteAllClipboardEntries(onConfirmed: @escaping () -> Void) {
-        guard
-            presentConfirmation(
-                message: "Delete all clipboard entries?",
-                informativeText: "This can't be undone.",
-                confirmTitle: "Delete All Entries"
-            )
-        else { return }
-        onConfirmed()
+    panel.onEscape = { [weak self] in
+      guard let self, core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor
+      else {
+        return false
+      }
+      if core.palette.mode == .snippetEditor {
+        core.exitSnippetEditor()
+      } else {
+        core.exitQuicklinkEditor()
+      }
+      return true
     }
+    self.panel = panel
+    return panel
+  }
 
-    func presentConfirmation(
-        message: String, informativeText: String, confirmTitle: String
-    ) -> Bool {
-        presentConfirmationResponse(
-            message: message,
-            informativeText: informativeText,
-            primaryTitle: confirmTitle,
-            secondaryTitle: "Cancel",
-            style: .warning,
-            primaryIsDestructive: true
-        ) == .primary
-    }
+  /// Resize the panel to the given collapsed state, keeping the top edge anchored. Applied even while hidden (e.g. compact toggled in Settings) so the window is already correctly sized before the next show — otherwise the list would mount at the stale size and open scrolled up.
+  func applyCollapsed(_ collapsed: Bool) {
+    guard let panel else { return }
+    positionPanel(panel, collapsed: collapsed)
+  }
 
-    func presentConfirmationResponse(
-        message: String,
-        informativeText: String,
-        primaryTitle: String,
-        secondaryTitle: String? = nil,
-        style: NSAlert.Style = .informational,
-        primaryIsDestructive: Bool = false
-    ) -> NativeConfirmation.Response {
-        isPresentingConfirmation = true
-        defer { isPresentingConfirmation = false }
-        return NativeConfirmation.show(
-            message: message,
-            informativeText: informativeText,
-            primaryTitle: primaryTitle,
-            secondaryTitle: secondaryTitle,
-            style: style,
-            primaryIsDestructive: primaryIsDestructive
-        )
-    }
+  /// Size the panel to compact/expanded height (width fixed) and place it against the session anchor so its top edge stays put and the list grows downward. Resize is instant (no animation, matching Raycast).
+  private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
+    guard let anchor = resolveAnchor() else { return }
+    let height = collapsed ? Theme.Size.compactHeight : Theme.Size.panelHeight
+    let frame = NSRect(
+      x: anchor.x, y: anchor.topEdgeY - height, width: Theme.Size.panelWidth, height: height)
+    panel.setFrame(frame, display: true)
+  }
 
-    /// Paste into the previously focused app while leaving the palette frontmost (keystroke delivered straight to that app's process).
-    @discardableResult
-    func pasteKeepingWindowOpen(_ item: ClipboardItem, store: ClipboardStore) -> Bool {
-        Paster.pasteInPlace(item, store: store, into: previousApp)
-    }
+  private func targetScreen() -> NSScreen? {
+    let mouse = NSEvent.mouseLocation
+    return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+  }
 
-    /// String flavor of the above, for emoji/symbol pastes.
-    func pasteStringKeepingWindowOpen(_ text: String) {
-        Paster.pasteStringInPlace(text, into: previousApp)
-    }
-
-    // MARK: - NSWindowDelegate
-
-    func presentFilePicker(completion: @escaping (URL?) -> Void) {
-        let picker = NSOpenPanel()
-        picker.canChooseFiles = true
-        picker.canChooseDirectories = true
-        picker.allowsMultipleSelection = false
-        filePicker = picker
-        isPresentingFilePicker = true
-        picker.beginSheetModal(for: ensurePanel()) { [weak self, picker] response in
-            self?.filePicker = nil
-            self?.isPresentingFilePicker = false
-            completion(response == .OK ? picker.url : nil)
-        }
-    }
-
-    /// Dismiss when the palette loses key status (click-away, ⌘-Tab, app switch).
-    func windowDidResignKey(_ notification: Notification) {
-        guard isVisible, !isPresentingConfirmation, !isPresentingFilePicker else { return }
-        hide(restoreFocus: false)
-    }
-
-    /// Re-bump focusToken a turn after the panel becomes key: on the first-ever show this fires mid-mount, before the SwiftUI tree has registered its onChange, so a synchronous bump is silently lost.
-    func windowDidBecomeKey(_ notification: Notification) {
-        DispatchQueue.main.async { [weak self] in
-            self?.core.palette.focusToken = UUID()
-        }
-    }
-
-    // MARK: - Private
-
-    private func ensurePanel() -> PalettePanel {
-        if let panel { return panel }
-        let root = RootPaletteView()
-            .environmentObject(core)
-            .environmentObject(core.palette)
-            .environmentObject(core.appIndex)
-            .environmentObject(core.clipboardStore)
-            .environmentObject(core.snippetStore)
-            .environmentObject(core.quicklinkStore)
-            .environmentObject(core.favorites)
-            .environmentObject(core.visibility)
-            .environmentObject(core.currencyRates)
-            .environmentObject(core.emojiIndex)
-            .environmentObject(core.frequentEmoji)
-            .environmentObject(core.runningApps)
-            .environmentObject(core.hotKeys)
-            .environmentObject(core.uninstall)
-        let panel = PalettePanel(rootView: root)
-        panel.delegate = self
-        panel.paletteViewModel = core.palette
-        // Backspace in an already-empty search backs out of a sub-screen to a fresh root launcher; `prepare` clears state and re-focuses the field.
-        panel.onBareBackspace = { [weak self] in
-            guard let self, core.palette.mode != .launcher, core.palette.query.isEmpty
-            else {
-                return false
-            }
-            if core.palette.mode == .uninstall {
-                core.exitUninstall()
-            } else if core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor {
-                guard !(panel.firstResponder is NSTextField || panel.firstResponder is NSTextView) else {
-                    return false
-                }
-                if core.palette.mode == .snippetEditor {
-                    core.exitSnippetEditor()
-                } else {
-                    core.exitQuicklinkEditor()
-                }
-            } else {
-                core.handlePaletteEscape()
-            }
-            return true
-        }
-        panel.onBareSpace = { [weak self] in
-            guard let self, core.palette.mode == .uninstall,
-                core.uninstall.phase == .selecting
-            else { return false }
-            let items = core.uninstall.filtered(core.palette.query)
-            guard !items.isEmpty else { return true }
-            let selection = min(max(core.palette.selection, 0), items.count - 1)
-            core.uninstall.toggle(items[selection])
-            return true
-        }
-        panel.onCommandShortcut = { [weak self] event in
-            guard let self,
-                !event.isARepeat,
-                event.modifierFlags.intersection([.command, .option, .control, .shift]) == .command
-            else { return false }
-            if Int(event.keyCode) == kVK_Escape {
-                self.core.palette.prepare(mode: .launcher)
-                return true
-            }
-            guard let character = event.charactersIgnoringModifiers?.lowercased() else {
-                return false
-            }
-            switch character {
-            case ",":
-                self.core.showSettings()
-                return true
-            case "w":
-                self.core.hidePalette()
-                return true
-            default:
-                return false
-            }
-        }
-        panel.onEscape = { [weak self] in
-            guard let self, core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor else {
-                return false
-            }
-            if core.palette.mode == .snippetEditor {
-                core.exitSnippetEditor()
-            } else {
-                core.exitQuicklinkEditor()
-            }
-            return true
-        }
-        self.panel = panel
-        return panel
-    }
-
-    /// Resize the panel to the given collapsed state, keeping the top edge anchored. Applied even while hidden (e.g. compact toggled in Settings) so the window is already correctly sized before the next show — otherwise the list would mount at the stale size and open scrolled up.
-    func applyCollapsed(_ collapsed: Bool) {
-        guard let panel else { return }
-        positionPanel(panel, collapsed: collapsed)
-    }
-
-    /// Size the panel to compact/expanded height (width fixed) and place it against the session anchor so its top edge stays put and the list grows downward. Resize is instant (no animation, matching Raycast).
-    private func positionPanel(_ panel: NSPanel, collapsed: Bool) {
-        guard let anchor = resolveAnchor() else { return }
-        let height = collapsed ? Theme.Size.compactHeight : Theme.Size.panelHeight
-        let frame = NSRect(
-            x: anchor.x, y: anchor.topEdgeY - height, width: Theme.Size.panelWidth, height: height)
-        panel.setFrame(frame, display: true)
-    }
-
-    private func targetScreen() -> NSScreen? {
-        let mouse = NSEvent.mouseLocation
-        return NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-    }
-
-    /// The current session's anchor, resolved from the target screen on first use and cached until hide — so compact and expanded placements can never read a different `visibleFrame`.
-    private func resolveAnchor() -> (x: CGFloat, topEdgeY: CGFloat)? {
-        if let anchor { return anchor }
-        guard let screen = targetScreen() else { return nil }
-        let visible = screen.visibleFrame
-        let resolved = (
-            x: visible.midX - Theme.Size.panelWidth / 2,
-            topEdgeY: visible.maxY - visible.height * Theme.Size.paletteTopMarginFraction
-        )
-        anchor = resolved
-        return resolved
-    }
+  /// The current session's anchor, resolved from the target screen on first use and cached until hide — so compact and expanded placements can never read a different `visibleFrame`.
+  private func resolveAnchor() -> (x: CGFloat, topEdgeY: CGFloat)? {
+    if let anchor { return anchor }
+    guard let screen = targetScreen() else { return nil }
+    let visible = screen.visibleFrame
+    let resolved = (
+      x: visible.midX - Theme.Size.panelWidth / 2,
+      topEdgeY: visible.maxY - visible.height * Theme.Size.paletteTopMarginFraction
+    )
+    anchor = resolved
+    return resolved
+  }
 }
