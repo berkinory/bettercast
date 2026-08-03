@@ -57,3 +57,9 @@
 
 - Removed the light appearance option. Opencast now uses the dark appearance only.
 - Removed the Settings-wide search field and search results view.
+
+## [0.1.4]
+
+### Fixed
+
+- Fixed the self-update flow so downloads complete reliably and the install confirmation appears as expected.
