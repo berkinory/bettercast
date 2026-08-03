@@ -152,7 +152,7 @@ struct SectionHeader: View {
     var body: some View {
         Text(title)
             .font(Theme.Typography.sectionHeader)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.Colors.sectionHeader)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Theme.Spacing.md)
             .padding(
@@ -211,10 +211,10 @@ private struct AppRow: View {
             Spacer()
             Text(app.kindLabel)
                 .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.Colors.rowKind)
         }
         .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.rowVertical)
         .background(
             RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
                 .fill(fill)

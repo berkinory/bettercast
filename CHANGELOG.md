@@ -45,3 +45,4 @@
 
 - Quicklinks can now be added to and removed from launcher favorites.
 - Palette-level command shortcuts now handle Settings, close, and return-to-root actions reliably.
+- Refined the palette surface, footer controls, action keycaps, row spacing, and appearance-aware light/dark styling.

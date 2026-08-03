@@ -11,15 +11,15 @@ Read this before touching any view body, `Theme` value, or the panel chrome.
 ## The look, in one paragraph
 
 Opencast is a **Raycast-style dark-first command palette**: a borderless floating panel whose surface is
-just the OS behind-window blur under an appearance-aware 40% scrim — there is no gray chrome. Everything on that
+just the OS behind-window blur under an adaptive dark surface — there is no gray chrome. Everything on that
 surface uses an appearance-aware neutral ramp. The header and bottom bar **float over the list as fully
 transparent overlays**; there are no hard-edged bars, strips, or dividers. Rows don't clip under the
-bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Floating controls (the action pill, the menu circle, popover menus) use **Liquid Glass on macOS 26+**
+bars, they **dissolve**: a scroll-driven gradient mask ghosts them as they pass beneath. Popover menus use **Liquid Glass on macOS 26+**; footer controls use a stable appearance-aware neutral surface so their contrast does not shift with wallpaper.
 and an appearance-aware fallback on older supported systems. Dark remains the default, while Light is an explicit user choice.
 
 Five load-bearing ideas, in priority order:
 
-1. **Surface = 40% appearance-aware scrim over behind-window blur.** No solid backgrounds. Depth comes from the desktop showing through.
+1. **Surface = adaptive dark surface over HUD blur.** No gray chrome. The desktop adds texture without washing out the dark surface.
 2. **Appearance-aware neutral ramp, never grays.** Text and surfaces use the selected content/surface base at fixed stops.
 3. **Floating bars, not chrome.** Header/footer are transparent overlays; the list fills the whole panel.
 4. **Edges dissolve, they don't clip.** Scroll-driven mask, no separators between list and bars.
@@ -34,7 +34,7 @@ These are the things that quietly break the look if changed. Preserve them unles
 - **Dark by default, light by choice.** `AppSettings` persists the selected appearance; `AppCore` applies it globally and `Theme.Colors` resolves neutral tokens from the selected content/surface base. Brand accents remain fixed across both appearances.
 - **No grays, no opaque fills on the surface.** Reach for `Theme.Colors.*` (appearance-aware neutral alpha) instead of `.gray`, `NSColor.windowBackground`, etc.
 - **No hard dividers between the list and the bars.** The header and bottom bar are `safeAreaInset` overlays with no background; separation comes from `edgeDissolve()`, nothing else. (One deliberate exception: the vertical hairline between the clipboard list and its preview pane.)
-- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(black 40%) → .background(VisualEffectView()) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the scrim goes _over_ the vibrancy, and the clip is last.
+- **The panel corner is clipped once, at the root.** `RootPaletteView.body` ends with `.background(adaptive panel surface) → .background(VisualEffectView(.hudWindow)) → .overlay(stroke) → .clipShape(RoundedRectangle(26, .continuous))`. Keep that order; the surface goes _over_ the vibrancy, and the clip is last.
 - **Don't use the native scroll edge effect.** Inside a transparent panel it renders a hard-bounded rectangle. Use `edgeDissolve()`.
 - **Test over a light desktop.** Transparency and corner masking bugs only show over bright wallpaper. Dark wallpaper hides them.
 
@@ -47,11 +47,11 @@ Add a token rather than a magic number when introducing a new value.
 
 ### Spacing (`Theme.Spacing`)
 
-`xxs 2` · `xs 4` · `sm 6` · `md 8` · `lg 10` · `xl 12` · `xxl 20`
+`xxs 2` · `xs 4` · `sm 6` · `md 8` · `lg 10` · `xl 12` · `xxl 20` · `rowVertical 7`
 
 `xxs` is the tight gap between adjacent keycap chips (used everywhere keycaps sit side by side).
 
-Row content insets are `md`; list horizontal inset is `md`; the search icon aligns with rows via `md * 2`.
+Row content insets are `md` horizontal and `rowVertical` vertical; list horizontal inset is `md`; the search icon aligns with rows via `md * 2`.
 
 Section-header rhythm has two dedicated tokens: `sectionHeaderBottom` (header → first row) and
 `sectionSpacing` (gap above every header **except the list's first**, which reads as the previous
@@ -77,25 +77,31 @@ Settings metrics live in the nested `Theme.Settings` namespace so changing its c
 ### Typography (`Theme.Typography`)
 
 System fonts only — **no fixed point sizes in views** (honors Dynamic Type). `searchField` is the one
-explicit size (20pt regular). Use `rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
+explicit size (18pt regular). Use `rowTitle` (`.body`), `sectionHeader` (`.subheadline.medium`),
 `rowTrailing`/`bar`/`menuRow`/`keyCap` etc. as named.
 
 ### Colors (`Theme.Colors`) — the appearance-aware neutral ramp
 
 | Token            | Value          | Use                                              |
 | ---------------- | -------------- | ------------------------------------------------ |
-| `panelSurface`   | surface base 0.40 | the panel scrim over vibrancy                 |
-| `selection`      | content base 0.10 | selected row fill (keyboard/active selection) |
+| `panelSurface`   | dark `#131313` / light `#f5f5f5` | adaptive panel surface over vibrancy |
+| `panelStroke`    | content base 0.08 | subtle outer edge                            |
+| `footerSurface`   | dark `#292929` / light `#fcfcfc` | footer action and mode controls              |
+| `footerStroke`    | content base 0.16 | footer control outline                      |
+| `selection`      | content base 0.12 | selected row fill (keyboard/active selection) |
 | `rowHover`       | content base 0.05 | mouse-hover fill (always fainter than selection) |
 | `menuHover`      | content base 0.10 | popover-menu row hover                        |
 | `separator`      | content base 0.10 | the clipboard list↔preview hairline          |
-| `controlSurface` | content base 0.10 | filled keycaps, glyph tiles                   |
+| `controlSurface` | content base 0.14 | filled keycaps, glyph tiles                   |
 | `border`         | content base 0.20 | outlined keycap borders                       |
 | `textSecondary`  | content base 0.60 | secondary labels                              |
-| `textTertiary`   | content base 0.40 | placeholders, trailing kind labels            |
+| `textTertiary`   | content base 0.40 | placeholders and low-priority metadata        |
+| `rowSecondary`   | content base 0.56 | row subtitles and keywords                    |
+| `rowKind`        | content base 0.52 | trailing row kind labels                      |
+| `sectionHeader`  | content base 0.58 | list section headers                          |
 | `cardFill`       | content base 0.05 | settings/calc card fill                       |
 | `cardStroke`     | content base 0.10 | settings/calc card border + inset dividers    |
-| `glassFrost`     | content base 0.05 | appearance-aware tint layered into glass      |
+| `glassFrost`     | content base 0.10 | appearance-aware tint layered into glass      |
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
 the selected appearance). **Selection always beats hover** when a row is both.
@@ -108,7 +114,7 @@ the selected appearance). **Selection always beats hover** when a row is both.
 - **The results layer fills the whole panel.** The header and bottom bar attach via `.safeAreaInset(edge: .top/.bottom)` as transparent overlays that float _over_ the list. The list underlaps them and dissolves at the edges.
 - **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Clipboard and Emoji show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
-- **Bottom bar** (`bottomBarHeight 52`): the launcher has a menu circle on the left; sub-screens replace it with a floating mode pill showing their icon and title. Both open the same About / Settings menu. The action group stays on the right — both floating glass, no bar background. The action group is one glass `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
+- **Bottom bar** (`bottomBarHeight 52`): the launcher has a menu circle on the left; sub-screens replace it with a floating mode pill showing their icon and title. Both open the same About / Settings menu. The action group stays on the right — all controls use the same appearance-aware footer surface, with no bar background. The action group is one `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
 
 ---
 
@@ -129,7 +135,7 @@ the `ScrollView`, **before `.thinScrollbar()`** (so the scrollbar overlay stays 
 
 All lists share one row grammar so launcher and clipboard look identical:
 
-- `HStack(spacing: lg)`: leading 24pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical sm`.
+- `HStack(spacing: lg)`: leading 24pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical rowVertical`.
 - Background is a `RoundedRectangle(row, .continuous)` filled by `fill`: **selection → hover → clear**, in that precedence. This `fill` computed property is copy-identical across `AppRow`, `ClipboardRow`, `CalculatorCard` — keep them in sync.
 - **Hover state lives on the row**, not the list, so a mouse sweep repaints only the rows entering/leaving (a list-level hover rebuilds every row per move — don't do that).
 - **Scroll follows explicit intent only**, driven by a cancellable `ListScrollIntent` — mouse selection never yanks scroll and keyboard navigation minimally reveals rows. Top intents reset the backing clip view to the exact inset-aware origin, including after compact mode expands.
@@ -155,7 +161,7 @@ leading gap. Headers are non-selectable display rows, so selection (keyed by id)
 
 Glass is **only** for floating controls, never the main surface.
 
-- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and an appearance-aware solid surface with a border below it. Used on the action-group capsule, menu circle, and popover menus; tune the frost amount via the `glassFrost` token, not per call site.
+- `View.frosted(in:)` uses `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` on macOS 26+, and an appearance-aware solid surface with a border below it. Used by popover menus; footer controls use `paletteFooterSurface(in:)` so they stay visually stable in both appearances.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a bottom corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's.
 - **`PopoverMenu`** uses the same `frosted` surface with **no hand-tuned shadow** — Tahoe glass carries its own elevation, while the older-system fallback uses the selected appearance's surface and border.
 - `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with `.opacity + .scale(0.96)` from the anchored corner, `easeOut 0.14`.

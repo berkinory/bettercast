@@ -11,6 +11,7 @@ enum Theme {
         static let lg: CGFloat = 10
         static let xl: CGFloat = 12
         static let xxl: CGFloat = 20
+        static let rowVertical: CGFloat = 7
         /// Calculator answer card's roomier vertical breathing room.
         static let xxxl: CGFloat = 28
         /// Gap under a category header before its first row; shared by every palette list's `SectionHeader`.
@@ -41,10 +42,10 @@ enum Theme {
         static let paletteTopMarginFraction: CGFloat = 0.18
         static let headerHeight: CGFloat = 44
         /// Fixed slot for the header leading glyph (search / back chevron / mode icon) so the search field starts at the same x in every mode — glyphs have different intrinsic widths (chevron 14, magnifyingglass 22). Sized to the magnifyingglass so the launcher spacing is unchanged.
-        static let headerIconSlot: CGFloat = 22
+        static let headerIconSlot: CGFloat = 28
         /// Vertical breathing room above the search row — constant across compact/expanded so the bar never shifts when typing flips the state; also the compact bar's symmetric top/bottom slack.
         static let headerPadding: CGFloat = 10
-        static let searchFieldPointSize: CGFloat = 20
+        static let searchFieldPointSize: CGFloat = 18
         static let inlineArgumentHeight: CGFloat = 28
         static let inlineArgumentMinimumWidth: CGFloat = 72
         static let inlineArgumentHelpBadge: CGFloat = 14
@@ -71,7 +72,7 @@ enum Theme {
     /// System text styles (not hardcoded sizes) so the UI honors Dynamic Type.
     enum Typography {
         static let searchField = Font.system(size: Theme.Size.searchFieldPointSize, weight: .regular)
-        static let headerIcon = Font.system(size: 18, weight: .medium)
+        static let headerIcon = Font.system(size: 20, weight: .medium)
         static let rowTitle = Font.body
         static let body = Font.body
         static let bodyMedium = Font.body.weight(.medium)
@@ -201,27 +202,47 @@ enum Theme {
     enum Colors {
         static let surfaceBase = Color(nsColor: .textBackgroundColor)
         static let contentBase = Color(nsColor: .textColor)
-        static let panelSurface = surfaceBase.opacity(0.4)
+        static let panelSurface = Color(
+            nsColor: NSColor(name: "OpencastPanelSurface") { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                return isDark
+                    ? NSColor(calibratedWhite: 0.075, alpha: 0.96)
+                    : NSColor(calibratedWhite: 0.96, alpha: 0.92)
+            }
+        )
+        static let panelStroke = contentBase.opacity(0.08)
+        static let footerSurface = Color(
+            nsColor: NSColor(name: "OpencastFooterSurface") { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                return isDark
+                    ? NSColor(calibratedWhite: 0.16, alpha: 0.96)
+                    : NSColor(calibratedWhite: 0.99, alpha: 0.90)
+            }
+        )
+        static let footerStroke = contentBase.opacity(0.16)
         static let textPrimary = contentBase
         static let textOnPrimary = surfaceBase
         static let searchPlaceholder = contentBase.opacity(0.32)
         /// Selection fill: a soft neutral translucent layer shared by launcher and clipboard so both lists look identical.
-        static let selection = contentBase.opacity(0.10)
+        static let selection = contentBase.opacity(0.12)
         /// Mouse hover — a fainter layer that follows the cursor, visually distinct from selection.
         static let rowHover = contentBase.opacity(0.05)
         static let menuHover = contentBase.opacity(0.10)
         static let separator = contentBase.opacity(0.10)
         /// Small control surfaces: kbd chips, glyph tiles.
-        static let controlSurface = contentBase.opacity(0.10)
+        static let controlSurface = contentBase.opacity(0.14)
         /// Control borders: outlined kbd chips.
         static let border = contentBase.opacity(0.20)
         static let textSecondary = contentBase.opacity(0.60)
         static let textTertiary = contentBase.opacity(0.40)
+        static let rowSecondary = contentBase.opacity(0.56)
+        static let rowKind = contentBase.opacity(0.52)
+        static let sectionHeader = contentBase.opacity(0.58)
         /// Settings grouped "card": a faint raised surface whose hairline border doubles as the inset row divider.
         static let cardFill = contentBase.opacity(0.05)
         static let cardStroke = contentBase.opacity(0.10)
         /// Appearance-aware tint layered into the Liquid Glass floating controls.
-        static let glassFrost = contentBase.opacity(0.05)
+        static let glassFrost = contentBase.opacity(0.10)
         static let feedbackFill = Color.green.opacity(0.18)
         static let feedbackShade = surfaceBase.opacity(0.40)
         static let feedbackStroke = contentBase.opacity(0.20)

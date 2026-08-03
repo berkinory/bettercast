@@ -347,7 +347,7 @@ private struct SnippetRow: View {
                 if !snippet.keyword.isEmpty {
                     Text(snippet.keyword)
                         .font(Theme.Typography.rowTrailing)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.Colors.rowSecondary)
                         .lineLimit(1)
                 }
             }

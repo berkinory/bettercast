@@ -328,7 +328,11 @@ struct RootPaletteView: View {
         // The window's own frame (driven by `PaletteWindowController`) is the size source of truth; filling it keeps the glass background and corner clip matched to the current compact/expanded window height.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.Colors.panelSurface)
-        .background(VisualEffectView())
+        .background(VisualEffectView(material: .hudWindow))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+                .strokeBorder(Theme.Colors.panelStroke, lineWidth: 1)
+        }
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous))
         // Every show bumps focusToken — refocus search and drop any menu left open from last time (e.g. dismissed by clicking away with a context menu up).
         .onChange(of: vm.focusToken) {
@@ -685,7 +689,7 @@ struct RootPaletteView: View {
         )
         .textFieldStyle(.plain)
         .font(Theme.Typography.searchField)
-        .tint(.white)
+        .tint(Theme.Colors.textPrimary)
         .paletteTextInputCursor()
         .focused($searchFocused)
         .onSubmit(activateSelection)
@@ -1425,11 +1429,11 @@ private struct PaletteModeMenuButton: View {
             hovered = hovering
             if hovering { NSCursor.arrow.set() }
         }
-        .frosted(in: Capsule())
+        .paletteFooterSurface(in: Capsule())
     }
 }
 
-/// The footer's glass menu circle; hover lives here so a mouse sweep never re-renders the palette body.
+/// The footer's menu circle; hover lives here so a mouse sweep never re-renders the palette body.
 private struct MenuCircleButton: View {
     let action: () -> Void
     @State private var hovered = false
@@ -1447,7 +1451,7 @@ private struct MenuCircleButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-        .frosted(in: Circle())
+        .paletteFooterSurface(in: Circle())
     }
 }
 

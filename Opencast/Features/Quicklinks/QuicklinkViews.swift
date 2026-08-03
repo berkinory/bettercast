@@ -470,7 +470,7 @@ struct QuicklinkRow: View {
             Spacer(minLength: 0)
             Text("Quicklink")
                 .font(Theme.Typography.rowTrailing)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.Colors.rowKind)
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)

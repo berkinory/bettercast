@@ -88,7 +88,7 @@ struct PaletteContextPill: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .frame(height: Theme.Size.menuButton)
-        .frosted(in: Capsule())
+        .paletteFooterSurface(in: Capsule())
     }
 }
 
@@ -123,15 +123,24 @@ struct PaletteActionGroup: View {
             }
         }
         .padding(Theme.Spacing.xs)
-        .frosted(in: Capsule())
+        .paletteFooterSurface(in: Capsule())
     }
 
     @ViewBuilder
     private func shortcut(_ keys: [String]) -> some View {
         HStack(spacing: Theme.Spacing.xxs) {
             ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
-                KeyCapChip(text: key, style: .outline)
+                KeyCapChip(text: key, style: .filled)
             }
         }
+    }
+}
+
+extension View {
+    func paletteFooterSurface<S: Shape>(in shape: S) -> some View {
+        background(shape.fill(Theme.Colors.footerSurface))
+            .overlay {
+                shape.stroke(Theme.Colors.footerStroke, lineWidth: 1)
+            }
     }
 }
