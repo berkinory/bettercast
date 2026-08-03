@@ -8,6 +8,7 @@ final class PalettePanel: NSPanel {
     var onBareBackspace: (() -> Bool)?
     var onBareSpace: (() -> Bool)?
     var onEscape: (() -> Bool)?
+    var onCommandShortcut: ((NSEvent) -> Bool)?
     /// Arms the hover highlight from `sendEvent` — the one place both event streams pass through, so a keyboard-driven scroll under a still pointer never fires `.mouseMoved` and hover stays disarmed. Also carries the caret-hide hook fired when a footer menu opens.
     weak var paletteViewModel: PaletteViewModel? {
         didSet {
@@ -42,6 +43,12 @@ final class PalettePanel: NSPanel {
             let rewritten = arrowKeyDown(arrow, from: event)
         {
             super.sendEvent(rewritten)
+            return
+        }
+        if event.type == .keyDown,
+            event.modifierFlags.contains(.command),
+            onCommandShortcut?(event) == true
+        {
             return
         }
         // A footer menu owns the keyboard: the search field stays first responder (no focus swap, so nothing reflows) with only its caret hidden; swallow text-editing keystrokes before the field editor consumes them, but let shortcut chords (⌘K, ⌘⌫) and menu-nav keys reach SwiftUI's onKeyPress.

@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 @MainActor
@@ -199,6 +200,29 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             let selection = min(max(core.palette.selection, 0), items.count - 1)
             core.uninstall.toggle(items[selection])
             return true
+        }
+        panel.onCommandShortcut = { [weak self] event in
+            guard let self,
+                !event.isARepeat,
+                event.modifierFlags.intersection([.command, .option, .control, .shift]) == .command
+            else { return false }
+            if Int(event.keyCode) == kVK_Escape {
+                self.core.palette.prepare(mode: .launcher)
+                return true
+            }
+            guard let character = event.charactersIgnoringModifiers?.lowercased() else {
+                return false
+            }
+            switch character {
+            case ",":
+                self.core.showSettings()
+                return true
+            case "w":
+                self.core.hidePalette()
+                return true
+            default:
+                return false
+            }
         }
         panel.onEscape = { [weak self] in
             guard let self, core.palette.mode == .snippetEditor || core.palette.mode == .quicklinkEditor else {
