@@ -135,7 +135,7 @@ function main() {
     .filter(Boolean);
   writeJSON(catalogPath, {
     schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     packages
   });
 }
