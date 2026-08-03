@@ -4,7 +4,7 @@ let packageURL = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ??
 let validator = ExtensionPackageValidator()
 let report = try validator.validate(packageURL: packageURL)
 precondition(report.isInstallable)
-precondition(report.channel == .community)
+precondition(report.channel == (report.version == nil ? .community : .partial))
 precondition(report.bundleBytes > 0)
 
 let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent("store-test-\(UUID().uuidString).ocx")

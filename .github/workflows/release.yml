@@ -132,37 +132,6 @@ jobs:
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             ONLY_ACTIVE_ARCH=NO build
 
-      - name: Build extension store packages
-        env:
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          set -euo pipefail
-          brew install oven-sh/bun/bun
-          mkdir -p "$RUNNER_TEMP/extensions" dist/extensions
-          node Tools/extensions/build-extension.js \
-            --fixture Extensions/Fixtures/kill-process \
-            --out "$RUNNER_TEMP/extensions/kill-process.ocx" \
-            --capability process.inspect --capability process.terminate --capability process.restart
-          node Tools/extensions/build-extension.js \
-            --fixture Extensions/Fixtures/port-manager \
-            --out "$RUNNER_TEMP/extensions/port-manager.ocx" \
-            --capability ports.inspect --capability process.terminate --capability clipboard.write
-          node Tools/extensions/build-extension.js \
-            --fixture Extensions/Fixtures/system-monitor \
-            --out "$RUNNER_TEMP/extensions/system-monitor.ocx" \
-            --capability system.metrics.read
-          for package in "$RUNNER_TEMP"/extensions/*.ocx; do
-            name="$(basename "$package" .ocx)"
-            ditto -c -k --sequesterRsrc --keepParent "$package" "dist/extensions/${name}-${VERSION}.ocx.zip"
-          done
-          node Tools/extensions/build-catalog.js \
-            --version "$VERSION" \
-            --release-base "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}" \
-            --out dist/extensions-catalog.json \
-            "$RUNNER_TEMP/extensions/kill-process.ocx" \
-            "$RUNNER_TEMP/extensions/port-manager.ocx" \
-            "$RUNNER_TEMP/extensions/system-monitor.ocx"
-
       - name: Verify universal binary
         env:
           DISPLAY_NAME: ${{ steps.meta.outputs.display_name }}
@@ -297,8 +266,6 @@ jobs:
           gh release create "$TAG" \
             "dist/${{ steps.meta.outputs.dmg_file }}" \
             "dist/${{ steps.meta.outputs.zip_file }}" \
-            dist/extensions-catalog.json \
-            dist/extensions/*.ocx.zip \
             --title "Opencast ${VERSION}" \
             --notes-file "$NOTES_FILE"
 

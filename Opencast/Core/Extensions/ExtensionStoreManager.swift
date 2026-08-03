@@ -23,7 +23,7 @@ final class ExtensionStoreManager: ObservableObject {
     let directory: URL
     var onChange: (() -> Void)?
     static let catalogURL = URL(
-        string: "https://github.com/berkinory/opencast/releases/latest/download/extensions-catalog.json")!
+        string: "https://github.com/berkinory/opencast/releases/download/extensions/extensions-catalog.json")!
 
     private let versionsDirectory: URL
     private let validator = ExtensionPackageValidator()

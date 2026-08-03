@@ -75,3 +75,9 @@
 ### Fixed
 
 - Fixed the self-update flow so downloads complete reliably and the install confirmation appears as expected.
+
+## [0.1.5]
+
+### Added
+
+- Independent GitHub Release publishing for verified extension packages.

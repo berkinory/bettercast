@@ -125,12 +125,22 @@ function main() {
     writeFile(path.join(output, "build.json"), `${JSON.stringify({
       schemaVersion: 1,
       builder: "opencast-bun-build-1",
+      version: packageManifest.version || null,
+      minimumAppVersion: packageManifest.minimumAppVersion || null,
       sourceHash: crypto.createHash("sha256").update(source).digest("hex"),
       bundleHash: crypto.createHash("sha256").update(bundle).digest("hex"),
       bundleBytes: bundle.length,
       command: command.name,
       capabilitiesUsed: capabilities.map((capability) => capability.name)
     }, null, 2)}\n`);
+    if (packageManifest.version) {
+      writeFile(path.join(output, "verification.json"), `${JSON.stringify({
+        version: packageManifest.version,
+        sourceRepository: packageManifest.sourceRepository || "https://github.com/berkinory/opencast",
+        license: packageManifest.license || null,
+        verified: true
+      }, null, 2)}\n`);
+    }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

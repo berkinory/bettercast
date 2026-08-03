@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "extensions": [
+    {
+      "fixture": "Extensions/Fixtures/kill-process",
+      "capabilities": [
+        "process.inspect",
+        "process.terminate",
+        "process.restart"
+      ]
+    },
+    {
+      "fixture": "Extensions/Fixtures/port-manager",
+      "capabilities": [
+        "ports.inspect",
+        "process.terminate",
+        "clipboard.write"
+      ]
+    },
+    {
+      "fixture": "Extensions/Fixtures/system-monitor",
+      "capabilities": [
+        "system.metrics.read"
+      ]
+    }
+  ]
+}

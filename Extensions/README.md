@@ -112,19 +112,20 @@ that each package stays below the 8 MB admission limit.
 
 ## Store format
 
-The store has no backend. Release automation uploads `.ocx.zip` assets and a static
-`extensions-catalog.json` file to the GitHub Release. The app downloads the catalog only after the
-user grants store network consent, verifies the package hash and capability list, then installs it
-atomically. See [`Store/README.md`](../Store/README.md) for catalog generation.
+The store has no backend. The `Extension Store` workflow uploads `.ocx.zip` assets and a static
+`extensions-catalog.json` file to the stable `extensions` GitHub Release. The app downloads the
+catalog only after the user grants store network consent, verifies the package hash and capability
+list, then installs it atomically. See [`Store/README.md`](../Store/README.md) for catalog generation.
 
 ## Adding an extension
 
 1. Add a fixture under `Extensions/Fixtures/<name>` with one `package.json` command and its source.
 2. Use only APIs exposed by `Extensions/Runtime/opencast-api.js` and the JSX runtime.
-3. Declare the minimum capabilities in the build command and package metadata.
-4. Add the fixture to the relevant Makefile test target.
-5. Add host contract coverage for capability requests, renders, and destructive actions.
-6. Run the extension tests and package budget check before proposing store inclusion.
+3. Add a semver `version` and `minimumAppVersion` to `package.json`.
+4. Add the fixture and capabilities to `Store/approved-extensions.json`.
+5. Add the fixture to the relevant Makefile test target.
+6. Add host contract coverage for capability requests, renders, and destructive actions.
+7. Run the extension tests and package budget check before proposing store inclusion.
 
 Store admission is intentionally stricter than local import. A package needs a stable source,
 license, pinned dependency metadata, supported architectures, capability review, rollback metadata,

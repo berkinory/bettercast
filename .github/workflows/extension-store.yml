@@ -1,0 +1,83 @@
+name: Extension Store
+
+run-name: "Opencast extension store #${{ github.run_number }}"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Extensions/Fixtures/**
+      - Extensions/Runtime/**
+      - Extensions/Capabilities.json
+      - Store/approved-extensions.json
+      - Tools/extensions/**
+      - .github/workflows/extension-store.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: extension-store-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.actor == 'berkinory'
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode 26
+        run: |
+          XCODE_PATH="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n1)"
+          if [ -z "$XCODE_PATH" ]; then
+            echo "::error::No Xcode 26.x found on this runner."
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: Install Bun
+        run: brew install oven-sh/bun/bun
+
+      - name: Run extension validation
+        run: make extension-store-test
+
+      - name: Build store packages
+        run: |
+          node Tools/extensions/build-store.js \
+            --out "$RUNNER_TEMP/extensions" \
+            --catalog "$RUNNER_TEMP/extensions-catalog.json" \
+            --release-base "https://github.com/${GITHUB_REPOSITORY}/releases/download/extensions"
+
+      - name: Validate store packages
+        run: |
+          for package in "$RUNNER_TEMP/extensions"/*.ocx; do
+            build/tests/extension-store-test "$package"
+          done
+
+      - name: Create or update store release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view extensions >/dev/null 2>&1; then
+            gh release create extensions \
+              --title "Opencast Extension Store" \
+              --notes "Verified extension packages for Opencast." \
+              --latest=false
+          fi
+
+          assets="$(gh release view extensions --json assets --jq '.assets[].name' 2>/dev/null || true)"
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+            case "$asset" in
+              extensions-catalog.json|*.ocx.zip)
+                gh release delete-asset extensions "$asset" --yes
+                ;;
+            esac
+          done <<< "$assets"
+
+          gh release upload extensions "$RUNNER_TEMP/extensions"/*.ocx.zip --clobber
+          gh release upload extensions "$RUNNER_TEMP/extensions-catalog.json" --clobber

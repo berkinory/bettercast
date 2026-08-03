@@ -1,5 +1,7 @@
 {
   "name": "system-monitor",
+  "version": "1.0.0",
+  "minimumAppVersion": "0.1.4",
   "title": "System Monitor",
   "description": "Monitor CPU, memory, disk, network and battery state.",
   "license": "MIT",
