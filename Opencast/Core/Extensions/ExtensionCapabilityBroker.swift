@@ -600,7 +600,7 @@ final class ExtensionCapabilityBroker: ObservableObject {
 
         let processArguments =
             usesShell
-            ? ["-lc", ([rawCommand] + args).map(shellQuote).joined(separator: " ")]
+            ? ["-lc", ([rawCommand] + args.map(shellQuote)).joined(separator: " ")]
             : args
         let streaming = options["stream"] as? Bool == true
         let timeoutLimit = streaming ? 120 : 30

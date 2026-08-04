@@ -204,10 +204,11 @@ final class ExtensionStoreManager: ObservableObject {
     }
 
     private func installedExtension(at url: URL) -> InstalledExtension? {
-        guard let report = try? validator.validate(packageURL: url),
-            let manifestData = try? Data(contentsOf: url.appendingPathComponent("manifest.json")),
+        guard let manifestData = try? Data(contentsOf: url.appendingPathComponent("manifest.json")),
             let manifest = try? JSONDecoder().decode(ExtensionManifest.self, from: manifestData)
         else { return nil }
+        let report = (try? validator.validate(packageURL: url)) ?? legacyReport(at: url, manifestName: manifest.name)
+        guard let report else { return nil }
         let historyDirectory = versionsDirectory.appendingPathComponent(manifest.name, isDirectory: true)
         let hasHistory =
             (try? fileManager.contentsOfDirectory(
@@ -324,12 +325,41 @@ final class ExtensionStoreManager: ObservableObject {
     private func preserveCurrent(_ url: URL, name: String) throws -> URL {
         let historyDirectory = versionsDirectory.appendingPathComponent(name, isDirectory: true)
         try fileManager.createDirectory(at: historyDirectory, withIntermediateDirectories: true)
-        let report = try validator.validate(packageURL: url)
-        let version = report.version ?? String(report.bundleHash.prefix(12))
+
+        let version =
+            (try? validator.validate(packageURL: url).version)
+            ?? buildVersion(at: url)
+            ?? "legacy"
         let destination = historyDirectory.appendingPathComponent(
             "\(version)-\(UUID().uuidString.prefix(8)).ocx", isDirectory: true)
         try fileManager.moveItem(at: url, to: destination)
         return destination
+    }
+
+    private func legacyReport(at url: URL, manifestName: String) -> ExtensionVerificationReport? {
+        guard let data = try? Data(contentsOf: url.appendingPathComponent("build.json")),
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return nil }
+        let bundleURL = url.appendingPathComponent("bundle.js")
+        let bundleBytes = (try? Data(contentsOf: bundleURL).count) ?? 0
+        return ExtensionVerificationReport(
+            channel: .partial,
+            score: 0,
+            issues: ["Package requires update"],
+            hardVetoes: ["Package requires update"],
+            bundleBytes: bundleBytes,
+            bundleHash: object["bundleHash"] as? String ?? "",
+            capabilityHash: object["capabilityHash"] as? String ?? "",
+            manifestName: manifestName,
+            version: object["version"] as? String
+        )
+    }
+
+    private func buildVersion(at url: URL) -> String? {
+        guard let data = try? Data(contentsOf: url.appendingPathComponent("build.json")),
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return nil }
+        return object["version"] as? String
     }
 
     private static func defaultDirectory() -> URL {

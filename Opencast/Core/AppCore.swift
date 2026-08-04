@@ -918,6 +918,8 @@ final class AppCore: ObservableObject {
         case .store:
             palette.enterSubscreen(.store)
             extensionStore.refreshRemoteCatalog()
+        case .importExtension:
+            importExtension()
         case .settings:
             hidePalette(restoreFocus: false)
             showSettings()

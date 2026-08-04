@@ -27,6 +27,9 @@ node Tools/extensions/build-extension.js \
 
 Run the contract and package checks with `make extensions-test` and `make extension-store-test`.
 
+For local trusted development, build a package and search for **Import Extension** in Opencast. The
+file picker accepts the resulting `.ocx` directory and installs it without publishing to Store.
+
 ## Package contract
 
 `package.json` contains development metadata and Raycast command source paths. `opencast.json` is
