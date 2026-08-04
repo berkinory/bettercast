@@ -280,7 +280,7 @@ private struct SnippetList: View {
         var rows: [Row] = []
         var currentTitle: String?
         for snippet in results {
-            let title = DateBucket(for: snippet.modifiedAt).title
+            let title = snippet.isPinned ? "Pinned" : DateBucket(for: snippet.modifiedAt).title
             if title != currentTitle {
                 rows.append(.header(title))
                 currentTitle = title

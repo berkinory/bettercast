@@ -6,6 +6,7 @@ struct LauncherList: View {
     let selectedID: AppEntry.ID?
     let selectedQuicklinkID: Quicklink.ID?
     let favoriteCount: Int
+    let pinnedQuicklinkCount: Int
     let favoriteQuicklinkCount: Int
     let showSections: Bool
     /// Present only when the list should follow selection or return to its origin.
@@ -62,8 +63,14 @@ struct LauncherList: View {
             rows.append(contentsOf: group.map(Row.app))
         }
         if !quicklinks.isEmpty {
-            let favoriteQuicklinks = quicklinks.prefix(favoriteQuicklinkCount)
-            let restQuicklinks = quicklinks.dropFirst(favoriteQuicklinkCount)
+            let pinnedQuicklinks = quicklinks.prefix(pinnedQuicklinkCount)
+            let unpinnedQuicklinks = quicklinks.dropFirst(pinnedQuicklinkCount)
+            let favoriteQuicklinks = unpinnedQuicklinks.prefix(favoriteQuicklinkCount)
+            let restQuicklinks = unpinnedQuicklinks.dropFirst(favoriteQuicklinkCount)
+            if !pinnedQuicklinks.isEmpty {
+                rows.append(.header("Pinned Quicklinks"))
+                rows.append(contentsOf: pinnedQuicklinks.map(Row.quicklink))
+            }
             if !favoriteQuicklinks.isEmpty {
                 rows.append(.header("Favorite Quicklinks"))
                 rows.append(contentsOf: favoriteQuicklinks.map(Row.quicklink))
@@ -134,7 +141,7 @@ struct LauncherList: View {
                         } else if let selectedID {
                             proxy.scrollTo(selectedID)
                         } else if let selectedQuicklinkID {
-                            proxy.scrollTo(selectedQuicklinkID)
+                            proxy.scrollTo(selectedQuicklinkID.uuidString)
                         }
                     }
                 }

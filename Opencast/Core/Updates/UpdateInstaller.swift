@@ -118,13 +118,12 @@ enum UpdateInstaller {
             launchApplication(at: currentAppURL)
         } catch {
             logger.error("Update installation failed: \(error.localizedDescription, privacy: .public)")
-            NSApp.activate(ignoringOtherApps: true)
-            let alert = NSAlert()
-            alert.messageText = "Could not install the update"
-            alert.informativeText = error.localizedDescription
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            _ = NativeConfirmation.show(
+                message: "Could not install the update",
+                informativeText: error.localizedDescription,
+                primaryTitle: "OK",
+                style: .warning
+            )
             launchApplication(at: currentAppURL)
         }
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: stagingPath))

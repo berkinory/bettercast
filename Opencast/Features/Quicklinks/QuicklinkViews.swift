@@ -420,22 +420,54 @@ private struct QuicklinkList: View {
     let onActivate: (Quicklink) -> Void
     let onActions: (Quicklink) -> Void
 
+    private enum Row: Identifiable {
+        case header(String)
+        case quicklink(Quicklink)
+
+        var id: String {
+            switch self {
+            case .header(let title): return "header-\(title)"
+            case .quicklink(let quicklink): return quicklink.id.uuidString
+            }
+        }
+    }
+
+    private var rows: [Row] {
+        var rows: [Row] = []
+        var currentTitle: String?
+        for quicklink in results {
+            let title = quicklink.isPinned ? "Pinned" : DateBucket(for: quicklink.modifiedAt).title
+            if title != currentTitle {
+                rows.append(.header(title))
+                currentTitle = title
+            }
+            rows.append(.quicklink(quicklink))
+        }
+        return rows
+    }
+
     var body: some View {
+        let rows = rows
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(results) { quicklink in
-                        QuicklinkRow(quicklink: quicklink, selected: quicklink.id == selectedID)
-                            .contentShape(Rectangle())
-                            .onTapGesture { onSelect(quicklink) }
-                            .simultaneousGesture(
-                                TapGesture(count: 2).onEnded {
-                                    onSelect(quicklink)
-                                    onActivate(quicklink)
-                                }
-                            )
-                            .onRightClick { onActions(quicklink) }
-                            .id(quicklink.id)
+                    ForEach(rows) { row in
+                        switch row {
+                        case .header(let title):
+                            SectionHeader(title: title, isFirst: row.id == rows.first?.id)
+                        case .quicklink(let quicklink):
+                            QuicklinkRow(quicklink: quicklink, selected: quicklink.id == selectedID)
+                                .contentShape(Rectangle())
+                                .onTapGesture { onSelect(quicklink) }
+                                .simultaneousGesture(
+                                    TapGesture(count: 2).onEnded {
+                                        onSelect(quicklink)
+                                        onActivate(quicklink)
+                                    }
+                                )
+                                .onRightClick { onActions(quicklink) }
+                                .id(quicklink.id)
+                        }
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.md)

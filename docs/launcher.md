@@ -78,7 +78,7 @@ running dot and the availability of the quit actions:
 - **Quit All Applications** — a Command. `AppLauncher.quitAllTargets()` is the policy (every
   `.regular` app except Finder — `terminate()` only relaunches it — and Opencast, excluded by PID
   because About/Settings temporarily flips it to `.regular`). `AppCore.quitAllApps()` resolves that
-  list **once**, confirms it with an `NSAlert`, then terminates exactly what was confirmed. The palette
+  list **once**, confirms it with `NativeConfirmation`, then terminates exactly what was confirmed. The palette
   hides before the alert — it is a floating panel and would sit above it.
 
 ## Commands

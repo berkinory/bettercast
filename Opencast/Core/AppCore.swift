@@ -84,6 +84,11 @@ struct PasteTarget: Equatable {
 }
 
 /// View-model shared between the panel's SwiftUI tree and the coordinator.
+enum PaletteRowNavigation {
+    case offset(Int)
+    case edge(Int)
+}
+
 @MainActor
 final class PaletteViewModel: ObservableObject {
     @Published var mode: PaletteMode = .launcher
@@ -118,6 +123,7 @@ final class PaletteViewModel: ObservableObject {
     var onInlineArgumentsTab: (() -> Bool)?
     var onInlineArgumentsEscape: (() -> Bool)?
     var onInlineArgumentsVerticalArrow: ((Int) -> Bool)?
+    var onRowNavigation: ((PaletteRowNavigation) -> Bool)?
 
     func prepare(mode: PaletteMode) {
         launcherQueryForReturn = nil
@@ -231,6 +237,17 @@ final class AppCore: ObservableObject {
     private lazy var windowController = PaletteWindowController(core: self)
 
     var previousApplicationForExtension: NSRunningApplication? { windowController.previousApp }
+
+    func confirmExtensionAction(
+        message: String, informativeText: String, confirmTitle: String
+    ) -> Bool {
+        windowController.presentConfirmation(
+            message: message,
+            informativeText: informativeText,
+            confirmTitle: confirmTitle
+        )
+    }
+
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
     private var updateTask: Task<Void, Never>?
@@ -667,6 +684,11 @@ final class AppCore: ObservableObject {
         palette.postFeedback("Copied snippet")
     }
 
+    func togglePinnedSnippet(_ snippet: Snippet) {
+        snippetStore.togglePinned(snippet)
+        palette.selection = snippetStore.rowIndex(of: snippet, in: palette.query) ?? 0
+    }
+
     func duplicateSnippet(_ snippet: Snippet) {
         do {
             _ = try snippetStore.duplicate(snippet)
@@ -708,6 +730,13 @@ final class AppCore: ObservableObject {
     func copyQuicklink(_ quicklink: Quicklink) {
         Paster.copyString(quicklink.link)
         palette.postFeedback("Copied link")
+    }
+
+    func togglePinnedQuicklink(_ quicklink: Quicklink) {
+        quicklinkStore.togglePinned(quicklink)
+        if palette.mode == .quicklinks {
+            palette.selection = quicklinkStore.rowIndex(of: quicklink, in: palette.query) ?? 0
+        }
     }
 
     func duplicateQuicklink(_ quicklink: Quicklink) {

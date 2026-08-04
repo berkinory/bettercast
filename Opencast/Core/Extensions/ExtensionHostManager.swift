@@ -231,7 +231,7 @@ final class ExtensionHostManager: ObservableObject {
         case "feedback":
             let kind = message["feedback"] as? String ?? "toast"
             if kind == "confirm", let requestID = message["requestID"] as? String {
-                let confirmed = NativeConfirmation.present(
+                let confirmed = AppCore.shared.confirmExtensionAction(
                     message: message["title"] as? String ?? "Confirm",
                     informativeText: message["message"] as? String ?? "Are you sure?",
                     confirmTitle: message["primaryAction"] as? String ?? "Continue"

@@ -5,11 +5,16 @@
 ### Added
 
 - Added the `Import Extension` command for installing local trusted `.ocx` packages without Store publishing.
+- Added shared row navigation shortcuts: Option+Arrow jumps five rows, and Command+Arrow jumps to the first or last row across palette lists.
+- Added persistent pin actions for snippets and quicklinks, including `⌘P` and pinned-first search ordering.
 
 ### Fixed
 
 - Fixed declared shell extension commands so shell source is executed correctly instead of being treated as a literal executable name.
 - Fixed Store updates for extensions installed with an older package contract.
+- Routed update installer failures through the shared confirmation dialog system.
+- Fixed extension confirmations so the palette stays open while actions are confirmed.
+- Fixed launcher scrolling to quicklinks when keyboard selection reaches the end of the list.
 
 ## [0.1.5]
 

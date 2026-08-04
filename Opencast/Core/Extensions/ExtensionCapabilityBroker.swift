@@ -691,7 +691,11 @@ final class ExtensionCapabilityBroker: ObservableObject {
         let includeDescendants = payload["includeDescendants"] as? Bool ?? false
         let title = signal == .kill ? "Force Kill Process" : "Terminate Process"
         let message = "PID " + String(pid) + (includeDescendants ? " and its descendants" : "") + " will be terminated."
-        guard NativeConfirmation.present(message: title, informativeText: message, confirmTitle: title) else {
+        guard
+            AppCore.shared.confirmExtensionAction(
+                message: title, informativeText: message, confirmTitle: title
+            )
+        else {
             return .denied("Process termination was cancelled.")
         }
 
@@ -715,7 +719,7 @@ final class ExtensionCapabilityBroker: ObservableObject {
         let force = payload["force"] as? Bool ?? false
         let title = force ? "Force Restart Process" : "Restart Process"
         guard
-            NativeConfirmation.present(
+            AppCore.shared.confirmExtensionAction(
                 message: title,
                 informativeText: "PID \(pid) will be terminated and relaunched.",
                 confirmTitle: title

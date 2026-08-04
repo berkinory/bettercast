@@ -8,10 +8,14 @@ struct Quicklink: Codable, Equatable, Identifiable, Sendable {
     var openWithBundleID: String
     let createdAt: Date
     var modifiedAt: Date
+    var pinnedAt: Date?
+
+    var isPinned: Bool { pinnedAt != nil }
 
     init(
         id: UUID = UUID(), name: String, link: String, icon: String = "link",
-        openWithBundleID: String, createdAt: Date = Date(), modifiedAt: Date? = nil
+        openWithBundleID: String, createdAt: Date = Date(), modifiedAt: Date? = nil,
+        pinnedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -20,6 +24,7 @@ struct Quicklink: Codable, Equatable, Identifiable, Sendable {
         self.openWithBundleID = openWithBundleID
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt ?? createdAt
+        self.pinnedAt = pinnedAt
     }
 }
 
@@ -50,9 +55,9 @@ final class QuicklinkStore: ObservableObject {
 
     func search(_ query: String) -> [Quicklink] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return quicklinks }
+        guard !query.isEmpty else { return ordered(quicklinks) }
 
-        return
+        let matched =
             quicklinks
             .compactMap { quicklink -> (Quicklink, Int)? in
                 let scores = [quicklink.name].compactMap {
@@ -66,6 +71,17 @@ final class QuicklinkStore: ObservableObject {
                 return $0.0.modifiedAt > $1.0.modifiedAt
             }
             .map(\.0)
+        return ordered(matched)
+    }
+
+    func togglePinned(_ quicklink: Quicklink) {
+        guard let index = quicklinks.firstIndex(where: { $0.id == quicklink.id }) else { return }
+        quicklinks[index].pinnedAt = quicklinks[index].isPinned ? nil : Date()
+        try? persist()
+    }
+
+    func rowIndex(of quicklink: Quicklink, in query: String) -> Int? {
+        search(query).firstIndex { $0.id == quicklink.id }
     }
 
     @discardableResult
@@ -140,6 +156,13 @@ final class QuicklinkStore: ObservableObject {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(quicklinks)
         try data.write(to: fileURL, options: .atomic)
+    }
+
+    private func ordered(_ values: [Quicklink]) -> [Quicklink] {
+        let pinned = values.filter(\.isPinned).sorted {
+            ($0.pinnedAt ?? .distantFuture) < ($1.pinnedAt ?? .distantFuture)
+        }
+        return pinned + values.filter { !$0.isPinned }
     }
 
     private static var defaultFileURL: URL {

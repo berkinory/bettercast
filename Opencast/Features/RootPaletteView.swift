@@ -79,8 +79,9 @@ struct RootPaletteView: View {
         guard settings.quicklinksEnabled else { return [] }
         let results = quicklinkStore.search(vm.query)
         guard isQueryEmpty else { return results }
-        let split = favorites.ordered(results)
-        return split.favorites + split.rest
+        let pinned = results.filter(\.isPinned)
+        let split = favorites.ordered(results.filter { !$0.isPinned })
+        return pinned + split.favorites + split.rest
     }
     private var launcherQuicklinkResults: [Quicklink] {
         vm.mode == .launcher ? quicklinkResults : []
@@ -250,7 +251,8 @@ struct RootPaletteView: View {
             if let quicklink = selectedLauncherQuicklink {
                 return QuicklinkActionsMenu.content(
                     quicklink: quicklink, core: core, favorites: favorites,
-                    onToggleFavorite: { toggleFavorite(quicklink) })
+                    onToggleFavorite: { toggleFavorite(quicklink) },
+                    onTogglePinned: { togglePinnedQuicklink(quicklink) })
             }
             return nil
         case .clipboard:
@@ -268,7 +270,9 @@ struct RootPaletteView: View {
             return nil
         case .snippets:
             if let snippet = selectedSnippet {
-                return SnippetActionsMenu.content(snippet: snippet, core: core)
+                return SnippetActionsMenu.content(
+                    snippet: snippet, core: core,
+                    onTogglePinned: { togglePinnedSnippet(snippet) })
             }
             return nil
         case .snippetEditor:
@@ -277,7 +281,8 @@ struct RootPaletteView: View {
             if let quicklink = selectedQuicklink {
                 return QuicklinkActionsMenu.content(
                     quicklink: quicklink, core: core, favorites: favorites,
-                    onToggleFavorite: { toggleFavorite(quicklink) })
+                    onToggleFavorite: { toggleFavorite(quicklink) },
+                    onTogglePinned: { togglePinnedQuicklink(quicklink) })
             }
             return nil
         case .quicklinkEditor:
@@ -409,8 +414,12 @@ struct RootPaletteView: View {
         let showSections = vm.mode == .launcher && isQueryEmpty
         let favoriteCount =
             showSections ? apps.prefix(while: { favorites.isFavorite($0) }).count : 0
+        let pinnedQuicklinkCount =
+            showSections ? launcherQuicklinks.prefix(while: { $0.isPinned }).count : 0
         let favoriteQuicklinkCount =
-            showSections ? favorites.ordered(launcherQuicklinks).favorites.count : 0
+            showSections
+            ? favorites.ordered(launcherQuicklinks.filter { !$0.isPinned }).favorites.count
+            : 0
         let selectedApp = apps.indices.contains(sel - offset) ? apps[sel - offset] : nil
         let selectedRootQuicklink =
             launcherQuicklinks.indices.contains(sel - offset - apps.count)
@@ -436,6 +445,7 @@ struct RootPaletteView: View {
                     storeItems: storeItems,
                     emojiSections: emojiSections, uninstallItems: uninstallItems, calc: calc,
                     selection: sel, favoriteCount: favoriteCount,
+                    pinnedQuicklinkCount: pinnedQuicklinkCount,
                     favoriteQuicklinkCount: favoriteQuicklinkCount, showSections: showSections
                 )
             }
@@ -515,11 +525,13 @@ struct RootPaletteView: View {
             vm.onInlineArgumentsTab = handleInlineArgumentTab
             vm.onInlineArgumentsEscape = handleInlineArgumentEscape
             vm.onInlineArgumentsVerticalArrow = handleInlineArgumentVerticalArrow
+            vm.onRowNavigation = handleRowNavigation
         }
         .onDisappear {
             vm.onInlineArgumentsTab = nil
             vm.onInlineArgumentsEscape = nil
             vm.onInlineArgumentsVerticalArrow = nil
+            vm.onRowNavigation = nil
         }
         .task(id: vm.feedback?.id) {
             guard vm.feedback != nil else { return }
@@ -682,12 +694,23 @@ struct RootPaletteView: View {
             }
             return .handled
         }
-        // ⌘P pins/unpins the selected clip — mirrors the Actions menu row, and works while that menu is open like the other advertised chords.
+        // ⌘P pins/unpins the selected item in pin-capable lists, including while Actions is open.
         .onKeyPress(keys: ["p"], phases: .down) { press in
-            guard press.modifiers.contains(.command), vm.mode == .clipboard,
-                clipResults.indices.contains(selection)
+            guard press.modifiers.intersection([.command, .option, .control, .shift]) == .command
             else { return .ignored }
-            core.togglePinnedClip(clipResults[selection])
+            switch vm.mode {
+            case .clipboard where clipResults.indices.contains(selection):
+                core.togglePinnedClip(clipResults[selection])
+            case .snippets where snippetResults.indices.contains(selection):
+                togglePinnedSnippet(snippetResults[selection])
+            case .quicklinks where quicklinkResults.indices.contains(selection):
+                togglePinnedQuicklink(quicklinkResults[selection])
+            case .launcher:
+                guard let quicklink = selectedLauncherQuicklink else { return .ignored }
+                togglePinnedQuicklink(quicklink)
+            default:
+                return .ignored
+            }
             return .handled
         }
     }
@@ -847,7 +870,8 @@ struct RootPaletteView: View {
         snippets: [Snippet], quicklinks: [Quicklink], extensions: [ExtensionRenderItem],
         storeItems: [ExtensionStoreItem],
         emojiSections: [EmojiGridSection], uninstallItems: [LeftoverItem], calc: CalcResult?,
-        selection: Int, favoriteCount: Int, favoriteQuicklinkCount: Int, showSections: Bool
+        selection: Int, favoriteCount: Int, pinnedQuicklinkCount: Int,
+        favoriteQuicklinkCount: Int, showSections: Bool
     ) -> some View {
         switch vm.mode {
         case .launcher:
@@ -865,6 +889,7 @@ struct RootPaletteView: View {
                         ? launcherQuicklinks[selection - offset - apps.count].id
                         : nil,
                 favoriteCount: favoriteCount,
+                pinnedQuicklinkCount: pinnedQuicklinkCount,
                 favoriteQuicklinkCount: favoriteQuicklinkCount,
                 showSections: showSections,
                 scrollIntent: listScroll,
@@ -1194,6 +1219,26 @@ struct RootPaletteView: View {
         showFeedback(added ? "Added to favorites" : "Removed from favorites")
     }
 
+    private func togglePinnedSnippet(_ snippet: Snippet) {
+        core.togglePinnedSnippet(snippet)
+        if let index = snippetResults.firstIndex(where: { $0.id == snippet.id }) {
+            vm.selection = index
+        }
+        listScroll = ListScrollIntent(kind: .follow)
+    }
+
+    private func togglePinnedQuicklink(_ quicklink: Quicklink) {
+        core.togglePinnedQuicklink(quicklink)
+        if vm.mode == .launcher {
+            if let index = launcherQuicklinkResults.firstIndex(where: { $0.id == quicklink.id }) {
+                vm.selection = calcCount + appResults.count + index
+            }
+        } else if let index = quicklinkResults.firstIndex(where: { $0.id == quicklink.id }) {
+            vm.selection = index
+        }
+        listScroll = ListScrollIntent(kind: .follow)
+    }
+
     private func showFeedback(
         _ message: String, tone: PaletteFeedback.Tone = .success
     ) {
@@ -1358,6 +1403,30 @@ struct RootPaletteView: View {
         return true
     }
 
+    private func handleRowNavigation(_ navigation: PaletteRowNavigation) -> Bool {
+        guard !isCollapsed else { return false }
+        guard menuOpen || resultCount > 0 else { return false }
+        switch navigation {
+        case .offset(let delta):
+            if menuOpen {
+                moveMenu(delta)
+            } else if vm.mode == .emoji {
+                moveEmojiRows(delta)
+            } else {
+                move(delta)
+            }
+        case .edge(let direction):
+            if menuOpen {
+                moveMenuToEdge(direction)
+            } else if vm.mode == .emoji {
+                moveEmojiToEdge(direction)
+            } else {
+                moveToEdge(direction)
+            }
+        }
+        return true
+    }
+
     private func leaveInlineArguments() {
         inlineArgumentFocusRequest = nil
         inlineArgumentFocus = nil
@@ -1381,10 +1450,20 @@ struct RootPaletteView: View {
         emojiScroll = EmojiScrollIntent(kind: .follow)
     }
 
+    private func moveToEdge(_ direction: Int) {
+        guard resultCount > 0 else { return }
+        move((direction < 0 ? 0 : resultCount - 1) - selection)
+    }
+
     /// Move the open menu's highlight, clamped at the ends (no wrap — consistent with `move`).
     private func moveMenu(_ delta: Int) {
         guard let count = menuContent?.items.count, count > 0 else { return }
         menuSelection = min(max(menuSelection + delta, 0), count - 1)
+    }
+
+    private func moveMenuToEdge(_ direction: Int) {
+        guard let count = menuContent?.items.count, count > 0 else { return }
+        menuSelection = direction < 0 ? 0 : count - 1
     }
 
     /// The single activation path for a menu row, shared by a click and Return: run the row's action, then close.
@@ -1400,6 +1479,22 @@ struct RootPaletteView: View {
             counts: emojiSections.map(\.entries.count), columns: EmojiGrid.columns)
         guard resultCount > 0 else { return }
         vm.selection = delta > 0 ? geometry.down(from: selection) : geometry.up(from: selection)
+        emojiScroll = EmojiScrollIntent(kind: .follow)
+    }
+
+    private func moveEmojiRows(_ delta: Int) {
+        let steps = abs(delta)
+        guard steps > 0 else { return }
+        for _ in 0..<steps {
+            let previous = selection
+            moveEmojiRow(delta > 0 ? 1 : -1)
+            if selection == previous { break }
+        }
+    }
+
+    private func moveEmojiToEdge(_ direction: Int) {
+        guard resultCount > 0 else { return }
+        vm.selection = direction < 0 ? 0 : resultCount - 1
         emojiScroll = EmojiScrollIntent(kind: .follow)
     }
 
@@ -1436,7 +1531,8 @@ struct RootPaletteView: View {
                 _ = try snippetStore.update(
                     Snippet(
                         id: current.id, name: draft.name, content: draft.content,
-                        keyword: draft.keyword, icon: draft.icon, createdAt: current.createdAt
+                        keyword: draft.keyword, icon: draft.icon, createdAt: current.createdAt,
+                        pinnedAt: current.pinnedAt
                     )
                 )
             } else {
@@ -1479,7 +1575,8 @@ struct RootPaletteView: View {
                         link: draft.link,
                         icon: draft.icon,
                         openWithBundleID: draft.openWithBundleID,
-                        createdAt: current.createdAt
+                        createdAt: current.createdAt,
+                        pinnedAt: current.pinnedAt
                     )
                 )
             } else {

@@ -390,7 +390,7 @@ private struct ExtensionActionStrip: View {
     private func invoke(_ action: ExtensionRenderAction) {
         guard validateFields() else { return }
         if action.requiresConfirmation,
-            !NativeConfirmation.present(
+            !AppCore.shared.confirmExtensionAction(
                 message: action.title,
                 informativeText: "This extension action will run now.",
                 confirmTitle: action.title
@@ -576,7 +576,7 @@ enum ExtensionActionsMenu {
                     isDestructive: action.destructive
                 ) {
                     if action.requiresConfirmation,
-                        !NativeConfirmation.present(
+                        !AppCore.shared.confirmExtensionAction(
                             message: action.title,
                             informativeText: "This extension action will run now.",
                             confirmTitle: action.title

@@ -46,6 +46,12 @@ final class PalettePanel: NSPanel {
             return
         }
         if event.type == .keyDown,
+            let navigation = Self.modifiedVerticalNavigation(for: event),
+            paletteViewModel?.onRowNavigation?(navigation) == true
+        {
+            return
+        }
+        if event.type == .keyDown,
             event.modifierFlags.contains(.command),
             onCommandShortcut?(event) == true
         {
@@ -110,6 +116,17 @@ final class PalettePanel: NSPanel {
         switch Int(keyCode) {
         case kVK_UpArrow: return -1
         case kVK_DownArrow: return 1
+        default: return nil
+        }
+    }
+
+    private static func modifiedVerticalNavigation(for event: NSEvent) -> PaletteRowNavigation? {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        switch (Int(event.keyCode), modifiers) {
+        case (kVK_UpArrow, .option): return .offset(-5)
+        case (kVK_DownArrow, .option): return .offset(5)
+        case (kVK_UpArrow, .command): return .edge(-1)
+        case (kVK_DownArrow, .command): return .edge(1)
         default: return nil
         }
     }

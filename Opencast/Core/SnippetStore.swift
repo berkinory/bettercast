@@ -8,10 +8,14 @@ struct Snippet: Codable, Equatable, Identifiable, Sendable {
     var icon: String
     let createdAt: Date
     var modifiedAt: Date
+    var pinnedAt: Date?
+
+    var isPinned: Bool { pinnedAt != nil }
 
     init(
         id: UUID = UUID(), name: String, content: String, keyword: String = "",
-        icon: String = "doc.text", createdAt: Date = Date(), modifiedAt: Date? = nil
+        icon: String = "doc.text", createdAt: Date = Date(), modifiedAt: Date? = nil,
+        pinnedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -20,6 +24,7 @@ struct Snippet: Codable, Equatable, Identifiable, Sendable {
         self.icon = icon
         self.createdAt = createdAt
         self.modifiedAt = modifiedAt ?? createdAt
+        self.pinnedAt = pinnedAt
     }
 }
 
@@ -52,9 +57,9 @@ final class SnippetStore: ObservableObject {
 
     func search(_ query: String) -> [Snippet] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return snippets }
+        guard !query.isEmpty else { return ordered(snippets) }
 
-        return
+        let matched =
             snippets
             .compactMap { snippet -> (Snippet, Int)? in
                 let scores = [snippet.name, snippet.keyword, snippet.content].compactMap {
@@ -68,6 +73,17 @@ final class SnippetStore: ObservableObject {
                 return $0.0.modifiedAt > $1.0.modifiedAt
             }
             .map(\.0)
+        return ordered(matched)
+    }
+
+    func togglePinned(_ snippet: Snippet) {
+        guard let index = snippets.firstIndex(where: { $0.id == snippet.id }) else { return }
+        snippets[index].pinnedAt = snippets[index].isPinned ? nil : Date()
+        try? persist()
+    }
+
+    func rowIndex(of snippet: Snippet, in query: String) -> Int? {
+        search(query).firstIndex { $0.id == snippet.id }
     }
 
     @discardableResult
@@ -145,6 +161,13 @@ final class SnippetStore: ObservableObject {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(snippets)
         try data.write(to: fileURL, options: .atomic)
+    }
+
+    private func ordered(_ values: [Snippet]) -> [Snippet] {
+        let pinned = values.filter(\.isPinned).sorted {
+            ($0.pinnedAt ?? .distantFuture) < ($1.pinnedAt ?? .distantFuture)
+        }
+        return pinned + values.filter { !$0.isPinned }
     }
 
     private static var defaultFileURL: URL {
