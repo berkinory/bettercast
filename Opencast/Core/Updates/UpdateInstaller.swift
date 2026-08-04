@@ -115,7 +115,7 @@ enum UpdateInstaller {
             try verifySignature(currentAppURL: currentAppURL, updateURL: updateURL)
             try replaceApp(at: currentAppURL, with: updateURL)
             logger.info("Replaced app bundle with update \(expectedVersion, privacy: .public)")
-            NSWorkspace.shared.openApplication(at: currentAppURL, configuration: .init())
+            launchApplication(at: currentAppURL)
         } catch {
             logger.error("Update installation failed: \(error.localizedDescription, privacy: .public)")
             NSApp.activate(ignoringOtherApps: true)
@@ -125,10 +125,29 @@ enum UpdateInstaller {
             alert.alertStyle = .warning
             alert.addButton(withTitle: "OK")
             alert.runModal()
-            NSWorkspace.shared.openApplication(at: currentAppURL, configuration: .init())
+            launchApplication(at: currentAppURL)
         }
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: stagingPath))
+        NSApp.terminate(nil)
         return true
+    }
+
+    @MainActor
+    private static func launchApplication(at url: URL) {
+        guard let executableURL = Bundle(url: url)?.executableURL else {
+            logger.error("Could not relaunch Opencast: missing executable")
+            return
+        }
+        let process = Process()
+        process.executableURL = executableURL
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            logger.error("Could not relaunch Opencast: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private static func verifySignature(currentAppURL: URL, updateURL: URL) throws {
