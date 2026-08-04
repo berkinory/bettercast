@@ -75,7 +75,7 @@
         },
         "mode": {
           "type": "string",
-          "enum": ["view", "no-view"]
+          "enum": ["view", "no-view", "menu-bar"]
         },
         "interval": {
           "type": "string",
@@ -96,8 +96,28 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+            "pattern": "^(?:\\*\\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
           }
+        },
+        "executables": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^/(?:bin|usr/bin|usr/sbin|opt/homebrew/bin|usr/local/bin)/[^/]+$"
+          }
+        },
+        "filesystemRoots": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^(?:extension|home)(?:/.*)?$"
+          }
+        },
+        "shell": {
+          "type": "boolean"
         },
         "preferences": {
           "type": "array",
@@ -118,7 +138,7 @@
           "then": {
             "properties": {
               "mode": {
-                "const": "view"
+                "enum": ["view", "menu-bar"]
               }
             }
           }

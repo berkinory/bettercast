@@ -82,11 +82,15 @@
 
 - Independent GitHub Release publishing for verified extension packages.
 - Added the Store command with palette-based extension browsing, install, update, and uninstall flows.
+- Added the `opencast.json` compatibility contract, Raycast API shims, native capability broker,
+  filesystem/network/browser/application bridges, and short-lived JavaScriptCore hosts.
 
 ### Improved
 
 - Store access and background extension refresh are enabled automatically.
 - Added Store sorting by installed status or name.
+- Capability and scope hashes now pin Store packages. Every extension install and update is manual,
+  and a capability-widening update is never applied by catalog refresh.
 
 ### Fixed
 

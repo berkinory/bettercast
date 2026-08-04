@@ -51,6 +51,13 @@ struct ExtensionStoreItem: Identifiable {
 
     var title: String { package?.title ?? installed?.title ?? id }
     var description: String { package?.description ?? "Installed extension" }
+
+    var isCurrent: Bool {
+        guard let package, let installed else { return false }
+        return installed.report.version == package.version
+            && installed.report.bundleHash == package.bundleHash
+            && installed.report.capabilityHash == package.capabilityHash
+    }
 }
 
 struct ExtensionStorePaletteView: View {
@@ -116,8 +123,8 @@ private struct ExtensionStoreRow: View {
 
     private var actionTitle: String {
         if isDownloading { return "Installing…" }
-        guard let package = item.package else { return "Installed" }
-        if item.installed?.report.version == package.version { return "Installed" }
+        guard item.package != nil else { return "Installed" }
+        if item.isCurrent { return "Installed" }
         return item.installed == nil ? "Install" : "Update"
     }
 
@@ -145,8 +152,7 @@ private struct ExtensionStoreRow: View {
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .buttonStyle(.plain)
                 .disabled(
-                    isDownloading || item.package == nil
-                        || item.installed?.report.version == item.package?.version)
+                    isDownloading || item.package == nil || item.isCurrent)
         }
     }
 }

@@ -18,11 +18,17 @@ Check existing [issues](https://github.com/berkinory/opencast/issues) and
 
 ## Setup
 
-- macOS 26+, Xcode 26. Local builds need no Apple account.
+- macOS 15+, Xcode 26. Local builds need no Apple account.
 - `open Opencast.xcodeproj` → ⌘R. Debug builds use a separate bundle (`Opencast Dev.app`).
 - After editing `project.yml`: `xcodegen generate`, commit the result. No SwiftPM.
 - Details: [`docs/development.md`](docs/development.md). Architecture:
   [`docs/architecture.md`](docs/architecture.md).
+
+## Extension contributions
+
+Read [`Extensions/README.md`](Extensions/README.md) before adding or porting a package. Run
+`make extensions-test`, `make extension-store-test`, and `make extension-budget-test` for extension
+changes, then run `make check` before submitting.
 
 ## Before submitting
 

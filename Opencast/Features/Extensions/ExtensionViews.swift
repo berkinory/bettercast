@@ -16,10 +16,7 @@ struct ExtensionSessionView: View {
 
     var body: some View {
         Group {
-            if let snapshot, snapshot.loading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let snapshot {
+            if let snapshot {
                 switch snapshot.root {
                 case "detail":
                     detail(snapshot)
@@ -37,34 +34,61 @@ struct ExtensionSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .top) {
+            if let feedback = host.feedback, feedback.kind == "toast" || feedback.kind == "toastUpdate" {
+                VStack(spacing: Theme.Spacing.xxs) {
+                    if let title = feedback.title { Text(title).font(Theme.Typography.calloutMedium) }
+                    if let message = feedback.message { Text(message).font(Theme.Typography.caption) }
+                }
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.vertical, Theme.Spacing.sm)
+                .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .padding(.top, Theme.Spacing.sm)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if snapshot?.loading == true {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(Theme.Spacing.sm)
+            }
+        }
     }
 
     private func grid(_ snapshot: ExtensionRenderSnapshot) -> some View {
         if items.isEmpty {
-            return AnyView(EmptyResults(text: "No extension items found"))
+            return AnyView(EmptyResults(text: snapshot.emptyView?.title ?? "No extension items found"))
         }
         return AnyView(
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 132), spacing: Theme.Spacing.md)],
-                        spacing: Theme.Spacing.md
-                    ) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            ExtensionGridItem(item: item, selected: index == selection)
-                                .id(item.id)
-                                .contentShape(Rectangle())
-                                .onTapGesture { onSelect(index) }
-                                .simultaneousGesture(
-                                    TapGesture(count: 2).onEnded {
-                                        onSelect(index)
-                                        onActivate()
-                                    }
-                                )
+                    VStack(spacing: 0) {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 132), spacing: Theme.Spacing.md)],
+                            spacing: Theme.Spacing.md
+                        ) {
+                            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                                ExtensionGridItem(item: item, selected: index == selection)
+                                    .id(item.id)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { onSelect(index) }
+                                    .simultaneousGesture(
+                                        TapGesture(count: 2).onEnded {
+                                            onSelect(index)
+                                            onActivate()
+                                        }
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.vertical, Theme.Spacing.md)
+                        if let pagination = snapshot.pagination, pagination.hasMore {
+                            Button("Load More") { host.loadMore(root: "grid") }
+                                .buttonStyle(.bordered)
+                                .padding(.bottom, Theme.Spacing.md)
                         }
                     }
-                    .padding(.horizontal, Theme.Spacing.md)
-                    .padding(.vertical, Theme.Spacing.md)
                 }
                 .scrollIndicators(.hidden)
                 .onChange(of: selection) { _, index in
@@ -77,7 +101,7 @@ struct ExtensionSessionView: View {
 
     private func list(_ snapshot: ExtensionRenderSnapshot) -> some View {
         if items.isEmpty {
-            return AnyView(EmptyResults(text: "No extension items found"))
+            return AnyView(EmptyResults(text: snapshot.emptyView?.title ?? "No extension items found"))
         }
         return AnyView(
             PaletteListLayout(
@@ -103,6 +127,11 @@ struct ExtensionSessionView: View {
                 .padding(.horizontal, Theme.Spacing.md)
                 .padding(.top, Theme.Spacing.xs)
                 .padding(.bottom, Theme.Spacing.md)
+                if let pagination = snapshot.pagination, pagination.hasMore {
+                    Button("Load More") { host.loadMore(root: "list") }
+                        .buttonStyle(.bordered)
+                        .padding(.bottom, Theme.Spacing.md)
+                }
             }
         )
     }
@@ -238,7 +267,7 @@ struct ExtensionSessionView: View {
                 field.title,
                 isOn: Binding(
                     get: { (formValues[field.id] ?? field.value ?? "false") == "true" },
-                    set: { formValues[field.id] = $0 ? "true" : "false" }
+                    set: { setField(field, value: $0 ? "true" : "false") }
                 )
             )
             .toggleStyle(.switch)
@@ -259,6 +288,15 @@ struct ExtensionSessionView: View {
                 .frame(minHeight: 80)
                 .padding(Theme.Spacing.xs)
                 .background(Theme.Colors.rowHover, in: RoundedRectangle(cornerRadius: Theme.Radius.row))
+        case "file", "directory":
+            Button(formValues[field.id] ?? field.placeholder ?? "Choose (field.kind)") {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = field.kind == "file"
+                panel.canChooseDirectories = field.kind == "directory"
+                guard panel.runModal() == .OK, let url = panel.url else { return }
+                setField(field, value: url.path)
+            }
+            .buttonStyle(.bordered)
         default:
             TextField(field.placeholder ?? field.title, text: binding(for: field))
                 .textFieldStyle(.roundedBorder)
@@ -268,8 +306,13 @@ struct ExtensionSessionView: View {
     private func binding(for field: ExtensionRenderField) -> Binding<String> {
         Binding(
             get: { formValues[field.id] ?? field.value ?? "" },
-            set: { formValues[field.id] = $0 }
+            set: { setField(field, value: $0) }
         )
+    }
+
+    private func setField(_ field: ExtensionRenderField, value: String) {
+        formValues[field.id] = value
+        host.changeField(id: field.id, value: value)
     }
 
     private func dateBinding(for field: ExtensionRenderField) -> Binding<Date> {
@@ -277,7 +320,7 @@ struct ExtensionSessionView: View {
             get: {
                 ISO8601DateFormatter().date(from: formValues[field.id] ?? field.value ?? "") ?? Date()
             },
-            set: { formValues[field.id] = ISO8601DateFormatter().string(from: $0) }
+            set: { setField(field, value: ISO8601DateFormatter().string(from: $0)) }
         )
     }
 }
@@ -346,14 +389,14 @@ private struct ExtensionActionStrip: View {
 
     private func invoke(_ action: ExtensionRenderAction) {
         guard validateFields() else { return }
-        if action.destructive || action.requiresConfirmation {
-            guard
-                NativeConfirmation.present(
-                    message: action.title,
-                    informativeText: "This action cannot be undone.",
-                    confirmTitle: action.title
-                )
-            else { return }
+        if action.requiresConfirmation,
+            !NativeConfirmation.present(
+                message: action.title,
+                informativeText: "This extension action will run now.",
+                confirmTitle: action.title
+            )
+        {
+            return
         }
         host.invoke(actionID: action.id, itemID: nil, fields: fields)
     }
@@ -532,6 +575,15 @@ enum ExtensionActionsMenu {
                     shortcut: action.shortcut,
                     isDestructive: action.destructive
                 ) {
+                    if action.requiresConfirmation,
+                        !NativeConfirmation.present(
+                            message: action.title,
+                            informativeText: "This extension action will run now.",
+                            confirmTitle: action.title
+                        )
+                    {
+                        return
+                    }
                     host.invoke(actionID: action.id, itemID: item.id)
                 }
             }

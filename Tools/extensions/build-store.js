@@ -38,20 +38,19 @@ function validVersion(value) {
 }
 
 function buildPackage(entry) {
-  const fixture = path.resolve(root, entry.fixture);
-  const packageManifest = readJSON(path.join(fixture, "package.json"));
+  const packagePath = path.resolve(root, entry.package);
+  const packageManifest = readJSON(path.join(packagePath, "package.json"));
   if (!validVersion(packageManifest.version)) {
-    throw new Error(`${entry.fixture} must declare a semver version`);
+    throw new Error(`${entry.package} must declare a semver version`);
   }
   if (!validVersion(packageManifest.minimumAppVersion)) {
-    throw new Error(`${entry.fixture} must declare minimumAppVersion`);
+    throw new Error(`${entry.package} must declare minimumAppVersion`);
   }
-  if (!Array.isArray(entry.capabilities)) throw new Error(`${entry.fixture} allowlist entry needs capabilities`);
+  if (!Array.isArray(entry.capabilities)) throw new Error(`${entry.package} allowlist entry needs capabilities`);
 
   const packageRoot = path.join(output, `${packageManifest.name}.ocx`);
   fs.rmSync(packageRoot, { recursive: true, force: true });
-  const argumentsForBuild = ["--fixture", fixture, "--out", packageRoot];
-  for (const capability of entry.capabilities) argumentsForBuild.push("--capability", capability);
+  const argumentsForBuild = ["--package", packagePath, "--out", packageRoot];
   const result = spawnSync(process.execPath, [buildExtension, ...argumentsForBuild], {
     cwd: root,
     stdio: "inherit"
@@ -64,6 +63,10 @@ function buildPackage(entry) {
   const capabilities = readJSON(path.join(packageRoot, "capabilities.json"));
   if (manifest.name !== packageManifest.name || build.version !== packageManifest.version) {
     throw new Error(`${packageManifest.name} metadata does not match package.json`);
+  }
+  const declaredCapabilities = capabilities.capabilities.map((item) => item.name).sort();
+  if (JSON.stringify(declaredCapabilities) !== JSON.stringify([...entry.capabilities].sort())) {
+    throw new Error(`${packageManifest.name} capabilities do not match the Store allowlist`);
   }
   const archiveName = `${packageManifest.name}-${packageManifest.version}.ocx.zip`;
   const archivePath = path.join(output, archiveName);
@@ -86,9 +89,10 @@ function buildPackage(entry) {
     version: packageManifest.version,
     packageURL: `${releaseBase.replace(/\/$/, "")}/${archiveName}`,
     bundleHash: build.bundleHash,
+    capabilityHash: build.capabilityHash,
     bundleBytes: build.bundleBytes,
     minimumAppVersion: packageManifest.minimumAppVersion,
-    capabilities: capabilities.capabilities.map((item) => item.name).sort(),
+    capabilities: declaredCapabilities,
     sourceRepository: packageManifest.sourceRepository || "https://github.com/berkinory/opencast",
     license: packageManifest.license || null,
     verified: true
@@ -114,7 +118,7 @@ function main() {
   const existingCatalog = catalogFromInput();
   const partialBuild = only.size > 0 && existingCatalog !== null;
   const entries = allowlist.extensions.filter((entry) => {
-    const name = readJSON(path.join(root, entry.fixture, "package.json")).name;
+    const name = readJSON(path.join(root, entry.package, "package.json")).name;
     return !partialBuild || only.has(name);
   });
   if (partialBuild && entries.length !== only.size) {
@@ -125,12 +129,13 @@ function main() {
   const previousByName = new Map((existingCatalog?.packages || []).map((item) => [item.name, item]));
   for (const packageInfo of builtPackages) {
     const previous = previousByName.get(packageInfo.name);
-    if (previous && previous.bundleHash !== packageInfo.bundleHash && previous.version === packageInfo.version) {
+    if (previous && previous.version === packageInfo.version
+      && (previous.bundleHash !== packageInfo.bundleHash || previous.capabilityHash !== packageInfo.capabilityHash)) {
       throw new Error(`${packageInfo.name} changed without a version bump`);
     }
   }
   const packages = allowlist.extensions
-    .map((entry) => readJSON(path.join(root, entry.fixture, "package.json")).name)
+    .map((entry) => readJSON(path.join(root, entry.package, "package.json")).name)
     .map((name) => builtByName.get(name) || previousByName.get(name))
     .filter(Boolean);
   writeJSON(catalogPath, {

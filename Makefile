@@ -73,15 +73,11 @@ test: tools
 
 extensions-test: extension-host-build
 	@command -v node >/dev/null || { echo "error: node is required" >&2; exit 1; }
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/list-clipboard --out build/extensions/list-clipboard.ocx --capability clipboard.write
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/no-view-process --out build/extensions/no-view-process.ocx --capability selectedText.read --capability process.execute --capability clipboard.write
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/detail-open --out build/extensions/detail-open.ocx --capability open.url
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/form-preferences --out build/extensions/form-preferences.ocx
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/grid-status --out build/extensions/grid-status.ocx
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/menubar-snapshot --out build/extensions/menubar-snapshot.ocx
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/kill-process --out build/extensions/kill-process.ocx --capability process.inspect --capability process.terminate --capability process.restart
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/port-manager --out build/extensions/port-manager.ocx --capability ports.inspect --capability process.terminate --capability clipboard.write
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/system-monitor --out build/extensions/system-monitor.ocx --capability system.metrics.read
+	@command -v bun >/dev/null || { echo "error: bun is required" >&2; exit 1; }
+	rm -rf build/extensions
+	node Tools/extensions/build-extension.js --package Extensions/Packages/kill-process --out build/extensions/kill-process.ocx
+	node Tools/extensions/build-extension.js --package Extensions/Packages/port-manager --out build/extensions/port-manager.ocx
+	node Tools/extensions/build-extension.js --package Extensions/Packages/system-monitor --out build/extensions/system-monitor.ocx
 	node Tools/extensions/host-contract-test.js
 	$(MAKE) extension-provider-test
 
@@ -101,16 +97,13 @@ extension-host-build:
 	xcodebuild -project $(PROJECT) -scheme OpencastExtensionHost -configuration Debug -derivedDataPath build/ExtensionHostDerived CODE_SIGNING_ALLOWED=NO build
 
 extension-store-test: extension-host-build
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/list-clipboard --out build/extensions/list-clipboard.ocx --capability clipboard.write
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/form-preferences --out build/extensions/form-preferences.ocx
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/kill-process --out build/extensions/kill-process.ocx --capability process.inspect --capability process.terminate --capability process.restart
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/port-manager --out build/extensions/port-manager.ocx --capability ports.inspect --capability process.terminate --capability clipboard.write
-	node Tools/extensions/build-extension.js --fixture Extensions/Fixtures/system-monitor --out build/extensions/system-monitor.ocx --capability system.metrics.read
+	rm -rf build/extensions
+	node Tools/extensions/build-extension.js --package Extensions/Packages/kill-process --out build/extensions/kill-process.ocx
+	node Tools/extensions/build-extension.js --package Extensions/Packages/port-manager --out build/extensions/port-manager.ocx
+	node Tools/extensions/build-extension.js --package Extensions/Packages/system-monitor --out build/extensions/system-monitor.ocx
 	@mkdir -p $(TEST_BIN_DIR)
 	cp Tools/extensions/store-test.swift $(TEST_BIN_DIR)/main.swift
 	swiftc -swift-version 6 Opencast/Core/Extensions/ExtensionModels.swift Opencast/Core/Extensions/ExtensionPackageValidator.swift $(TEST_BIN_DIR)/main.swift -o $(TEST_BIN_DIR)/extension-store-test
-	$(TEST_BIN_DIR)/extension-store-test build/extensions/list-clipboard.ocx
-	$(TEST_BIN_DIR)/extension-store-test build/extensions/form-preferences.ocx
 	$(TEST_BIN_DIR)/extension-store-test build/extensions/kill-process.ocx
 	$(TEST_BIN_DIR)/extension-store-test build/extensions/port-manager.ocx
 	$(TEST_BIN_DIR)/extension-store-test build/extensions/system-monitor.ocx
@@ -124,4 +117,4 @@ generate:
 	xcodegen generate
 
 clean:
-	rm -rf $(DERIVED_DATA) $(TEST_BIN_DIR)
+	rm -rf $(DERIVED_DATA) build/ExtensionHostDerived build/extensions $(TEST_BIN_DIR)

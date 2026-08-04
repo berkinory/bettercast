@@ -102,7 +102,12 @@ final class ExtensionStoreManager: ObservableObject {
     }
 
     func installRemote(_ package: ExtensionStorePackage) {
-        if installed.contains(where: { $0.name == package.name && $0.report.version == package.version }) {
+        if installed.contains(where: {
+            $0.name == package.name
+                && $0.report.version == package.version
+                && $0.report.bundleHash == package.bundleHash
+                && $0.report.capabilityHash == package.capabilityHash
+        }) {
             return
         }
         guard isTrustedCatalogPackage(package) else {
@@ -226,6 +231,7 @@ final class ExtensionStoreManager: ObservableObject {
         }
         if let expected {
             guard expected.name == name, expected.bundleHash == report.bundleHash,
+                expected.capabilityHash == report.capabilityHash,
                 expected.bundleBytes == report.bundleBytes,
                 expected.capabilities == capabilities(in: packageURL)
             else { throw ExtensionStoreError.packageMismatch }
@@ -292,6 +298,7 @@ final class ExtensionStoreManager: ObservableObject {
         package.verified && package.bundleBytes > 0
             && package.bundleBytes <= ExtensionPackageValidator.maximumBundleBytes
             && package.bundleHash.count == 64 && package.bundleHash.allSatisfy(\.isHexDigit)
+            && package.capabilityHash.count == 64 && package.capabilityHash.allSatisfy(\.isHexDigit)
             && isCompatible(minimumVersion: package.minimumAppVersion)
             && isTrustedPackageURL(package.packageURL)
     }

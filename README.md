@@ -62,6 +62,9 @@ Security → Accessibility**.
 See **[docs/development.md](docs/development.md)** for the toolchain, build, and test workflow, and
 **[docs/ui.md](docs/ui.md)** for the UI design system.
 
+Extension authors should start with **[Extensions/README.md](Extensions/README.md)**. Extensions run
+inside JavaScriptCore with native Swift capability brokers; Node and Bun are build tools only.
+
 ## Contributing
 
 Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first — it covers the memory budget every PR is held to,

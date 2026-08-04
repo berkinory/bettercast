@@ -229,6 +229,8 @@ final class AppCore: ObservableObject {
     let extensionScheduler: ExtensionScheduler
 
     private lazy var windowController = PaletteWindowController(core: self)
+
+    var previousApplicationForExtension: NSRunningApplication? { windowController.previousApp }
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
     private var updateTask: Task<Void, Never>?

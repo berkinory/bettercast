@@ -13,6 +13,7 @@ struct ExtensionStorePackage: Codable, Equatable, Identifiable, Sendable {
     let version: String
     let packageURL: URL
     let bundleHash: String
+    let capabilityHash: String
     let bundleBytes: Int
     let minimumAppVersion: String
     let capabilities: [String]

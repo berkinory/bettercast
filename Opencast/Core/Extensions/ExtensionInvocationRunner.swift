@@ -71,6 +71,12 @@ final class ExtensionInvocationRunner {
             "bundlePath": command.bundleURL.path,
             "mode": command.mode,
             "background": true,
+            "commandName": command.id.split(separator: ":").last.map(String.init) ?? command.id,
+            "extensionName": command.extensionName,
+            "launchType": "background",
+            "supportPath": command.bundleURL.deletingLastPathComponent().path,
+            "assetsPath": command.bundleURL.appendingPathComponent("assets", isDirectory: true).path,
+            "preferences": capabilityBroker.preferenceValues(for: command),
         ])
     }
 

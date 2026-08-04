@@ -27,6 +27,15 @@
     },
     {
       "$ref": "#/$defs/error"
+    },
+    {
+      "$ref": "#/$defs/feedback"
+    },
+    {
+      "$ref": "#/$defs/capabilityProgress"
+    },
+    {
+      "$ref": "#/$defs/navigation"
     }
   ],
   "$defs": {
@@ -70,6 +79,27 @@
         },
         "background": {
           "type": "boolean"
+        },
+        "commandName": {
+          "$ref": "#/$defs/id"
+        },
+        "extensionName": {
+          "$ref": "#/$defs/id"
+        },
+        "launchType": {
+          "type": "string",
+          "enum": ["userInitiated", "background"]
+        },
+        "supportPath": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "assetsPath": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "preferences": {
+          "type": "object"
         }
       }
     },
@@ -158,10 +188,38 @@
             }
           }
         },
+        "searchBarPlaceholder": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "filtering": {
+          "type": "boolean"
+        },
         "actions": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/action"
+          }
+        },
+        "listDropdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "tooltip", "value", "options"],
+          "properties": {
+            "id": { "$ref": "#/$defs/id" },
+            "tooltip": { "type": "string", "maxLength": 160 },
+            "value": { "type": "string", "maxLength": 160 },
+            "options": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["title", "value"],
+                "properties": {
+                  "title": { "type": "string", "maxLength": 160 },
+                  "value": { "type": "string", "maxLength": 160 }
+                }
+              }
+            }
           }
         }
       }
@@ -192,8 +250,17 @@
         "accessories": {
           "type": "array",
           "items": {
-            "type": "string",
-            "maxLength": 240
+            "oneOf": [
+              { "type": "string", "maxLength": 240 },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "icon": { "type": "string", "maxLength": 160 },
+                  "text": { "type": "string", "maxLength": 240 }
+                }
+              }
+            ]
           }
         },
         "keywords": {
@@ -240,6 +307,14 @@
                 "type": "string",
                 "maxLength": 500
               }
+            },
+            "sections": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "links": {
+              "type": "array",
+              "items": { "type": "object" }
             }
           }
         }
@@ -265,7 +340,9 @@
             "textarea",
             "checkbox",
             "dropdown",
-            "date"
+            "date",
+            "file",
+            "directory"
           ]
         },
         "title": {
@@ -273,6 +350,9 @@
           "maxLength": 160
         },
         "value": {},
+        "placeholder": { "type": "string", "maxLength": 240 },
+        "required": { "type": "boolean" },
+        "options": { "type": "array", "items": { "type": "object" } },
         "error": {
           "type": "string",
           "maxLength": 500
@@ -304,6 +384,9 @@
         },
         "destructive": {
           "type": "boolean"
+        },
+        "requiresConfirmation": {
+          "type": "boolean"
         }
       }
     },
@@ -323,9 +406,13 @@
           "type": "string",
           "enum": [
             "selectionChanged",
+            "searchChanged",
             "actionInvoked",
             "formChanged",
             "loadMore",
+            "dropdownChanged",
+        "formSubmitted",
+            "confirmResponse",
             "cancel"
           ]
         },
@@ -342,6 +429,7 @@
           "$ref": "#/$defs/id"
         },
         "value": {},
+        "confirmed": { "type": "boolean" },
         "fields": {
           "type": "object"
         }
@@ -420,6 +508,50 @@
           "type": "string",
           "maxLength": 2000
         }
+      }
+    },
+    "capabilityProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "requestID", "done"],
+      "properties": {
+        "type": { "const": "capabilityProgress" },
+        "requestID": { "$ref": "#/$defs/id" },
+        "capability": { "type": "string" },
+        "jobID": { "$ref": "#/$defs/id" },
+        "stream": { "type": "string" },
+        "chunk": { "type": "string", "maxLength": 65536 },
+        "done": { "type": "boolean" },
+        "status": { "type": "integer" },
+        "truncated": { "type": "boolean" },
+        "timedOut": { "type": "boolean" },
+        "cancelled": { "type": "boolean" }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "feedback"],
+      "properties": {
+        "type": { "const": "feedback" },
+        "feedback": { "type": "string" },
+        "toastID": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "maxLength": 240 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "style": { "type": "string" },
+        "requestID": { "$ref": "#/$defs/id" },
+        "primaryAction": { "type": "string", "maxLength": 160 },
+        "dismissAction": { "type": "string", "maxLength": 160 }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "action"],
+      "properties": {
+        "type": { "const": "navigation" },
+        "action": { "type": "string", "enum": ["push", "pop", "popToRoot"] },
+        "component": {}
       }
     },
     "dispose": {

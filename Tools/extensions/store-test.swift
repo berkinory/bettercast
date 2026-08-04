@@ -1,6 +1,6 @@
 import Foundation
 
-let packageURL = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "build/extensions/list-clipboard.ocx")
+let packageURL = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "build/extensions/kill-process.ocx")
 let validator = ExtensionPackageValidator()
 let report = try validator.validate(packageURL: packageURL)
 precondition(report.isInstallable)

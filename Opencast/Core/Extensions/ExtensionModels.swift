@@ -88,6 +88,9 @@ struct ExtensionManifestCommand: Codable, Sendable {
     let menuBar: Bool?
     let capabilities: [String]?
     let networkDomains: [String]?
+    let executables: [String]?
+    let filesystemRoots: [String]?
+    let shell: Bool?
     let preferences: [ExtensionManifestPreference]?
 }
 
@@ -103,6 +106,9 @@ struct ExtensionCommand: Identifiable, Hashable, Sendable {
     let interval: String?
     let menuBar: Bool
     let networkDomains: [String]
+    let executables: [String]
+    let filesystemRoots: [String]
+    let shell: Bool
     let preferences: [ExtensionManifestPreference]
     let bundleURL: URL
 
@@ -120,6 +126,9 @@ struct ExtensionCommand: Identifiable, Hashable, Sendable {
         interval = nil
         menuBar = false
         networkDomains = []
+        executables = []
+        filesystemRoots = []
+        shell = false
         preferences = []
         bundleURL = URL(fileURLWithPath: "")
     }
@@ -136,6 +145,9 @@ struct ExtensionCommand: Identifiable, Hashable, Sendable {
         interval = command.interval
         menuBar = command.menuBar ?? false
         networkDomains = command.networkDomains ?? []
+        executables = command.executables ?? []
+        filesystemRoots = command.filesystemRoots ?? []
+        shell = command.shell ?? false
         preferences = command.preferences ?? manifest.preferences ?? []
         self.bundleURL = bundleURL
     }
@@ -147,6 +159,14 @@ struct ExtensionRuntimeMetrics: Codable, Equatable, Sendable {
     let peakResidentBytes: Int?
     let reason: String
     let timestamp: Date
+}
+
+struct ExtensionFeedback: Equatable, Sendable, Identifiable {
+    let id: String
+    let kind: String
+    let title: String?
+    let message: String?
+    let style: String?
 }
 
 struct ExtensionMenuBarSnapshot: Codable, Equatable, Identifiable, Sendable {
@@ -200,6 +220,10 @@ struct ExtensionRenderSnapshot: Codable, Equatable, Sendable {
     let selectedItemID: String?
     let loading: Bool
     let listDropdown: ExtensionListDropdown?
+    let emptyView: ExtensionRenderEmptyView?
+    let pagination: ExtensionRenderPagination?
+    let searchBarPlaceholder: String?
+    let filtering: Bool
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -211,6 +235,10 @@ struct ExtensionRenderSnapshot: Codable, Equatable, Sendable {
         selectedItemID = try container.decodeIfPresent(String.self, forKey: .selectedItemID)
         loading = try container.decodeIfPresent(Bool.self, forKey: .loading) ?? false
         listDropdown = try container.decodeIfPresent(ExtensionListDropdown.self, forKey: .listDropdown)
+        emptyView = try container.decodeIfPresent(ExtensionRenderEmptyView.self, forKey: .emptyView)
+        pagination = try container.decodeIfPresent(ExtensionRenderPagination.self, forKey: .pagination)
+        searchBarPlaceholder = try container.decodeIfPresent(String.self, forKey: .searchBarPlaceholder)
+        filtering = try container.decodeIfPresent(Bool.self, forKey: .filtering) ?? true
     }
 
     init(
@@ -226,7 +254,22 @@ struct ExtensionRenderSnapshot: Codable, Equatable, Sendable {
         self.selectedItemID = selectedItemID
         self.loading = loading
         listDropdown = nil
+        emptyView = nil
+        pagination = nil
+        searchBarPlaceholder = nil
+        filtering = true
     }
+}
+
+struct ExtensionRenderEmptyView: Codable, Equatable, Sendable {
+    let title: String
+    let description: String?
+    let icon: String?
+}
+
+struct ExtensionRenderPagination: Codable, Equatable, Sendable {
+    let hasMore: Bool
+    let cursor: String?
 }
 
 struct ExtensionRenderItem: Codable, Equatable, Identifiable, Sendable {

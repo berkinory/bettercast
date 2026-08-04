@@ -10,7 +10,7 @@
       "items": {
         "type": "object",
         "required": [
-          "name", "title", "description", "version", "packageURL", "bundleHash",
+          "name", "title", "description", "version", "packageURL", "bundleHash", "capabilityHash",
           "bundleBytes", "minimumAppVersion", "capabilities", "verified"
         ],
         "properties": {
@@ -20,6 +20,7 @@
           "version": { "type": "string" },
           "packageURL": { "type": "string", "format": "uri", "pattern": "^https://" },
           "bundleHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "capabilityHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "bundleBytes": { "type": "integer", "minimum": 1, "maximum": 8388608 },
           "minimumAppVersion": { "type": "string" },
           "capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },

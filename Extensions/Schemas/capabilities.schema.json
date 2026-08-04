@@ -49,9 +49,16 @@
         "open.url",
         "open.application",
         "finder.reveal",
+        "finder.selection.read",
+        "filesystem.read",
+        "filesystem.write",
+        "filesystem.list",
+        "filesystem.pick",
+        "filesystem.quickLook",
         "storage.read",
         "storage.write",
         "storage.delete",
+        "storage.sqlite",
         "preferences.read",
         "process.execute",
         "process.inspect",
@@ -61,6 +68,11 @@
         "ports.inspect",
         "system.metrics.read",
         "network.request",
+        "application.list",
+        "application.frontmost",
+        "applescript.execute",
+        "browser.read",
+        "browser.mutate",
         "menuBar.publishSnapshot"
       ]
     }

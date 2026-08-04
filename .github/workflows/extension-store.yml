@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
     paths:
-      - Extensions/Fixtures/**
+      - Extensions/Packages/**
       - Extensions/Runtime/**
       - Extensions/Capabilities.json
       - Store/approved-extensions.json

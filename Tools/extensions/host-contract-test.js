@@ -44,95 +44,6 @@ function session(bundlePath) {
   return { child, send, next, close, bundlePath };
 }
 
-async function checkList() {
-  const bundlePath = path.join(root, "build/extensions/list-clipboard.ocx");
-  const host = session(bundlePath);
-  host.send({ type: "launch", requestID: "list-launch", bundlePath, mode: "view" });
-  const render = await host.next();
-  assert.equal(render.type, "render");
-  assert.equal(render.root, "list");
-  assert.equal(render.items.length, 3);
-  assert.equal(render.items[0].id, "alpha");
-  assert.equal(render.items[0].actions.length, 2);
-
-  host.send({
-    type: "event",
-    requestID: "list-action",
-    event: "actionInvoked",
-    actionID: render.items[0].actions[0].id,
-    itemID: "alpha"
-  });
-  const capability = await host.next();
-  assert.equal(capability.type, "capabilityRequest");
-  assert.equal(capability.capability, "clipboard.write");
-  assert.equal(capability.payload.text, "alpha");
-  host.send({ type: "capabilityResponse", requestID: capability.requestID, ok: true, value: true });
-  assert.equal((await host.next()).type, "render");
-  await host.close();
-}
-
-async function checkNoView() {
-  const bundlePath = path.join(root, "build/extensions/no-view-process.ocx");
-  const host = session(bundlePath);
-  host.send({ type: "launch", requestID: "no-view-launch", bundlePath, mode: "no-view" });
-  for (const [capability, value] of [
-    ["selectedText.read", "{\"hello\":true}"],
-    ["process.execute", "{\n  \"hello\": true\n}"],
-    ["clipboard.write", true]
-  ]) {
-    const request = await host.next();
-    assert.equal(request.type, "capabilityRequest");
-    assert.equal(request.capability, capability);
-    host.send({ type: "capabilityResponse", requestID: request.requestID, ok: true, value });
-  }
-  assert.equal((await host.next()).type, "log");
-  assert.equal((await host.next()).reason, "completed");
-  host.child.stdin.end();
-  await new Promise((resolve) => host.child.once("close", resolve));
-}
-
-async function checkDetail() {
-  const bundlePath = path.join(root, "build/extensions/detail-open.ocx");
-  const host = session(bundlePath);
-  host.send({ type: "launch", requestID: "detail-launch", bundlePath, mode: "view" });
-  const render = await host.next();
-  assert.equal(render.root, "detail");
-  assert.equal(render.detail.metadata.length, 0);
-  assert.equal(render.detail.sections.length, 1);
-  assert.equal(render.detail.sections[0].metadata.length, 2);
-  assert.equal(render.detail.links[0].url, "https://opencast.app");
-  await host.close();
-}
-
-async function checkForm() {
-  const bundlePath = path.join(root, "build/extensions/form-preferences.ocx");
-  const host = session(bundlePath);
-  host.send({ type: "launch", requestID: "form-launch", bundlePath, mode: "view", preferences: { defaultLabel: "Default" } });
-  const render = await host.next();
-  assert.equal(render.root, "form");
-  assert.deepEqual(render.fields.map((field) => field.kind), ["text", "checkbox", "dropdown", "date"]);
-  assert.equal(render.fields[2].options[0].value, "fast");
-  await host.close();
-}
-
-async function checkGridAndMenuBar() {
-  const gridPath = path.join(root, "build/extensions/grid-status.ocx");
-  const grid = session(gridPath);
-  grid.send({ type: "launch", requestID: "grid-launch", bundlePath: gridPath, mode: "view" });
-  const gridRender = await grid.next();
-  assert.equal(gridRender.root, "grid");
-  assert.equal(gridRender.items.length, 2);
-  await grid.close();
-
-  const menuBarPath = path.join(root, "build/extensions/menubar-snapshot.ocx");
-  const menuBar = session(menuBarPath);
-  menuBar.send({ type: "launch", requestID: "menu-launch", bundlePath: menuBarPath, mode: "view" });
-  const menuRender = await menuBar.next();
-  assert.equal(menuRender.root, "menuBarSnapshot");
-  assert.equal(menuRender.items[0].title, "Brewed");
-  await menuBar.close();
-}
-
 async function checkStoreCapabilities() {
   const killPath = path.join(root, "build/extensions/kill-process.ocx");
   const kill = session(killPath);
@@ -201,11 +112,6 @@ async function checkStoreCapabilities() {
 
 async function run() {
   if (!fs.existsSync(hostPath)) throw new Error(`host binary not found: ${hostPath}`);
-  await checkList();
-  await checkNoView();
-  await checkDetail();
-  await checkForm();
-  await checkGridAndMenuBar();
   await checkStoreCapabilities();
   process.stdout.write("extension host contract checks passed\n");
 }

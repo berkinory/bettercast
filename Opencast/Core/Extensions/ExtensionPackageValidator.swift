@@ -22,6 +22,7 @@ struct ExtensionVerificationReport: Codable, Equatable, Sendable {
     let hardVetoes: [String]
     let bundleBytes: Int
     let bundleHash: String
+    let capabilityHash: String
     let manifestName: String?
     let version: String?
 
@@ -82,6 +83,7 @@ struct ExtensionPackageValidator {
     private struct BuildFile: Decodable {
         let schemaVersion: Int
         let bundleHash: String
+        let capabilityHash: String
         let bundleBytes: Int
         let capabilitiesUsed: [String]?
     }
@@ -112,7 +114,9 @@ struct ExtensionPackageValidator {
             ExtensionManifest.self, at: packageURL.appendingPathComponent("manifest.json"), error: .invalidManifest)
         guard manifest.schemaVersion == 1, validIdentifier(manifest.name), !manifest.commands.isEmpty,
             manifest.commands.allSatisfy({
-                validIdentifier($0.name) && validEntry($0.entry) && ($0.mode == "view" || $0.mode == "no-view")
+                validIdentifier($0.name) && validEntry($0.entry)
+                    && ($0.mode == "view" || $0.mode == "no-view" || $0.mode == "menu-bar")
+                    && ($0.mode != "menu-bar" || $0.menuBar == true)
                     && ($0.preferences ?? []).allSatisfy(validPreference)
             })
         else { throw ExtensionPackageValidationError.invalidManifest }
@@ -125,8 +129,13 @@ struct ExtensionPackageValidator {
                     || !(command.networkDomains ?? []).isEmpty
             })
         else { throw ExtensionPackageValidationError.invalidManifest }
+        guard manifest.commands.allSatisfy(validScopes) else {
+            throw ExtensionPackageValidationError.invalidManifest
+        }
+        let capabilitiesURL = packageURL.appendingPathComponent("capabilities.json")
+        let capabilitiesData = try Data(contentsOf: capabilitiesURL)
         let capabilities = try decode(
-            CapabilityFile.self, at: packageURL.appendingPathComponent("capabilities.json"), error: .invalidCapabilities
+            CapabilityFile.self, at: capabilitiesURL, error: .invalidCapabilities
         )
         guard capabilities.schemaVersion == 1 else { throw ExtensionPackageValidationError.invalidCapabilities }
         let build = try decode(
@@ -142,6 +151,13 @@ struct ExtensionPackageValidator {
         let hash = SHA256.hash(data: bundleData).map { String(format: "%02x", $0) }.joined()
         guard hash == build.bundleHash, bundleData.count == build.bundleBytes else {
             throw ExtensionPackageValidationError.hashMismatch
+        }
+        let manifestData = try Data(contentsOf: packageURL.appendingPathComponent("manifest.json"))
+        var capabilityContract = manifestData
+        capabilityContract.append(capabilitiesData)
+        let capabilityHash = SHA256.hash(data: capabilityContract).map { String(format: "%02x", $0) }.joined()
+        guard capabilityHash == build.capabilityHash else {
+            throw ExtensionPackageValidationError.capabilityMismatch
         }
 
         let manifestCapabilities = Set(manifest.commands.flatMap { $0.capabilities ?? [] })
@@ -173,6 +189,7 @@ struct ExtensionPackageValidator {
             hardVetoes: hardVetoes,
             bundleBytes: bundleData.count,
             bundleHash: hash,
+            capabilityHash: capabilityHash,
             manifestName: manifest.name,
             version: metadata?.version
         )
@@ -198,9 +215,35 @@ struct ExtensionPackageValidator {
             preference.name.count <= 80
             && preference.name.first?.isLetter == true
             && preference.name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+        let normalizedName = preference.name.lowercased().replacingOccurrences(of: "_", with: "")
+        let forbiddenCredentialName = ["apikey", "token", "oauth", "clientsecret"].contains {
+            normalizedName.contains($0)
+        }
         let validType = ["textfield", "password", "checkbox", "dropdown", "date"].contains(preference.type)
         let validOptions = preference.type != "dropdown" || !preference.options.isEmpty
-        return validName && validType && validOptions
+        return validName && !forbiddenCredentialName && validType && validOptions
+    }
+
+    private func validScopes(_ command: ExtensionManifestCommand) -> Bool {
+        let executables = command.executables ?? []
+        let roots = command.filesystemRoots ?? []
+        let domains = command.networkDomains ?? []
+        return domains.allSatisfy(validDomainScope)
+            && executables.allSatisfy {
+                let path = URL(fileURLWithPath: $0).standardizedFileURL.path
+                return $0 == path
+                    && ["/bin", "/usr/bin", "/usr/sbin", "/opt/homebrew/bin", "/usr/local/bin"]
+                        .contains(URL(fileURLWithPath: path).deletingLastPathComponent().path)
+            } && roots.allSatisfy { $0 == "extension" || $0 == "home" || $0.hasPrefix("home/") }
+    }
+
+    private func validDomainScope(_ value: String) -> Bool {
+        let scope = value.lowercased()
+        let host = scope.hasPrefix("*.") ? String(scope.dropFirst(2)) : scope
+        guard !host.isEmpty, !host.contains("/"), !host.contains(":"), !host.contains("*") else { return false }
+        return host.split(separator: ".").allSatisfy { part in
+            !part.isEmpty && part.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" }
+        }
     }
 
     private func decode<T: Decodable>(_ type: T.Type, at url: URL, error: ExtensionPackageValidationError) throws -> T {
@@ -231,11 +274,16 @@ struct ExtensionPackageValidator {
             vetoes.append("postinstall script")
         }
         let forbiddenPatterns = [
-            "child_process", "process.mainModule", "eval(", "new Function(", "fetch(",
+            "child_process", "process.mainModule", "eval(", "new Function(",
             "XMLHttpRequest", "import(\"http", "import(\"https",
         ]
         for pattern in forbiddenPatterns where bundle.contains(pattern) {
             vetoes.append(pattern)
+        }
+        if bundle.range(of: #"from\s+["']@raycast/(?:api|utils)["']"#, options: .regularExpression) != nil,
+            bundle.contains("AI")
+        {
+            vetoes.append("AI API")
         }
         return Array(Set(vetoes)).sorted()
     }
@@ -253,9 +301,6 @@ struct ExtensionPackageValidator {
         if metadata?.commit == nil { issues.append("source commit is not recorded") }
         if metadata?.architectures?.sorted() != ["arm64", "x86_64"] {
             issues.append("both supported architectures are not verified")
-        }
-        if usedCapabilities.contains(where: { $0.hasPrefix("network.") }) {
-            issues.append("network capability requires explicit consent")
         }
         return Array(Set(issues)).sorted()
     }

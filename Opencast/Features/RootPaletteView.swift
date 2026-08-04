@@ -161,6 +161,7 @@ struct RootPaletteView: View {
         guard vm.mode == .extensionCommand else { return [] }
         let query = vm.query.trimmingCharacters(in: .whitespacesAndNewlines)
         let items = extensionHost.snapshot?.items ?? []
+        guard extensionHost.snapshot?.filtering != false else { return items }
         guard !query.isEmpty else { return items }
         return items.filter { item in
             [item.title, item.subtitle ?? "", item.keywords.joined(separator: " ")]
@@ -293,7 +294,7 @@ struct RootPaletteView: View {
             let package = item.package
             let installed = item.installed
             var items: [PopoverMenuItem] = []
-            if let package, installed?.report.version != package.version {
+            if let package, item.isCurrent == false {
                 items.append(
                     PopoverMenuItem(
                         title: installed == nil ? "Install" : "Update",
@@ -477,6 +478,9 @@ struct RootPaletteView: View {
             inlineArgumentFocusRequest = nil
             listScroll = ListScrollIntent(kind: .top)
             emojiScroll = EmojiScrollIntent(kind: .top)
+            if vm.mode == .extensionCommand {
+                extensionHost.search(text: vm.query)
+            }
         }
         .onChange(of: vm.mode) {
             searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
@@ -826,7 +830,8 @@ struct RootPaletteView: View {
     private var searchField: some View {
         TextField(
             "", text: $vm.query,
-            prompt: Text(vm.mode.placeholder).foregroundStyle(Theme.Colors.searchPlaceholder)
+            prompt: Text(extensionHost.snapshot?.searchBarPlaceholder ?? vm.mode.placeholder)
+                .foregroundStyle(Theme.Colors.searchPlaceholder)
         )
         .textFieldStyle(.plain)
         .font(Theme.Typography.searchField)

@@ -9,6 +9,7 @@ final class ExtensionHostManager: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastMetrics: ExtensionRuntimeMetrics?
     @Published private(set) var actionProgress: ExtensionCapabilityProgress?
+    @Published private(set) var feedback: ExtensionFeedback?
     var onNoViewFinished: (() -> Void)?
 
     private let capabilityBroker: ExtensionCapabilityBroker
@@ -73,6 +74,7 @@ final class ExtensionHostManager: ObservableObject {
         errorMessage = nil
         lastMetrics = nil
         actionProgress = nil
+        feedback = nil
         isRunning = true
         armWatchdog()
         send([
@@ -80,6 +82,11 @@ final class ExtensionHostManager: ObservableObject {
             "requestID": nextRequestID(prefix: "launch"),
             "bundlePath": command.bundleURL.path,
             "mode": command.mode,
+            "commandName": command.id.split(separator: ":").last.map(String.init) ?? command.id,
+            "extensionName": command.extensionName,
+            "launchType": "userInitiated",
+            "supportPath": command.bundleURL.deletingLastPathComponent().path,
+            "assetsPath": command.bundleURL.appendingPathComponent("assets", isDirectory: true).path,
             "preferences": preferenceValues(for: command),
         ])
     }
@@ -100,6 +107,7 @@ final class ExtensionHostManager: ObservableObject {
         snapshot = nil
         isRunning = false
         actionProgress = nil
+        feedback = nil
     }
 
     func select(itemID: String) {
@@ -109,6 +117,26 @@ final class ExtensionHostManager: ObservableObject {
             "requestID": nextRequestID(prefix: "selection"),
             "event": "selectionChanged",
             "itemID": itemID,
+        ])
+    }
+
+    func search(text: String) {
+        armWatchdog()
+        send([
+            "type": "event",
+            "requestID": nextRequestID(prefix: "search"),
+            "event": "searchChanged",
+            "text": text,
+        ])
+    }
+
+    func loadMore(root: String = "list") {
+        armWatchdog(duration: 60)
+        send([
+            "type": "event",
+            "requestID": nextRequestID(prefix: "load-more"),
+            "event": "loadMore",
+            "root": root,
         ])
     }
 
@@ -133,6 +161,17 @@ final class ExtensionHostManager: ObservableObject {
             "requestID": nextRequestID(prefix: "dropdown"),
             "event": "dropdownChanged",
             "dropdownID": id,
+            "value": value,
+        ])
+    }
+
+    func changeField(id: String, value: String) {
+        armWatchdog()
+        send([
+            "type": "event",
+            "requestID": nextRequestID(prefix: "field"),
+            "event": "formChanged",
+            "fieldID": id,
             "value": value,
         ])
     }
@@ -189,6 +228,43 @@ final class ExtensionHostManager: ObservableObject {
                 actionProgress = progress.done ? nil : progress
             }
             armWatchdog(duration: 60)
+        case "feedback":
+            let kind = message["feedback"] as? String ?? "toast"
+            if kind == "confirm", let requestID = message["requestID"] as? String {
+                let confirmed = NativeConfirmation.present(
+                    message: message["title"] as? String ?? "Confirm",
+                    informativeText: message["message"] as? String ?? "Are you sure?",
+                    confirmTitle: message["primaryAction"] as? String ?? "Continue"
+                )
+                send([
+                    "type": "event",
+                    "event": "confirmResponse",
+                    "requestID": requestID,
+                    "confirmed": confirmed,
+                ])
+                feedback = nil
+            } else if kind == "toastHide" {
+                feedback = nil
+            } else if kind == "toastShow" {
+                if let current = feedback {
+                    feedback = ExtensionFeedback(
+                        id: current.id,
+                        kind: "toast",
+                        title: current.title,
+                        message: current.message,
+                        style: current.style
+                    )
+                }
+            } else {
+                let current = feedback
+                feedback = ExtensionFeedback(
+                    id: message["toastID"] as? String ?? current?.id ?? UUID().uuidString,
+                    kind: kind == "toastUpdate" ? "toast" : kind,
+                    title: message["title"] as? String ?? current?.title,
+                    message: message["message"] as? String ?? current?.message,
+                    style: message["style"] as? String ?? current?.style
+                )
+            }
         case "error":
             errorMessage = message["message"] as? String ?? "Extension failed."
         case "dispose":

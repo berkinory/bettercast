@@ -17,7 +17,7 @@
       "name": "clipboard.paste",
       "risk": "sensitive",
       "consent": "each-use",
-      "description": "Paste into the previously focused application."
+      "description": "Paste text into the previously focused application."
     },
     {
       "name": "selectedText.read",
@@ -44,6 +44,42 @@
       "description": "Reveal a local path in Finder."
     },
     {
+      "name": "finder.selection.read",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Read the files selected in the frontmost Finder window."
+    },
+    {
+      "name": "filesystem.read",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read files within the extension and user home areas."
+    },
+    {
+      "name": "filesystem.write",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Write files within the extension and user home areas."
+    },
+    {
+      "name": "filesystem.list",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "List files within the extension and user home areas."
+    },
+    {
+      "name": "filesystem.pick",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Ask the user to choose a file or directory."
+    },
+    {
+      "name": "filesystem.quickLook",
+      "risk": "local",
+      "consent": "none",
+      "description": "Preview a user-selected file with Quick Look."
+    },
+    {
       "name": "storage.read",
       "risk": "local",
       "consent": "none",
@@ -66,6 +102,12 @@
       "risk": "local",
       "consent": "none",
       "description": "Read declared extension preferences."
+    },
+    {
+      "name": "storage.sqlite",
+      "risk": "local",
+      "consent": "none",
+      "description": "Use an extension-scoped SQLite database."
     },
     {
       "name": "process.execute",
@@ -114,6 +156,36 @@
       "risk": "network",
       "consent": "settings",
       "description": "Make a network request after the provider and data flow are disclosed."
+    },
+    {
+      "name": "application.list",
+      "risk": "local",
+      "consent": "none",
+      "description": "List applications installed on this Mac."
+    },
+    {
+      "name": "application.frontmost",
+      "risk": "sensitive",
+      "consent": "each-use",
+      "description": "Read the frontmost application identity."
+    },
+    {
+      "name": "applescript.execute",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Run a declared AppleScript or JavaScript for Automation operation."
+    },
+    {
+      "name": "browser.read",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Read tabs, history, or bookmarks from a supported browser."
+    },
+    {
+      "name": "browser.mutate",
+      "risk": "sensitive",
+      "consent": "install",
+      "description": "Perform a declared mutation in a supported browser."
     },
     {
       "name": "menuBar.publishSnapshot",

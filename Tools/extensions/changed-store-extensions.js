@@ -19,10 +19,10 @@ const globalPrefixes = [
 const rebuildAll = changedFiles.some((file) => globalPrefixes.some((prefix) => file === prefix || file.startsWith(prefix)));
 const names = allowlist.extensions
   .filter((entry) => {
-    const fixture = `${entry.fixture.replace(/\\/g, "/")}/`;
-    return changedFiles.some((file) => file === entry.fixture || file.startsWith(fixture));
+    const packagePath = `${entry.package.replace(/\\/g, "/")}/`;
+    return changedFiles.some((file) => file === entry.package || file.startsWith(packagePath));
   })
-  .map((entry) => JSON.parse(fs.readFileSync(path.join(root, entry.fixture, "package.json"), "utf8")).name);
+  .map((entry) => JSON.parse(fs.readFileSync(path.join(root, entry.package, "package.json"), "utf8")).name);
 
 process.stdout.write(`mode=${rebuildAll ? "all" : names.length > 0 ? "only" : "none"}\n`);
 process.stdout.write(`only=${names.join(",")}\n`);
