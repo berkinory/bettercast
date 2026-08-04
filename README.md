@@ -3,9 +3,6 @@
 A tiny, fully native macOS launcher — the essentials, without the bloat.
 
 <p align="center">
-  <a href="https://discord.gg/v2Eeb4QQy3">
-    <img alt="Join the Opencast Discord"
-         src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white"></a>
   <a href="mailto:iabueammar@gmail.com?subject=Hiring%20enquiry">
     <img alt="Hire me — iabueammar@gmail.com"
          src="https://img.shields.io/badge/Hire%20me-Let's%20talk-111111?style=flat&logo=gmail&logoColor=white"></a>
@@ -71,7 +68,7 @@ Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first — it covers the memory budge
 the before/after video requirement for visual changes, and why features get declined. Security issues
 go through [SECURITY.md](SECURITY.md), not the issue tracker.
 
-Questions, ideas, or just want to follow along? **[Join the Discord](https://discord.gg/v2Eeb4QQy3)**.
+Questions and ideas can go through GitHub issues or email.
 
 ## Contributors
 

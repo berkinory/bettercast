@@ -114,7 +114,7 @@ struct AboutView: View {
 private struct AboutLink: Identifiable {
     enum Glyph {
         case symbol(String)
-        /// A brand mark from `Assets.xcassets` (template SVG) — SF Symbols ships no GitHub/Discord/X logo.
+        /// A brand mark from `Assets.xcassets` (template SVG) — SF Symbols ships no GitHub/X logo.
         case brand(String)
     }
 
@@ -129,10 +129,6 @@ private struct AboutLink: Identifiable {
             id: "github", glyph: .brand("BrandGitHub"), title: "Tinycast Source",
             detail: "Original open-source project",
             url: URL(string: "https://github.com/abue-ammar/tinycast")!),
-        AboutLink(
-            id: "discord", glyph: .brand("BrandDiscord"), title: "Discord",
-            detail: "Join the community",
-            url: URL(string: "https://discord.gg/v2Eeb4QQy3")!),
         AboutLink(
             id: "x", glyph: .brand("BrandX"), title: "X", detail: "@abue_ammar",
             url: URL(string: "https://x.com/abue_ammar")!),
