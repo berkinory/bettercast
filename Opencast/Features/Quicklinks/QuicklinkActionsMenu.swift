@@ -18,12 +18,22 @@ enum QuicklinkActionsMenu {
         let pinnedItem =
             quicklink.isPinned
             ? PopoverMenuItem(
-                title: "Unpin Quicklink", systemImage: "pin.slash", shortcut: "⌘P") {
-                if let onTogglePinned { onTogglePinned() } else { core.togglePinnedQuicklink(quicklink) }
+                title: "Unpin Quicklink", systemImage: "pin.slash", shortcut: "⌘P"
+            ) {
+                if let onTogglePinned {
+                    onTogglePinned()
+                } else {
+                    core.togglePinnedQuicklink(quicklink)
+                }
             }
             : PopoverMenuItem(
-                title: "Pin Quicklink", systemImage: "pin", shortcut: "⌘P") {
-                if let onTogglePinned { onTogglePinned() } else { core.togglePinnedQuicklink(quicklink) }
+                title: "Pin Quicklink", systemImage: "pin", shortcut: "⌘P"
+            ) {
+                if let onTogglePinned {
+                    onTogglePinned()
+                } else {
+                    core.togglePinnedQuicklink(quicklink)
+                }
             }
         return PopoverMenuContent(
             header: quicklink.name,
