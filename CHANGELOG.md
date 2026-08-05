@@ -5,6 +5,9 @@
 ### Improved
 
 - Improved palette selection consistency across calculator results, sections, and empty result sets.
+- Improved repeated launcher searches by reusing unchanged ranked and ordered results.
+- Improved launcher refreshes by reusing unchanged System Settings metadata.
+- Improved hotkey settings so saved bindings are decoded once per session.
 
 ## [0.1.6]
 

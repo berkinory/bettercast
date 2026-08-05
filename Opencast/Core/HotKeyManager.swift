@@ -21,8 +21,15 @@ final class HotKeyManager: ObservableObject {
     private let doubleModifierMonitor = DoubleModifierMonitor()
     private let boundKey = "boundAppBundleIDs"
     private let boundPaneKey = "boundPaneBundleIDs"
+    private let decoder = JSONDecoder()
+    private let encoder = JSONEncoder()
+    private var bindings: [HotKeyAction: HotKeyBinding] = [:]
+    private var candidateActionsCache: [HotKeyAction]?
 
     func start() {
+        bindings.removeAll(keepingCapacity: true)
+        candidateActionsCache = nil
+        for action in candidateActions { bindings[action] = storedBinding(for: action) }
         register(.togglePalette)
         register(.toggleClipboard)
         register(.toggleEmoji)
@@ -48,6 +55,10 @@ final class HotKeyManager: ObservableObject {
     }
 
     func binding(for action: HotKeyAction) -> HotKeyBinding? {
+        bindings[action]
+    }
+
+    private func storedBinding(for action: HotKeyAction) -> HotKeyBinding? {
         guard let json = UserDefaults.standard.string(forKey: action.defaultsKey) else { return nil }
         switch json {
         case "doubleCommand": return .doubleModifier(.command)
@@ -56,7 +67,7 @@ final class HotKeyManager: ObservableObject {
         default: break
         }
         guard let data = json.data(using: .utf8),
-            let shortcut = try? JSONDecoder().decode(KeyShortcut.self, from: data)
+            let shortcut = try? decoder.decode(KeyShortcut.self, from: data)
         else { return nil }
         return .key(shortcut)
     }
@@ -71,9 +82,10 @@ final class HotKeyManager: ObservableObject {
         switch binding {
         case .key(let shortcut):
             guard
-                let data = try? JSONEncoder().encode(shortcut),
+                let data = try? encoder.encode(shortcut),
                 let json = String(data: data, encoding: .utf8)
             else { return }
+            bindings[action] = binding
             UserDefaults.standard.set(json, forKey: action.defaultsKey)
             register(action)
         case .doubleModifier(let modifier):
@@ -83,9 +95,11 @@ final class HotKeyManager: ObservableObject {
             case .option: value = "doubleOption"
             case .control: value = "doubleControl"
             }
+            bindings[action] = binding
             UserDefaults.standard.set(value, forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         case nil:
+            bindings[action] = nil
             UserDefaults.standard.removeObject(forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         }
@@ -103,6 +117,7 @@ final class HotKeyManager: ObservableObject {
         case .togglePalette, .toggleClipboard, .toggleEmoji:
             break
         }
+        candidateActionsCache = nil
         objectWillChange.send()
     }
 
@@ -112,11 +127,7 @@ final class HotKeyManager: ObservableObject {
 
     /// The display name of whatever else `binding` is bound to (or `nil` if free), driving the recorder's "Used by …" message.
     func conflictOwner(of binding: HotKeyBinding, excluding action: HotKeyAction) -> String? {
-        var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
-        candidates += boundBundleIDs.map { .app(bundleID: $0) }
-        candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
-        candidates += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
-        for candidate in candidates
+        for candidate in candidateActions
         where candidate != action && self.binding(for: candidate) == binding {
             return displayName(of: candidate)
         }
@@ -157,16 +168,22 @@ final class HotKeyManager: ObservableObject {
     }
 
     private func performDoubleModifier(_ modifier: DoubleModifier) {
-        var candidates: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
-        candidates += boundBundleIDs.map { .app(bundleID: $0) }
-        candidates += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
-        candidates += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
         guard
-            let action = candidates.first(where: {
-                binding(for: $0) == .doubleModifier(modifier)
-            })
+            let action = candidateActions.first(where: {
+            binding(for: $0) == .doubleModifier(modifier)
+        })
         else { return }
         perform(action)
+    }
+
+    private var candidateActions: [HotKeyAction] {
+        if let candidateActionsCache { return candidateActionsCache }
+        var actions: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
+        actions += boundBundleIDs.map { .app(bundleID: $0) }
+        actions += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
+        actions += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
+        candidateActionsCache = actions
+        return actions
     }
 
     private func perform(_ action: HotKeyAction) {

@@ -9,6 +9,7 @@ final class FavoritesStore: ObservableObject {
 
     @Published private(set) var keys: [String]
     @Published private(set) var quicklinkKeys: [String]
+    private(set) var revision = 0
 
     init() {
         keys = defaults.stringArray(forKey: key) ?? []
@@ -21,7 +22,9 @@ final class FavoritesStore: ObservableObject {
 
     /// Replace the whole favorites list at once (used when importing a settings backup).
     func replace(keys newKeys: [String]) {
+        guard keys != newKeys else { return }
         keys = newKeys
+        revision &+= 1
         defaults.set(keys, forKey: key)
     }
 
@@ -32,6 +35,7 @@ final class FavoritesStore: ObservableObject {
         } else {
             keys.append(k)
         }
+        revision &+= 1
         defaults.set(keys, forKey: key)
     }
 
@@ -46,12 +50,14 @@ final class FavoritesStore: ObservableObject {
         } else {
             quicklinkKeys.append(id)
         }
+        revision &+= 1
         defaults.set(quicklinkKeys, forKey: quicklinkKey)
     }
 
     func remove(_ quicklink: Quicklink) {
         guard let index = quicklinkKeys.firstIndex(of: quicklink.id.uuidString) else { return }
         quicklinkKeys.remove(at: index)
+        revision &+= 1
         defaults.set(quicklinkKeys, forKey: quicklinkKey)
     }
 

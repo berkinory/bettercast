@@ -9,6 +9,7 @@ final class VisibilityStore: ObservableObject {
 
     @Published private(set) var hiddenItemKeys: Set<String>
     @Published private(set) var hiddenKinds: Set<String>
+    private(set) var revision = 0
 
     init() {
         hiddenItemKeys = Set(defaults.stringArray(forKey: itemsKey) ?? [])
@@ -17,8 +18,12 @@ final class VisibilityStore: ObservableObject {
 
     /// Replace both exclusion sets at once (used when importing a settings backup).
     func replace(hiddenItems: [String], hiddenKinds newKinds: [String]) {
-        hiddenItemKeys = Set(hiddenItems)
-        hiddenKinds = Set(newKinds)
+        let items = Set(hiddenItems)
+        let kinds = Set(newKinds)
+        guard hiddenItemKeys != items || hiddenKinds != kinds else { return }
+        hiddenItemKeys = items
+        hiddenKinds = kinds
+        revision &+= 1
         defaults.set(Array(hiddenItemKeys), forKey: itemsKey)
         defaults.set(Array(hiddenKinds), forKey: kindsKey)
     }
@@ -36,7 +41,10 @@ final class VisibilityStore: ObservableObject {
 
     func setItemVisible(_ visible: Bool, for entry: AppEntry) {
         let k = key(for: entry)
+        let before = hiddenItemKeys
         if visible { hiddenItemKeys.remove(k) } else { hiddenItemKeys.insert(k) }
+        guard hiddenItemKeys != before else { return }
+        revision &+= 1
         defaults.set(Array(hiddenItemKeys), forKey: itemsKey)
     }
 
@@ -45,7 +53,10 @@ final class VisibilityStore: ObservableObject {
     }
 
     func setKindVisible(_ visible: Bool, for kind: AppEntry.Kind) {
+        let before = hiddenKinds
         if visible { hiddenKinds.remove(kind.rawValue) } else { hiddenKinds.insert(kind.rawValue) }
+        guard hiddenKinds != before else { return }
+        revision &+= 1
         defaults.set(Array(hiddenKinds), forKey: kindsKey)
     }
 }

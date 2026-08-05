@@ -167,8 +167,24 @@ enum IconCache {
 final class AppIndex: ObservableObject {
     @Published private(set) var apps: [AppEntry] = []
 
-    /// One-entry memo so repeated renders for the same query reuse the ranking instead of re-matching every frame.
-    private var matchCache: (query: String, rankingRevision: Int, result: [AppEntry])?
+    private struct MatchKey: Equatable {
+        let query: String
+        let entriesRevision: Int
+        let rankingRevision: Int
+    }
+
+    private struct ResultsKey: Equatable {
+        let query: String
+        let entriesRevision: Int
+        let rankingRevision: Int
+        let visibilityRevision: Int
+        let favoritesRevision: Int
+    }
+
+    private var matchMemo = Memo<MatchKey, [AppEntry]>()
+    private var resultsMemo = Memo<ResultsKey, [AppEntry]>()
+    private var entriesRevision = 0
+    private var paneCache: SettingsPaneScanner.Cache?
 
     private var isRefreshing = false
     private var refreshPending = false
@@ -212,13 +228,13 @@ final class AppIndex: ObservableObject {
     func setCaffeinationActive(_ active: Bool) {
         guard caffeinationActive != active else { return }
         caffeinationActive = active
-        matchCache = nil
+        entriesRevision &+= 1
     }
 
     func setExtensionCommands(_ commands: [ExtensionCommand]) {
         guard extensionCommands != commands else { return }
         extensionCommands = commands
-        matchCache = nil
+        entriesRevision &+= 1
     }
 
     /// Re-scan (called on every launcher open); overlapping scans collapse into one trailing scan and an unchanged result does no UI work.
@@ -236,23 +252,26 @@ final class AppIndex: ObservableObject {
             let includeWindowCommands = windowCommandsVisible
             let caffeinationActive = self.caffeinationActive
             let extensionCommands = self.extensionCommands
-            let found = await Task.detached(priority: .utility) {
+            let reusingPaneCache = paneCache
+            let (found, panesCache) = await Task.detached(priority: .utility) {
                 AppIndex.scan(
                     scopes: scopes,
                     includeWindowCommands: includeWindowCommands,
                     caffeinationActive: caffeinationActive,
-                    extensionCommands: extensionCommands)
+                    extensionCommands: extensionCommands,
+                    paneCache: reusingPaneCache)
             }.value
+            paneCache = panesCache
             guard found != apps else { continue }
             apps = found
-            matchCache = nil
+            entriesRevision &+= 1
         } while refreshPending
     }
 
     nonisolated private static func scan(
         scopes: [String], includeWindowCommands: Bool, caffeinationActive: Bool,
-        extensionCommands: [ExtensionCommand]
-    ) -> [AppEntry] {
+        extensionCommands: [ExtensionCommand], paneCache: SettingsPaneScanner.Cache?
+    ) -> ([AppEntry], SettingsPaneScanner.Cache?) {
         var seenBundleIDs = Set<String>()
         var result: [AppEntry] = []
         for url in SearchScopes.appBundles(in: scopes) {
@@ -322,7 +341,8 @@ final class AppIndex: ObservableObject {
                 return entry
             }
         }
-        return apps + SettingsPaneScanner.scan() + commands + extensionEntries + launcherCommands
+        let (panes, updatedPaneCache) = SettingsPaneScanner.scan(cache: paneCache)
+        return (apps + panes + commands + extensionEntries + launcherCommands, updatedPaneCache)
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {
@@ -362,14 +382,24 @@ final class AppIndex: ObservableObject {
     func matches(_ query: String, limit: Int = 200) -> [AppEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return apps }
-        if let matchCache, matchCache.query == q,
-            matchCache.rankingRevision == ranking.revision
-        {
-            return matchCache.result
+        let key = MatchKey(
+            query: q, entriesRevision: entriesRevision, rankingRevision: ranking.revision)
+        return matchMemo.value(for: key) { rank(q, limit: limit) }
+    }
+
+    func orderedResults(
+        query: String, visibility: VisibilityStore, favorites: FavoritesStore
+    ) -> [AppEntry] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        let key = ResultsKey(
+            query: q, entriesRevision: entriesRevision, rankingRevision: ranking.revision,
+            visibilityRevision: visibility.revision, favoritesRevision: favorites.revision)
+        return resultsMemo.value(for: key) {
+            let base = matches(q).filter(visibility.isVisible)
+            guard q.isEmpty else { return base }
+            let split = favorites.ordered(base)
+            return split.favorites + split.rest
         }
-        let result = rank(q, limit: limit)
-        matchCache = (q, ranking.revision, result)
-        return result
     }
 
     private func rank(_ q: String, limit: Int) -> [AppEntry] {
