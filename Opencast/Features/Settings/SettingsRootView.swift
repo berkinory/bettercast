@@ -30,7 +30,7 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         case .quicklinks: return "Quicklinks"
         case .emoji: return "Emoji"
         case .calculator: return "Calculator"
-        case .windowManagement: return "Window Management"
+        case .windowManagement: return "Window"
         case .about: return "About"
         }
     }
