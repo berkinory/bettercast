@@ -8,6 +8,7 @@
 - Improved repeated launcher searches by reusing unchanged ranked and ordered results.
 - Improved launcher refreshes by reusing unchanged System Settings metadata.
 - Improved hotkey settings so saved bindings are decoded once per session.
+- Improved local storage isolation by centralizing app-specific cache and support paths.
 
 ## [0.1.6]
 

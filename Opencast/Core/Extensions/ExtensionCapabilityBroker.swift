@@ -38,12 +38,12 @@ final class ExtensionCapabilityBroker: ObservableObject {
     private var networkConsentGranted: Bool
 
     init(storageDirectory: URL? = nil) {
-        let base =
-            storageDirectory ?? FileManager.default.urls(
-                for: .applicationSupportDirectory, in: .userDomainMask
-            ).first!
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
-        self.storageDirectory = base.appendingPathComponent(bundleID, isDirectory: true)
+        let base = storageDirectory ?? AppPaths.applicationSupport()
+        let scoped = storageDirectory == nil
+            ? base
+            : base.appendingPathComponent(bundleID, isDirectory: true)
+        self.storageDirectory = scoped
             .appendingPathComponent("ExtensionStorage", isDirectory: true)
         auditURL = self.storageDirectory
             .deletingLastPathComponent()

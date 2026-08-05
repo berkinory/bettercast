@@ -171,9 +171,7 @@ final class SnippetStore: ObservableObject {
     }
 
     private static var defaultFileURL: URL {
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
-        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(bundleID, isDirectory: true)
+        AppPaths.applicationSupport()
             .appendingPathComponent("snippets.json")
     }
 }

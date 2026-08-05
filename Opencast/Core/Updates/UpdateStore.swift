@@ -406,9 +406,7 @@ enum DistributionMarker {
     case homebrew
 
     static var current: DistributionMarker {
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
-        let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(bundleID, isDirectory: true)
+        let url = AppPaths.applicationSupport()
             .appendingPathComponent("distribution", isDirectory: false)
         return (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
             == "homebrew"

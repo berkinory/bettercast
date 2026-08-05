@@ -7,13 +7,12 @@ final class ExtensionSnapshotStore {
     private let decoder: JSONDecoder
 
     init(directory: URL? = nil) {
-        let base =
-            directory ?? FileManager.default.urls(
-                for: .applicationSupportDirectory, in: .userDomainMask
-            ).first!
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
-        self.directory = base.appendingPathComponent(bundleID, isDirectory: true)
-            .appendingPathComponent("ExtensionSnapshots", isDirectory: true)
+        let base = directory ?? AppPaths.applicationSupport()
+        let scoped = directory == nil
+            ? base
+            : base.appendingPathComponent(bundleID, isDirectory: true)
+        self.directory = scoped.appendingPathComponent("ExtensionSnapshots", isDirectory: true)
         encoder = JSONEncoder()
         decoder = JSONDecoder()
         encoder.dateEncodingStrategy = .iso8601

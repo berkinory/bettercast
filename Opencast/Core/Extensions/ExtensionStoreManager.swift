@@ -363,9 +363,6 @@ final class ExtensionStoreManager: ObservableObject {
     }
 
     private static func defaultDirectory() -> URL {
-        let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
-        return applicationSupport.appendingPathComponent(bundleID, isDirectory: true).appendingPathComponent(
-            "Extensions", isDirectory: true)
+        AppPaths.applicationSupport().appendingPathComponent("Extensions", isDirectory: true)
     }
 }
