@@ -74,10 +74,16 @@ final class QuicklinkStore: ObservableObject {
         return ordered(matched)
     }
 
-    func togglePinned(_ quicklink: Quicklink) {
+    func togglePinned(_ quicklink: Quicklink) throws {
         guard let index = quicklinks.firstIndex(where: { $0.id == quicklink.id }) else { return }
+        let previous = quicklinks
         quicklinks[index].pinnedAt = quicklinks[index].isPinned ? nil : Date()
-        try? persist()
+        do {
+            try persist()
+        } catch {
+            quicklinks = previous
+            throw error
+        }
     }
 
     func rowIndex(of quicklink: Quicklink, in query: String) -> Int? {
@@ -95,8 +101,14 @@ final class QuicklinkStore: ObservableObject {
             openWithBundleID: openWithBundleID
         )
         try validate(quicklink)
+        let previous = quicklinks
         quicklinks.insert(quicklink, at: 0)
-        try persist()
+        do {
+            try persist()
+        } catch {
+            quicklinks = previous
+            throw error
+        }
         return quicklink
     }
 
@@ -110,9 +122,15 @@ final class QuicklinkStore: ObservableObject {
         guard let index = quicklinks.firstIndex(where: { $0.id == quicklink.id }) else {
             return updated
         }
+        let previous = quicklinks
         quicklinks[index] = updated
         quicklinks.sort { $0.modifiedAt > $1.modifiedAt }
-        try persist()
+        do {
+            try persist()
+        } catch {
+            quicklinks = previous
+            throw error
+        }
         return updated
     }
 
@@ -126,9 +144,16 @@ final class QuicklinkStore: ObservableObject {
         )
     }
 
-    func delete(_ quicklink: Quicklink) {
+    func delete(_ quicklink: Quicklink) throws {
+        let previous = quicklinks
         quicklinks.removeAll { $0.id == quicklink.id }
-        try? persist()
+        guard quicklinks != previous else { return }
+        do {
+            try persist()
+        } catch {
+            quicklinks = previous
+            throw error
+        }
     }
 
     func quicklink(for id: Quicklink.ID?) -> Quicklink? {

@@ -11,6 +11,7 @@
 - Improved hotkey reliability when another app is using the same shortcut.
 - Improved shutdown cleanup for extension commands.
 - Improved launch-at-login setup when macOS rejects a change.
+- Improved reliability when saving snippets and quicklinks.
 - Improved separation between installed and development app data.
 - Improved uninstall responsiveness for applications with many files.
 - Improved confirmation flows and reliability of hotkeys and snippets.

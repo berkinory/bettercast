@@ -76,10 +76,16 @@ final class SnippetStore: ObservableObject {
         return ordered(matched)
     }
 
-    func togglePinned(_ snippet: Snippet) {
+    func togglePinned(_ snippet: Snippet) throws {
         guard let index = snippets.firstIndex(where: { $0.id == snippet.id }) else { return }
+        let previous = snippets
         snippets[index].pinnedAt = snippets[index].isPinned ? nil : Date()
-        try? persist()
+        do {
+            try persist()
+        } catch {
+            snippets = previous
+            throw error
+        }
     }
 
     func rowIndex(of snippet: Snippet, in query: String) -> Int? {
@@ -95,8 +101,14 @@ final class SnippetStore: ObservableObject {
             icon: icon
         )
         try validate(snippet)
+        let previous = snippets
         snippets.insert(snippet, at: 0)
-        try persist()
+        do {
+            try persist()
+        } catch {
+            snippets = previous
+            throw error
+        }
         return snippet
     }
 
@@ -108,9 +120,15 @@ final class SnippetStore: ObservableObject {
         updated.modifiedAt = Date()
         try validate(updated, excluding: snippet.id)
         guard let index = snippets.firstIndex(where: { $0.id == snippet.id }) else { return updated }
+        let previous = snippets
         snippets[index] = updated
         snippets.sort { $0.modifiedAt > $1.modifiedAt }
-        try persist()
+        do {
+            try persist()
+        } catch {
+            snippets = previous
+            throw error
+        }
         return updated
     }
 
@@ -124,9 +142,16 @@ final class SnippetStore: ObservableObject {
         )
     }
 
-    func delete(_ snippet: Snippet) {
+    func delete(_ snippet: Snippet) throws {
+        let previous = snippets
         snippets.removeAll { $0.id == snippet.id }
-        try? persist()
+        guard snippets != previous else { return }
+        do {
+            try persist()
+        } catch {
+            snippets = previous
+            throw error
+        }
     }
 
     func snippet(for id: Snippet.ID?) -> Snippet? {

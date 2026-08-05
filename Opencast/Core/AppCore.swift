@@ -729,7 +729,12 @@ final class AppCore: ObservableObject {
     }
 
     func togglePinnedSnippet(_ snippet: Snippet) {
-        snippetStore.togglePinned(snippet)
+        do {
+            try snippetStore.togglePinned(snippet)
+        } catch {
+            palette.postFeedback("Could not save snippet", tone: .error)
+            return
+        }
         palette.selection = snippetStore.rowIndex(of: snippet, in: palette.query) ?? 0
     }
 
@@ -777,7 +782,12 @@ final class AppCore: ObservableObject {
     }
 
     func togglePinnedQuicklink(_ quicklink: Quicklink) {
-        quicklinkStore.togglePinned(quicklink)
+        do {
+            try quicklinkStore.togglePinned(quicklink)
+        } catch {
+            palette.postFeedback("Could not save quicklink", tone: .error)
+            return
+        }
         if palette.mode == .quicklinks {
             palette.selection = quicklinkStore.rowIndex(of: quicklink, in: palette.query) ?? 0
         }
@@ -793,14 +803,24 @@ final class AppCore: ObservableObject {
     }
 
     func deleteQuicklink(_ quicklink: Quicklink) {
-        quicklinkStore.delete(quicklink)
+        do {
+            try quicklinkStore.delete(quicklink)
+        } catch {
+            palette.postFeedback("Could not delete quicklink", tone: .error)
+            return
+        }
         favorites.remove(quicklink)
         palette.selection = 0
         palette.postFeedback("Deleted quicklink")
     }
 
     func deleteSnippet(_ snippet: Snippet) {
-        snippetStore.delete(snippet)
+        do {
+            try snippetStore.delete(snippet)
+        } catch {
+            palette.postFeedback("Could not delete snippet", tone: .error)
+            return
+        }
         palette.selection = 0
         palette.postFeedback("Deleted snippet")
     }
