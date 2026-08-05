@@ -114,14 +114,25 @@ final class UninstallSession: ObservableObject {
     }
 
     private func measureSizes(token: UUID) async {
-        for item in items where item.size == nil {
-            let size = await Task.detached(priority: .utility) { AppLeftovers.size(of: item.url) }.value
-            guard scanToken == token else { return }
-            guard let index = items.firstIndex(where: { $0.id == item.id }) else { continue }
-            items[index] = LeftoverItem(url: item.url, kind: item.kind, size: size)
+        let pending = items.filter { $0.size == nil }
+        let sizes = await withTaskGroup(of: (String, Int64?).self, returning: [String: Int64?].self) {
+            group in
+            for item in pending {
+                group.addTask {
+                    guard !Task.isCancelled else { return (item.id, nil) }
+                    return (item.id, AppLeftovers.size(of: item.url))
+                }
+            }
+            var results: [String: Int64?] = [:]
+            for await (id, size) in group { results[id] = size }
+            return results
         }
-        guard scanToken == token, sort == .size else { return }
-        items = Self.sorted(items, by: .size)
+        guard !Task.isCancelled, scanToken == token else { return }
+        items = items.map { item in
+            guard let size = sizes[item.id] else { return item }
+            return LeftoverItem(url: item.url, kind: item.kind, size: size)
+        }
+        if sort == .size { items = Self.sorted(items, by: .size) }
     }
 
     func end() {

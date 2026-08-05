@@ -9,6 +9,7 @@
 - Improved launcher refreshes by reusing unchanged System Settings metadata.
 - Improved hotkey settings so saved bindings are decoded once per session.
 - Improved local storage isolation by centralizing app-specific cache and support paths.
+- Improved uninstall scans by measuring leftover folders concurrently.
 
 ## [0.1.6]
 

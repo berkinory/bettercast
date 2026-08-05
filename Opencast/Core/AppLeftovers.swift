@@ -169,6 +169,7 @@ enum AppLeftovers {
         else { return nil }
         var total: Int64 = 0
         for case let child as URL in walker {
+            if Task.isCancelled { return nil }
             if let values = try? child.resourceValues(forKeys: keys) {
                 total += allocatedSize(values) ?? 0
             }
