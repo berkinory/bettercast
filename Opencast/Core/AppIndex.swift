@@ -169,6 +169,7 @@ final class AppIndex: ObservableObject {
 
     private struct MatchKey: Equatable {
         let query: String
+        let limit: Int
         let entriesRevision: Int
         let rankingRevision: Int
     }
@@ -383,7 +384,7 @@ final class AppIndex: ObservableObject {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return apps }
         let key = MatchKey(
-            query: q, entriesRevision: entriesRevision, rankingRevision: ranking.revision)
+            query: q, limit: limit, entriesRevision: entriesRevision, rankingRevision: ranking.revision)
         return matchMemo.value(for: key) { rank(q, limit: limit) }
     }
 

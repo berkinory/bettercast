@@ -2,6 +2,9 @@ import AppKit
 import Carbon.HIToolbox
 
 enum Paster {
+    private static let activationDelay: TimeInterval = 0.08
+    private static let inPlaceDelay: TimeInterval = 0.05
+
     /// Write the item onto the pasteboard and paste it into `previousApp` via a synthetic ⌘V, activating that app so the keystroke lands there. Returns whether content was written (and thus promoted).
     @MainActor @discardableResult
     static func paste(
@@ -9,7 +12,7 @@ enum Paster {
     ) -> Bool {
         guard write(item, store: store) else { return false }
         previousApp?.activate()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + activationDelay) {
             postCommandV()
         }
         return true
@@ -44,7 +47,7 @@ enum Paster {
     static func pasteString(_ text: String, previousApp: NSRunningApplication?) {
         writeString(text)
         previousApp?.activate()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + activationDelay) {
             postCommandV()
         }
     }
@@ -60,7 +63,7 @@ enum Paster {
     static func pasteStringInPlace(_ text: String, into app: NSRunningApplication?) {
         writeString(text)
         guard let pid = app?.processIdentifier else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + inPlaceDelay) {
             postCommandV(toPid: pid)
         }
     }
@@ -81,7 +84,7 @@ enum Paster {
     ) -> Bool {
         guard write(item, store: store) else { return false }
         if let pid = app?.processIdentifier {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + inPlaceDelay) {
                 postCommandV(toPid: pid)
             }
         }
