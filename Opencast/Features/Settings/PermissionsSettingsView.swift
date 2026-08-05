@@ -1,43 +1,28 @@
 import Combine
 import SwiftUI
 
-struct PermissionsSettingsView: View {
+struct AccessibilitySettingsSection: View {
     @State private var accessibilityTrusted = Permissions.isAccessibilityTrusted()
     private let refreshTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        SettingsPane(
-            title: "Permissions",
-            subtitle: "System access Opencast needs to work across apps.",
-            systemImage: "checkmark.shield",
-            tint: .green
+        SettingsSection(
+            header: "Accessibility",
+            subtitle: "Required to control windows and restore focus before pasting.",
+            systemImage: "accessibility",
+            tint: accessibilityTrusted ? Theme.Colors.success : Theme.Colors.warning,
+            destination: .accessibility
         ) {
-            SettingsStatusCard(
-                title: accessibilityTrusted ? "Accessibility is ready" : "Accessibility access needed",
-                message: accessibilityTrusted
-                    ? "Opencast can restore focus and paste into the app you were using."
-                    : "Grant access so clipboard and emoji results can be pasted into other apps.",
-                systemImage: accessibilityTrusted
-                    ? "checkmark.shield.fill" : "hand.raised.fill",
-                tint: accessibilityTrusted ? .green : .orange
+            SettingsControlRow(
+                title: accessibilityTrusted ? "Access granted" : "Access required",
+                subtitle: accessibilityTrusted
+                    ? "Opencast can control the frontmost window."
+                    : "Grant access before using window commands."
             ) {
                 Button(accessibilityTrusted ? "Manage…" : "Open Settings…") {
                     Permissions.openAccessibilitySettings()
                 }
                 .controlSize(.small)
-            }
-            .settingsDestination(.accessibility)
-
-            SettingsSection(header: "Access") {
-                SettingsControlRow(
-                    title: "Paste into the previous app",
-                    subtitle: "Opencast records no keystrokes and requests no network access.",
-                    systemImage: "arrow.right.doc.on.clipboard",
-                    tint: .blue
-                ) {
-                    Image(systemName: accessibilityTrusted ? "checkmark.circle.fill" : "xmark.circle")
-                        .foregroundStyle(accessibilityTrusted ? Theme.Colors.success : Theme.Colors.textSecondary)
-                }
             }
         }
         .onAppear { accessibilityTrusted = Permissions.isAccessibilityTrusted() }

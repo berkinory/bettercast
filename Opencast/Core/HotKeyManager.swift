@@ -6,6 +6,7 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
     var onTogglePalette: (() -> Void)?
     var onToggleClipboard: (() -> Void)?
     var onToggleEmoji: (() -> Void)?
+    var onRunCommand: ((String) -> Void)?
     var onRunWindowCommand: ((WindowCommand.ID) -> Void)?
 
     /// The recorder currently capturing keystrokes, or `nil`; keeping this as plain app state makes recorders glitch-free, and any active recorder pauses Carbon so the typed combo can't fire a hotkey.
@@ -21,6 +22,7 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
     private let doubleModifierMonitor = DoubleModifierMonitor()
     private let boundKey = "boundAppBundleIDs"
     private let boundPaneKey = "boundPaneBundleIDs"
+    private let boundCommandKey = "boundCommandIDs"
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
     private var bindings: [HotKeyAction: HotKeyBinding] = [:]
@@ -44,6 +46,7 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
         register(.toggleEmoji)
         for bundleID in boundBundleIDs { register(.app(bundleID: bundleID)) }
         for bundleID in boundPaneBundleIDs { register(.settingsPane(bundleID: bundleID)) }
+        for id in boundCommandIDs { register(.command(id: id)) }
         for command in WindowCommandCatalog.all {
             register(.windowCommand(id: command.id))
         }
@@ -61,6 +64,10 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
     /// Settings-pane bundle IDs with a hotkey — same role as `boundBundleIDs`, own namespace.
     var boundPaneBundleIDs: [String] {
         UserDefaults.standard.stringArray(forKey: boundPaneKey) ?? []
+    }
+
+    var boundCommandIDs: [String] {
+        UserDefaults.standard.stringArray(forKey: boundCommandKey) ?? []
     }
 
     func binding(for action: HotKeyAction) -> HotKeyBinding? {
@@ -136,6 +143,10 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
             var set = Set(boundPaneBundleIDs)
             if binding == nil { set.remove(bundleID) } else { set.insert(bundleID) }
             UserDefaults.standard.set(Array(set), forKey: boundPaneKey)
+        case .command(let id):
+            var set = Set(boundCommandIDs)
+            if binding == nil { set.remove(id) } else { set.insert(id) }
+            UserDefaults.standard.set(Array(set), forKey: boundCommandKey)
         case .windowCommand:
             break
         case .togglePalette, .toggleClipboard, .toggleEmoji:
@@ -178,6 +189,10 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
             let apps = AppCore.shared.appIndex.apps
             return apps.first { $0.kind == .systemSettings && $0.bundleID == bundleID }?.name
                 ?? bundleID
+        case .command(let id):
+            return AppCore.shared.appIndex.apps.first { $0.id == id }?.name
+                ?? CommandRegistry.all.first { $0.id == id }?.name
+                ?? id
         case .windowCommand(let id):
             return WindowCommandCatalog.command(id: id)?.name ?? id.rawValue
         }
@@ -216,6 +231,7 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
         var actions: [HotKeyAction] = [.togglePalette, .toggleClipboard, .toggleEmoji]
         actions += boundBundleIDs.map { .app(bundleID: $0) }
         actions += boundPaneBundleIDs.map { .settingsPane(bundleID: $0) }
+        actions += boundCommandIDs.map { .command(id: $0) }
         actions += WindowCommandCatalog.all.map { .windowCommand(id: $0.id) }
         candidateActionsCache = actions
         return actions
@@ -228,6 +244,7 @@ final class HotKeyManager: ObservableObject, HealthCheckable {
         case .toggleEmoji: onToggleEmoji?()
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)
+        case .command(let id): onRunCommand?(id)
         case .windowCommand(let id): onRunWindowCommand?(id)
         }
     }

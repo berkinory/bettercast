@@ -92,7 +92,7 @@ struct RootPaletteView: View {
 
     /// Inline calculator answer for the current launcher query; when present it occupies flat selection index 0 so rows shift by `calcCount`.
     private var calcResult: CalcResult? {
-        vm.mode == .launcher
+        vm.mode == .launcher && settings.calculatorEnabled
             ? CalcMemo.evaluate(
                 vm.query,
                 currency: settings.currencyConversionEnabled
@@ -1482,6 +1482,7 @@ struct RootPaletteView: View {
     /// Tab flips between the launcher and clipboard.
     private func toggleMode() {
         guard vm.mode == .launcher || vm.mode == .clipboard else { return }
+        guard settings.clipboardEnabled else { return }
         vm.mode = vm.mode == .launcher ? .clipboard : .launcher
     }
 

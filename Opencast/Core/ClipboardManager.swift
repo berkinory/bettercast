@@ -43,6 +43,7 @@ final class ClipboardManager {
         let pb = NSPasteboard.general
         guard pb.changeCount != lastChangeCount else { return }
         lastChangeCount = pb.changeCount
+        guard settings.clipboardEnabled else { return }
 
         if pb.types?.contains(Self.internalType) == true { return }
 

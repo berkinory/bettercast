@@ -132,10 +132,11 @@ enum Theme {
 
     enum Settings {
         enum Size {
-            static let window = CGSize(width: 760, height: 560)
-            static let sidebarWidth: CGFloat = 190
-            static let sidebarIcon: CGFloat = 18
-            static let sidebarRowHeight: CGFloat = 34
+            static let window = CGSize(width: 860, height: 620)
+            static let sidebarWidth: CGFloat = 184
+            static let sidebarIcon: CGFloat = 20
+            static let sidebarRowHeight: CGFloat = 38
+            static let sidebarSelectionHeight: CGFloat = 18
             static let searchHeight: CGFloat = 32
             static let controlHeight: CGFloat = 32
             static let headerIcon: CGFloat = 38
@@ -148,6 +149,8 @@ enum Theme {
             static let compactModePreviewHeight: CGFloat = 18
             static let excludedAppChipMinimum: CGFloat = 150
             static let excludedAppChipHeight: CGFloat = 36
+            static let applicationIcon: CGFloat = 22
+            static let applicationPickerHeight: CGFloat = 320
             static let skinToneButton: CGFloat = 40
             static let shortcutColumn: CGFloat = 132
             static let visibilityButton: CGFloat = 36
@@ -159,6 +162,8 @@ enum Theme {
             static let shortcutPopoverFooterHeight: CGFloat = 36
             static let shortcutPopoverKeycap: CGFloat = 28
             static let aboutIcon: CGFloat = 88
+            static let aboutGlow: CGFloat = 116
+            static let aboutLinkTile: CGFloat = 116
         }
 
         enum Radius {
@@ -174,14 +179,14 @@ enum Theme {
         }
 
         enum Layout {
-            static let paneInset: CGFloat = 20
-            static let sectionSpacing: CGFloat = 18
-            static let sidebarInset: CGFloat = 8
-            static let sidebarTopInset: CGFloat = 20
-            static let groupSpacing: CGFloat = 18
-            static let rowHorizontal: CGFloat = 12
-            static let rowVertical: CGFloat = 9
-            static let rowGap: CGFloat = 10
+            static let paneInset: CGFloat = 28
+            static let sectionSpacing: CGFloat = 24
+            static let sidebarInset: CGFloat = 10
+            static let sidebarTopInset: CGFloat = 16
+            static let groupSpacing: CGFloat = 22
+            static let rowHorizontal: CGFloat = 16
+            static let rowVertical: CGFloat = 12
+            static let rowGap: CGFloat = 12
         }
 
         enum Colors {
@@ -194,7 +199,7 @@ enum Theme {
             static let captureConflictFill = captureConflict.opacity(0.08)
             static let captureSuccessFill = Color.green.opacity(0.07)
             static let sidebarSeparator = Theme.Colors.separator
-            static let sidebarDimming = Theme.Colors.surfaceBase.opacity(0.14)
+            static let sidebarDimming = Theme.Colors.surfaceBase.opacity(0.10)
             static let surfaceFill = Theme.Colors.cardFill
             static let surfaceStroke = Theme.Colors.cardStroke
             static let rowDivider = Theme.Colors.separator
@@ -327,6 +332,26 @@ struct FeatureIcon: View {
                 .fill(Color.clear)
                 .featureIconSurface(in: shape, tint: tint)
         }
+    }
+}
+
+struct CommandIcon: View {
+    let systemImage: String
+    var tint: Color = Theme.Colors.textPrimary
+    var size: CGFloat = Theme.Size.rowIcon
+
+    var body: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: Theme.Settings.Radius.iconTile,
+            style: .continuous
+        )
+        Image(systemName: systemImage)
+            .font(Theme.Typography.featureIcon)
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(shape.fill(Theme.Colors.controlSurface.opacity(0.56)))
+            .overlay(shape.strokeBorder(Theme.Colors.border.opacity(0.72), lineWidth: 1))
     }
 }
 

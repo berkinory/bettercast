@@ -15,8 +15,8 @@ struct SettingsRoute: Hashable, Sendable {
 }
 
 enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
-    case general, launcher, clipboard, snippets, quicklinks, emoji, calculator, windowManagement, shortcuts,
-        permissions, about
+    case general, launcher, commands, clipboard, snippets, quicklinks, emoji, calculator
+    case windowManagement, about
 
     var id: Int { rawValue }
 
@@ -24,74 +24,67 @@ enum SettingsTab: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: return "General"
         case .launcher: return "Launcher"
+        case .commands: return "Commands"
         case .clipboard: return "Clipboard"
         case .snippets: return "Snippets"
         case .quicklinks: return "Quicklinks"
-        case .emoji: return "Emoji & Symbols"
+        case .emoji: return "Emoji"
         case .calculator: return "Calculator"
         case .windowManagement: return "Window Management"
-        case .shortcuts: return "Shortcuts"
-        case .permissions: return "Permissions"
         case .about: return "About"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .general: return "gearshape"
-        case .launcher: return "magnifyingglass"
-        case .clipboard: return "doc.on.clipboard"
+        case .general: return "switch.2"
+        case .launcher: return "command"
+        case .commands: return "terminal"
+        case .clipboard: return "clipboard"
         case .snippets: return "text.quote"
         case .quicklinks: return "link"
         case .emoji: return "face.smiling"
         case .calculator: return "function"
-        case .windowManagement: return "macwindow"
-        case .shortcuts: return "keyboard"
-        case .permissions: return "lock.shield.fill"
-        case .about: return "info.circle.fill"
+        case .windowManagement: return "macwindow.and.cursorarrow"
+        case .about: return "info.circle"
         }
-    }
-
-    var emoji: String? {
-        self == .emoji ? "😀" : nil
     }
 
     var group: SettingsGroup {
         switch self {
-        case .general: return .app
-        case .launcher, .clipboard, .snippets, .quicklinks, .emoji, .calculator, .windowManagement: return .features
-        case .shortcuts, .permissions: return .system
+        case .general, .launcher, .commands: return .preferences
+        case .clipboard, .snippets, .quicklinks, .emoji, .calculator, .windowManagement:
+            return .features
         case .about: return .about
         }
     }
 
     var tint: Color {
         switch self {
-        case .general: return Theme.Colors.generalAccent
+        case .general: return Theme.Colors.systemAccent
         case .launcher: return Theme.Colors.launcherAccent
+        case .commands: return Theme.Colors.systemAccent
         case .clipboard: return Theme.Colors.clipboardAccent
         case .snippets: return Theme.Colors.systemAccent
-        case .quicklinks: return Theme.Colors.systemAccent
+        case .quicklinks: return Theme.Colors.launcherAccent
         case .emoji: return Theme.Colors.emojiAccent
         case .calculator: return Theme.Colors.calculatorAccent
         case .windowManagement: return Theme.Colors.launcherAccent
-        case .shortcuts, .permissions: return Theme.Colors.systemAccent
         case .about: return Theme.Colors.brand
         }
     }
 }
 
 enum SettingsGroup: String, CaseIterable, Identifiable, Sendable {
-    case app, features, system, about
+    case preferences, features, about
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .app: return "Opencast"
+        case .preferences: return "Preferences"
         case .features: return "Features"
-        case .system: return "System"
-        case .about: return "About"
+        case .about: return ""
         }
     }
 
@@ -162,14 +155,13 @@ struct SettingsRootView: View {
         switch tab {
         case .general: GeneralSettingsView()
         case .launcher: LauncherSettingsView()
+        case .commands: CommandsSettingsView()
         case .clipboard: ClipboardSettingsView()
         case .snippets: SnippetSettingsView()
         case .quicklinks: QuicklinkSettingsView()
         case .emoji: EmojiSettingsView()
         case .calculator: CalculatorSettingsView()
         case .windowManagement: WindowManagementSettingsView()
-        case .shortcuts: ShortcutsSettingsView()
-        case .permissions: PermissionsSettingsView()
         case .about: AboutView()
         }
     }
@@ -179,10 +171,13 @@ struct SettingsRootView: View {
             VStack(alignment: .leading, spacing: Theme.Settings.Layout.groupSpacing) {
                 ForEach(sidebarGroups) { section in
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Text(section.group.title)
-                            .font(Theme.Typography.caption2Medium)
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, Theme.Spacing.lg)
+                        if !section.group.title.isEmpty {
+                            Text(section.group.title.uppercased())
+                                .font(Theme.Typography.caption2Semibold)
+                                .foregroundStyle(Theme.Colors.textTertiary)
+                                .tracking(0.6)
+                                .padding(.horizontal, Theme.Spacing.lg)
+                        }
 
                         ForEach(section.tabs) { item in
                             sidebarRow(item)
@@ -191,10 +186,10 @@ struct SettingsRootView: View {
                     }
                 }
             }
-            .padding(.vertical, Theme.Spacing.xxl)
+            .padding(.top, Theme.Settings.Layout.sidebarTopInset)
+            .padding(.bottom, Theme.Spacing.xxl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.top, Theme.Settings.Layout.sidebarTopInset)
         .overlayScroller(disablesElasticity: true)
         .frame(width: Theme.Settings.Size.sidebarWidth)
         .frame(maxHeight: .infinity)
@@ -213,7 +208,6 @@ struct SettingsRootView: View {
         SidebarRow(
             title: item.title,
             systemImage: item.systemImage,
-            emoji: item.emoji,
             tint: item.tint,
             isSelected: navigation.route.tab == item
         ) {
@@ -225,7 +219,6 @@ struct SettingsRootView: View {
 private struct SidebarRow: View {
     let title: String
     let systemImage: String
-    let emoji: String?
     let tint: Color
     let isSelected: Bool
     let action: () -> Void
@@ -236,19 +229,11 @@ private struct SidebarRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: Theme.Spacing.lg) {
-                if let emoji {
-                    FeatureIcon(
-                        emoji: emoji,
-                        tint: isSelected ? tint : tint.opacity(0.72),
-                        size: Theme.Size.rowIcon
-                    )
-                } else {
-                    FeatureIcon(
-                        systemImage: systemImage,
-                        tint: isSelected ? tint : tint.opacity(0.72),
-                        size: Theme.Size.rowIcon
-                    )
-                }
+                Image(systemName: systemImage)
+                    .font(Theme.Typography.iconMediumSmall)
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(isSelected ? tint : Theme.Colors.textSecondary)
+                    .frame(width: Theme.Settings.Size.sidebarIcon)
 
                 Text(title)
                     .font(Theme.Typography.callout.weight(isSelected ? .medium : .regular))
@@ -264,6 +249,17 @@ private struct SidebarRow: View {
                 )
                 .fill(rowFill)
             )
+            .overlay(alignment: .leading) {
+                if isSelected {
+                    Capsule()
+                        .fill(tint)
+                        .frame(
+                            width: Theme.Spacing.xxs,
+                            height: Theme.Settings.Size.sidebarSelectionHeight
+                        )
+                        .padding(.leading, Theme.Spacing.xs)
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

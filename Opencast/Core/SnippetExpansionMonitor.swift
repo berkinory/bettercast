@@ -47,7 +47,7 @@ final class SnippetExpansionMonitor: HealthCheckable {
     }
 
     private func handle(_ event: NSEvent) {
-        guard settings.snippetExpansionEnabled else {
+        guard settings.snippetsEnabled else {
             typedBuffer = ""
             return
         }

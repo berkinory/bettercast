@@ -2,41 +2,37 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
-    @ObservedObject private var updates = AppCore.shared.updates
     @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
 
     var body: some View {
         SettingsPane(
             title: "General",
-            subtitle: "Startup, menu bar, and setup.",
-            systemImage: "gearshape",
-            tint: .gray
+            subtitle: "Control how Opencast starts and stays available.",
+            systemImage: "switch.2",
+            tint: Theme.Colors.systemAccent
         ) {
-            SettingsSection(header: "App") {
+            SettingsSection(
+                header: "Startup",
+                subtitle: "Keep Opencast ready without adding noise to your desktop.",
+                systemImage: "power",
+                tint: Theme.Colors.systemAccent
+            ) {
                 SettingsControlRow(
                     title: "Launch at login",
-                    subtitle: "Start Opencast automatically when you log in.",
-                    systemImage: "power",
-                    tint: .green,
+                    subtitle: "Start automatically after you sign in.",
                     destination: .launchAtLogin
                 ) {
-                    Toggle("", isOn: $settings.launchAtLogin)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
+                    Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                        .settingsToggle()
                 }
                 SettingsRowDivider()
                 SettingsControlRow(
-                    title: "Show in menu bar",
-                    subtitle: "Shortcuts keep working when the icon is hidden.",
-                    systemImage: "menubar.rectangle",
-                    tint: .gray,
+                    title: "Menu bar icon",
+                    subtitle: "Global shortcuts continue working when it is hidden.",
                     destination: .showInMenuBar
                 ) {
-                    Toggle("", isOn: $showInMenuBar)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
+                    Toggle("Show in menu bar", isOn: $showInMenuBar)
+                        .settingsToggle()
                 }
             }
 
@@ -49,65 +45,8 @@ struct GeneralSettingsView: View {
                 )
             }
 
-            SettingsSection(header: "Updates") {
-                SettingsControlRow(
-                    title: "Allow update checks",
-                    subtitle: "Contact GitHub only when you check for a newer version.",
-                    systemImage: "arrow.down.circle",
-                    tint: Theme.Colors.systemAccent
-                ) {
-                    Toggle("", isOn: updateConsentBinding)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                }
-                SettingsRowDivider()
-                SettingsControlRow(
-                    title: "Check for Updates",
-                    subtitle: "Look for a newer Opencast release now.",
-                    systemImage: "checkmark.circle",
-                    tint: Theme.Colors.systemAccent
-                ) {
-                    Button("Check Now") { AppCore.shared.checkForUpdates() }
-                        .controlSize(.small)
-                }
-            }
-
-            SettingsSection(header: "Setup") {
-                SettingsControlRow(
-                    title: "Welcome Guide",
-                    subtitle: "Run shortcut and permission setup again.",
-                    systemImage: "sparkles",
-                    tint: .yellow,
-                    destination: .welcomeGuide
-                ) {
-                    Button("Open…") { AppCore.shared.showOnboarding() }
-                        .controlSize(.small)
-                }
-            }
+            AccessibilitySettingsSection()
         }
-    }
-
-    private var updateConsentBinding: Binding<Bool> {
-        Binding(
-            get: { updates.networkConsentGranted },
-            set: { granted in
-                guard granted else {
-                    updates.setNetworkConsent(false)
-                    return
-                }
-                guard
-                    AppCore.shared.presentDialog(
-                        message: "Allow update checks?",
-                        informativeText:
-                            "Opencast will contact GitHub only when you check for a newer release. No usage data is sent.",
-                        primaryTitle: "Allow",
-                        secondaryTitle: "Cancel"
-                    ) == .primary
-                else { return }
-                updates.setNetworkConsent(true)
-            }
-        )
     }
 
 }

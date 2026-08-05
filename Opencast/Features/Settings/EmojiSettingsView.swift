@@ -6,46 +6,46 @@ struct EmojiSettingsView: View {
     var body: some View {
         SettingsPane(
             title: "Emoji & Symbols",
-            subtitle: "Search and paste emoji from anywhere.",
+            subtitle: "Search emoji from anywhere and choose their preferred skin tone.",
             systemImage: "face.smiling",
-            emoji: "😀",
-            tint: .yellow
+            tint: Theme.Colors.emojiAccent
         ) {
-            SettingsSection(header: "Shortcut") {
-                SettingsControlRow(
-                    title: "Emoji & Symbols",
-                    subtitle: "Open the emoji and symbols palette.",
-                    systemImage: "keyboard",
-                    tint: .yellow,
-                    destination: .emojiShortcut
+            SettingsFeatureToggleRow(
+                title: "Emoji & symbols",
+                systemImage: "face.smiling",
+                tint: Theme.Colors.emojiAccent,
+                isEnabled: $settings.emojiEnabled
+            )
+
+            Group {
+                FeatureCommandsSettingsSection(
+                    commandIDs: [.searchEmoji],
+                    tint: Theme.Colors.emojiAccent
+                )
+
+                SettingsSection(
+                    header: "Appearance",
+                    subtitle: "Choose the skin tone used for supported emoji.",
+                    systemImage: "hand.raised",
+                    tint: Theme.Colors.emojiAccent
                 ) {
-                    ShortcutRecorder(action: .toggleEmoji)
-                }
-            }
-
-            SettingsSection(header: "Skin Tone") {
-                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    HStack(spacing: Theme.Spacing.md) {
-                        FeatureIcon(
-                            emoji: "👋",
-                            tint: Theme.Colors.emojiAccent,
-                            size: Theme.Settings.Size.controlIcon
-                        )
-
-                        VStack(alignment: .leading, spacing: Theme.Spacing.xs / 2) {
-                            Text("Preferred tone")
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            Text("Preferred skin tone")
                                 .font(Theme.Typography.calloutMedium)
-                            Text("Used for supported emoji in results and pasted text.")
+                            Text("Default keeps each emoji's original appearance.")
                                 .font(Theme.Typography.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.Colors.textSecondary)
                         }
-                    }
 
-                    SkinToneSelector(selection: $settings.emojiSkinTone)
+                        SkinToneSelector(selection: $settings.emojiSkinTone)
+                    }
+                    .padding(Theme.Settings.Layout.rowHorizontal)
+                    .settingsDestination(.emojiSkinTone)
                 }
-                .padding(Theme.Settings.Layout.rowHorizontal)
-                .settingsDestination(.emojiSkinTone)
             }
+            .disabled(!settings.emojiEnabled)
+            .opacity(settings.emojiEnabled ? 1 : 0.42)
         }
     }
 }

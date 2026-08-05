@@ -1,209 +1,179 @@
 import SwiftUI
 
-struct ShortcutsSettingsView: View {
+private enum LauncherItemCategory: String, CaseIterable, Identifiable {
+    case applications
+    case systemSettings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .applications: return "Applications"
+        case .systemSettings: return "System Settings"
+        }
+    }
+
+    var kind: AppEntry.Kind {
+        switch self {
+        case .applications: return .application
+        case .systemSettings: return .systemSettings
+        }
+    }
+}
+
+struct LauncherItemsSettingsSection: View {
     @EnvironmentObject private var appIndex: AppIndex
-    @Environment(\.settingsDestination) private var destination
-    @State private var tab: AppEntry.Kind = .application
-    @State private var query = ""
-    @FocusState private var itemSearchFocused: Bool
+    @State private var category: LauncherItemCategory = .applications
 
     private var entries: [AppEntry] {
-        let matched = query.isEmpty ? appIndex.apps : appIndex.matches(query)
-        return matched.filter { $0.kind == tab }
+        appIndex.apps.filter { $0.kind == category.kind }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Settings.Layout.sectionSpacing) {
-            SettingsFeatureHeader(
-                title: "Shortcuts",
-                subtitle: "Configure launcher items and shortcuts.",
-                systemImage: "keyboard",
-                tint: Theme.Colors.brand
+        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+            SettingsSectionLabel(
+                title: "Launcher items",
+                subtitle: "Choose what appears and assign optional shortcuts.",
+                systemImage: "square.grid.2x2",
+                tint: Theme.Colors.launcherAccent
             )
 
-            itemSettings
-        }
-        .padding(Theme.Settings.Layout.paneInset)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .ignoresSafeArea(edges: .top)
-        .task(id: destination?.anchorID) { applyDestination() }
-    }
-
-    private var itemSettings: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-            Picker("Category", selection: $tab) {
-                Text("Applications").tag(AppEntry.Kind.application)
-                Text("System Settings").tag(AppEntry.Kind.systemSettings)
-                Text("Commands").tag(AppEntry.Kind.command)
+            Picker("Category", selection: $category) {
+                ForEach(LauncherItemCategory.allCases) { category in
+                    Text(category.title).tag(category)
+                }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            searchField
-
-            ShortcutTable(kind: tab, entries: entries, query: query)
-                .id(tab.rawValue)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private func applyDestination() {
-        guard case .shortcutEntry(_, let kind) = destination else { return }
-        query = ""
-        if let targetKind = AppEntry.Kind(rawValue: kind) { tab = targetKind }
-    }
-
-    private var searchPrompt: String {
-        switch tab {
-        case .application: return "Search applications"
-        case .systemSettings: return "Search System Settings"
-        case .command: return "Search commands"
+            SettingsEntryList(
+                kind: category.kind,
+                entries: entries
+            )
+            .id(category.rawValue)
         }
     }
-
-    private var searchField: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField(searchPrompt, text: $query)
-                .textFieldStyle(.plain)
-                .focused($itemSearchFocused)
-                .onExitCommand {
-                    if query.isEmpty {
-                        itemSearchFocused = false
-                    } else {
-                        query = ""
-                    }
-                }
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .font(Theme.Typography.callout)
-        .padding(.horizontal, Theme.Spacing.lg)
-        .frame(height: Theme.Settings.Size.searchHeight)
-        .background(
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.search,
-                style: .continuous
-            )
-            .fill(Theme.Settings.Colors.searchFill)
-        )
-        .overlay(
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.search,
-                style: .continuous
-            )
-            .strokeBorder(
-                itemSearchFocused
-                    ? Theme.Settings.Colors.searchFocus : Theme.Settings.Colors.searchStroke,
-                lineWidth: 1
-            )
-        )
-    }
-
 }
 
-private struct ShortcutTable: View {
+struct CommandsSettingsView: View {
+    @EnvironmentObject private var appIndex: AppIndex
+
+    private let featureCommandIDs = Set([
+        CommandID.clipboardHistory.rawValue,
+        CommandID.searchSnippets.rawValue,
+        CommandID.createSnippet.rawValue,
+        CommandID.searchQuicklinks.rawValue,
+        CommandID.createQuicklink.rawValue,
+        CommandID.searchEmoji.rawValue,
+    ])
+
+    private var entries: [AppEntry] {
+        appIndex.apps.filter {
+            $0.kind == .command
+                && !featureCommandIDs.contains($0.id)
+                && WindowCommandCatalog.command(forEntryID: $0.id) == nil
+        }
+    }
+
+    var body: some View {
+        SettingsPane(
+            title: "Commands",
+            subtitle: "Control launcher commands and assign shortcuts where useful.",
+            systemImage: "terminal",
+            tint: Theme.Colors.systemAccent
+        ) {
+            SettingsEntryList(
+                kind: .command,
+                entries: entries
+            )
+        }
+    }
+}
+
+struct FeatureCommandsSettingsSection: View {
+    let commandIDs: [CommandID]
+    var tint: Color = Theme.Colors.systemAccent
+
+    private var entries: [AppEntry] {
+        commandIDs.compactMap { id in CommandRegistry.all.first { $0.id == id.rawValue } }
+    }
+
+    var body: some View {
+        SettingsSection(
+            header: "Commands",
+            subtitle: "Assign shortcuts or hide individual launcher actions.",
+            systemImage: "command",
+            tint: tint
+        ) {
+            SettingsEntryRows(entries: entries)
+        }
+    }
+}
+
+struct WindowCommandsSettingsSection: View {
+    private var entries: [AppEntry] {
+        WindowCommandCatalog.all.map { command in
+            AppEntry(
+                id: command.entryID,
+                name: command.name,
+                url: URL(string: "opencast://window-command/" + command.id.rawValue)!,
+                bundleID: nil,
+                kind: .command
+            )
+        }
+    }
+
+    var body: some View {
+        SettingsSection(
+            header: "Window commands",
+            subtitle: "Assign shortcuts or hide individual window actions.",
+            systemImage: "macwindow.on.rectangle",
+            tint: Theme.Colors.launcherAccent
+        ) {
+            SettingsEntryRows(entries: entries)
+        }
+    }
+}
+
+private struct SettingsEntryList: View {
     let kind: AppEntry.Kind
     let entries: [AppEntry]
-    let query: String
 
     @EnvironmentObject private var visibility: VisibilityStore
-    @Environment(\.settingsDestination) private var destination
 
     var body: some View {
         let kindVisible = visibility.isKindVisible(kind)
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack {
-                Label("Show category", systemImage: kindVisible ? "eye" : "eye.slash")
+                Text(kindControlTitle)
                     .font(Theme.Typography.captionMedium)
                     .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
-                Toggle("", isOn: kindBinding)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .accessibilityLabel("Show \(kindTitle) in the launcher")
+                Toggle(kindControlTitle, isOn: kindBinding)
+                    .settingsToggle()
             }
             .padding(.horizontal, Theme.Spacing.xs)
 
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: Theme.Spacing.xxs) {
-                        shortcutTableHeader
-                        ForEach(entries) { entry in
-                            ShortcutTableRow(entry: entry)
-                        }
-                    }
-                    .padding(Theme.Spacing.sm)
-                }
-                .overlayScroller(disablesElasticity: true)
-                .task(id: destination?.anchorID) {
-                    guard case .shortcutEntry(let entryID, _)? = destination else { return }
-                    await Task.yield()
-                    proxy.scrollTo(
-                        SettingsDestination.shortcutEntry(
-                            entryID: entryID,
-                            kind: kind.rawValue
-                        ).anchorID,
-                        anchor: .center
-                    )
-                }
-            }
-            .background(
-                RoundedRectangle(
-                    cornerRadius: Theme.Settings.Radius.surface,
-                    style: .continuous
-                )
-                .fill(Theme.Settings.Colors.surfaceFill)
-            )
-            .overlay(
-                RoundedRectangle(
-                    cornerRadius: Theme.Settings.Radius.surface,
-                    style: .continuous
-                )
-                .strokeBorder(Theme.Settings.Colors.surfaceStroke, lineWidth: 1)
-            )
-            .overlay {
+            SettingsSection {
                 if entries.isEmpty {
-                    Text(query.isEmpty ? "Nothing here yet." : "No matches for “\(query)”.")
+                    Text("Nothing here yet.")
                         .font(Theme.Typography.callout)
                         .foregroundStyle(Theme.Colors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Theme.Spacing.xl)
+                } else {
+                    SettingsEntryRows(entries: entries)
                 }
             }
             .opacity(kindVisible ? 1 : 0.45)
         }
     }
 
-    private var shortcutTableHeader: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            Text("Name")
-            Spacer(minLength: 0)
-            Text("Shortcut")
-                .frame(width: Theme.Settings.Size.shortcutColumn, alignment: .leading)
-            Text("Show")
-                .frame(width: Theme.Settings.Size.visibilityButton)
-        }
-        .font(Theme.Typography.caption2Semibold)
-        .foregroundStyle(.tertiary)
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.xs)
-    }
-
-    private var kindTitle: String {
+    private var kindControlTitle: String {
         switch kind {
-        case .application: return "applications"
-        case .systemSettings: return "System Settings"
-        case .command: return "commands"
+        case .application: return "Show applications in launcher"
+        case .systemSettings: return "Show System Settings in launcher"
+        case .command: return "Show commands in launcher"
         }
     }
 
@@ -215,7 +185,20 @@ private struct ShortcutTable: View {
     }
 }
 
-private struct ShortcutTableRow: View {
+private struct SettingsEntryRows: View {
+    let entries: [AppEntry]
+
+    var body: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(entries) { entry in
+                SettingsEntryRow(entry: entry)
+                if entry.id != entries.last?.id { SettingsRowDivider() }
+            }
+        }
+    }
+}
+
+private struct SettingsEntryRow: View {
     let entry: AppEntry
 
     @EnvironmentObject private var visibility: VisibilityStore
@@ -229,18 +212,11 @@ private struct ShortcutTableRow: View {
                 .font(Theme.Typography.calloutMedium)
                 .lineLimit(1)
             Spacer(minLength: Theme.Spacing.md)
-
-            Group {
-                if let action = entry.hotKeyAction {
-                    ShortcutRecorder(action: action)
-                        .fixedSize(horizontal: true, vertical: false)
-                } else {
-                    Text("—")
-                        .foregroundStyle(.tertiary)
-                }
+            if let action = entry.hotKeyAction {
+                ShortcutRecorder(action: action)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(width: Theme.Settings.Size.shortcutColumn, alignment: .leading)
             }
-            .frame(width: Theme.Settings.Size.shortcutColumn, alignment: .leading)
-
             VisibilityToggle(label: entry.name, isVisible: itemBinding)
         }
         .padding(.horizontal, Theme.Spacing.md)
@@ -250,9 +226,7 @@ private struct ShortcutTableRow: View {
                 .fill(hovered ? Theme.Colors.rowHover : .clear)
         )
         .onHover { hovered = $0 }
-        .settingsDestination(
-            .shortcutEntry(entryID: entry.id, kind: entry.kind.rawValue)
-        )
+        .settingsDestination(.shortcutEntry(entryID: entry.id, kind: entry.kind.rawValue))
     }
 
     private var itemBinding: Binding<Bool> {
@@ -268,14 +242,12 @@ private struct VisibilityToggle: View {
     @Binding var isVisible: Bool
 
     var body: some View {
-        Toggle("", isOn: $isVisible)
+        Toggle("Show \(label)", isOn: $isVisible)
             .labelsHidden()
             .toggleStyle(.switch)
             .controlSize(.mini)
             .tint(Theme.Colors.textSecondary)
             .frame(width: Theme.Settings.Size.visibilityButton)
             .help(isVisible ? "Hide from launcher" : "Show in launcher")
-            .accessibilityLabel("Show \(label) in the launcher")
-            .accessibilityValue(isVisible ? "On" : "Off")
     }
 }

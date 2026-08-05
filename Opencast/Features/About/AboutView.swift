@@ -4,9 +4,10 @@ import SwiftUI
 struct AboutView: View {
     private static var version: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
-        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
-        return "Version \(short) (\(build))"
+        return "Version \(short)"
     }
+
+    @ObservedObject private var updates = AppCore.shared.updates
 
     // Loaded once and cached: reading the .icns is disk I/O, and body can re-run often. Read the
     // bundled file directly since NSApp.applicationIconImage returns the generic placeholder until
@@ -22,91 +23,131 @@ struct AboutView: View {
     }()
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                // A tighter block rhythm than `SettingsPane`'s `xxl` so hero, links and support all land above the fold of the fixed-height Settings window.
-                VStack(spacing: Theme.Spacing.xl) {
-                    hero
-                    links
-                    support
-                }
-                // Ignore the transparent-titlebar safe area and use one fixed `xxl` inset every side, matching `SettingsPane`.
-                .padding(Theme.Spacing.xxl)
-                .frame(maxWidth: .infinity)
-                .overlayScroller(disablesElasticity: true)
-            }
-            // Outside the scroll view so the copyright stays pinned to the pane's bottom edge, the way a real About window reads.
-            footer
-                .padding(.bottom, Theme.Spacing.xxl)
+        VStack(spacing: Theme.Settings.Layout.sectionSpacing) {
+            hero
+            links
+            updatesBar
         }
+        .padding(Theme.Settings.Layout.paneInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .ignoresSafeArea(edges: .top)
     }
 
     private var hero: some View {
-        VStack(spacing: Theme.Spacing.xl) {
-            Image(nsImage: Self.appIcon)
-                .resizable()
-                .interpolation(.high)
-                .frame(
-                    width: Theme.Settings.Size.aboutIcon,
-                    height: Theme.Settings.Size.aboutIcon
-                )
-                .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+        VStack(spacing: Theme.Spacing.lg) {
+            ZStack {
+                Circle()
+                    .fill(Theme.Colors.brand.opacity(0.16))
+                    .frame(
+                        width: Theme.Settings.Size.aboutGlow,
+                        height: Theme.Settings.Size.aboutGlow
+                    )
+                    .blur(radius: Theme.Spacing.xl)
 
-            VStack(spacing: Theme.Spacing.sm) {
+                Image(nsImage: Self.appIcon)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(
+                        width: Theme.Settings.Size.aboutIcon,
+                        height: Theme.Settings.Size.aboutIcon
+                    )
+                    .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+            }
+            .frame(height: Theme.Settings.Size.aboutGlow)
+
+            VStack(spacing: Theme.Spacing.xs) {
                 Text(Bundle.main.appDisplayName)
                     .font(Theme.Typography.titleBold)
                 Text(Self.version)
                     .font(Theme.Typography.captionMonospacedDigit)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, Theme.Spacing.md)
-                    .padding(.vertical, Theme.Spacing.xs / 2)
-                    .background(
-                        Capsule().fill(Theme.Colors.cardFill)
-                    )
-                    .overlay(
-                        Capsule().strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
-                    )
             }
-
-            Text("A focused, native launcher for macOS.")
-                .font(Theme.Typography.callout)
-                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var links: some View {
-        SettingsSection(header: "Project & Community") {
-            // Rows paint a full-bleed hover fill, so the stack is clipped to the card's corner — otherwise the first/last row's highlight squares off the rounded ends.
-            VStack(spacing: 0) {
-                ForEach(AboutLink.all) { link in
-                    if link.id != AboutLink.all.first?.id { SettingsRowDivider() }
-                    AboutLinkRow(link: link)
-                }
+        HStack(spacing: Theme.Spacing.md) {
+            ForEach(AboutLink.all) { link in
+                AboutLinkTile(link: link)
             }
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: Theme.Settings.Radius.surface,
-                    style: .continuous
-                )
-            )
         }
     }
 
-    // No section header: the callout's own title is the header.
-    private var support: some View {
-        SettingsStatusCard(
-            title: "Built in the open",
-            message: "Opencast builds on Tinycast by Abue Ammar and is released under AGPL-3.0.",
-            systemImage: "chevron.left.forwardslash.chevron.right",
-            tint: Theme.Colors.textSecondary
+    private var updatesBar: some View {
+        HStack(spacing: Theme.Spacing.lg) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(Theme.Typography.iconMedium)
+                .foregroundStyle(Theme.Colors.launcherAccent)
+                .frame(
+                    width: Theme.Settings.Size.statusIcon,
+                    height: Theme.Settings.Size.statusIcon
+                )
+                .background(
+                    Circle().fill(Theme.Colors.launcherAccent.opacity(0.10))
+                )
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text("Updates")
+                    .font(Theme.Typography.calloutMedium)
+                Text("Connects to GitHub only when you check.")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            Spacer(minLength: Theme.Spacing.md)
+
+            HStack(spacing: Theme.Spacing.sm) {
+                Text("Allow")
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                Toggle("Allow update checks", isOn: updateConsentBinding)
+                    .settingsToggle()
+            }
+
+            Button("Check Now") { AppCore.shared.checkForUpdates() }
+                .controlSize(.small)
+        }
+        .padding(.horizontal, Theme.Spacing.xl)
+        .padding(.vertical, Theme.Spacing.lg)
+        .background(aboutSurface)
+    }
+
+    private var updateConsentBinding: Binding<Bool> {
+        Binding(
+            get: { updates.networkConsentGranted },
+            set: { granted in
+                guard granted else {
+                    updates.setNetworkConsent(false)
+                    return
+                }
+                guard
+                    AppCore.shared.presentDialog(
+                        message: "Allow update checks?",
+                        informativeText:
+                            "Opencast will contact GitHub only when you check for a newer release. No usage data is sent.",
+                        primaryTitle: "Allow",
+                        secondaryTitle: "Cancel"
+                    ) == .primary
+                else { return }
+                updates.setNetworkConsent(true)
+            }
         )
     }
 
-    private var footer: some View {
-        Text("Tinycast © 2026 Abue Ammar · AGPL-3.0")
-            .font(Theme.Typography.caption2)
-            .foregroundStyle(.tertiary)
+    private var aboutSurface: some View {
+        RoundedRectangle(
+            cornerRadius: Theme.Settings.Radius.surface,
+            style: .continuous
+        )
+        .fill(Theme.Settings.Colors.surfaceFill)
+        .overlay(
+            RoundedRectangle(
+                cornerRadius: Theme.Settings.Radius.surface,
+                style: .continuous
+            )
+            .strokeBorder(Theme.Settings.Colors.surfaceStroke, lineWidth: 1)
+        )
     }
 }
 
@@ -126,44 +167,76 @@ private struct AboutLink: Identifiable {
 
     static let all: [AboutLink] = [
         AboutLink(
-            id: "github", glyph: .brand("BrandGitHub"), title: "Tinycast Source",
-            detail: "Original open-source project",
-            url: URL(string: "https://github.com/abue-ammar/tinycast")!),
+            id: "github", glyph: .brand("BrandGitHub"), title: "GitHub",
+            detail: "berkinory/opencast",
+            url: URL(string: "https://github.com/berkinory/opencast")!),
         AboutLink(
-            id: "x", glyph: .brand("BrandX"), title: "X", detail: "@abue_ammar",
-            url: URL(string: "https://x.com/abue_ammar")!),
+            id: "x", glyph: .brand("BrandX"), title: "X", detail: "@berkinory",
+            url: URL(string: "https://x.com/berkinory")!),
         AboutLink(
             id: "email", glyph: .symbol("envelope"), title: "Email",
-            detail: "iabueammar@gmail.com", url: URL(string: "mailto:iabueammar@gmail.com")!),
+            detail: "berk@mirac.dev", url: URL(string: "mailto:berk@mirac.dev")!),
     ]
 }
 
-/// A tappable row inside the About "Links" card: glyph, title, the destination in plain text, and the external-link arrow.
-private struct AboutLinkRow: View {
+private struct AboutLinkTile: View {
     let link: AboutLink
 
     @State private var hovered = false
 
     var body: some View {
         Link(destination: link.url) {
-            HStack(spacing: Theme.Spacing.lg) {
-                glyph
-                    .frame(width: Theme.Settings.Size.controlIcon)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                HStack {
+                    glyph
+                        .frame(
+                            width: Theme.Settings.Size.statusIcon,
+                            height: Theme.Settings.Size.statusIcon
+                        )
+                        .foregroundStyle(hovered ? Theme.Colors.textPrimary : .secondary)
+                        .background(
+                            RoundedRectangle(
+                                cornerRadius: Theme.Settings.Radius.controlIcon,
+                                style: .continuous
+                            )
+                            .fill(Theme.Colors.controlSurface.opacity(0.64))
+                        )
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(Theme.Typography.captionSemibold)
+                        .foregroundStyle(hovered ? .secondary : .tertiary)
+                }
+
                 Text(link.title)
-                    .font(Theme.Typography.body)
-                Spacer(minLength: Theme.Spacing.xl)
+                    .font(Theme.Typography.calloutMedium)
+
                 Text(link.detail)
                     .font(Theme.Typography.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                Image(systemName: "arrow.up.right")
-                    .font(Theme.Typography.captionSemibold)
-                    .foregroundStyle(hovered ? .secondary : .tertiary)
             }
             .padding(.horizontal, Theme.Spacing.xl)
             .padding(.vertical, Theme.Spacing.lg)
-            .background(hovered ? Theme.Colors.rowHover : .clear)
+            .frame(maxWidth: .infinity, minHeight: Theme.Settings.Size.aboutLinkTile)
+            .background(
+                RoundedRectangle(
+                    cornerRadius: Theme.Settings.Radius.surface,
+                    style: .continuous
+                )
+                .fill(hovered ? Theme.Colors.rowHover : Theme.Settings.Colors.surfaceFill)
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: Theme.Settings.Radius.surface,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    hovered ? Theme.Colors.border : Theme.Settings.Colors.surfaceStroke,
+                    lineWidth: 1
+                )
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -317,13 +317,14 @@ final class AppCore: ObservableObject {
             await appIndex.refresh()
         }
         Task { await emojiIndex.load() }
-        if settings.currencyConversionEnabled {
+        if settings.calculatorEnabled && settings.currencyConversionEnabled {
             currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
         }
 
         hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
         hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
         hotKeys.onToggleEmoji = { [weak self] in self?.toggleEmoji() }
+        hotKeys.onRunCommand = { [weak self] id in self?.runHotKeyCommand(id: id) }
         hotKeys.onRunWindowCommand = { [weak self] id in self?.runWindowCommand(id: id) }
         hotKeys.start()
 
@@ -376,6 +377,7 @@ final class AppCore: ObservableObject {
     }
 
     func toggleClipboard() {
+        guard settings.clipboardEnabled else { return }
         if windowController.isVisible, palette.mode == .clipboard {
             hidePalette()
         } else {
@@ -384,6 +386,7 @@ final class AppCore: ObservableObject {
     }
 
     func toggleEmoji() {
+        guard settings.emojiEnabled else { return }
         if windowController.isVisible, palette.mode == .emoji {
             hidePalette()
         } else {
@@ -673,16 +676,19 @@ final class AppCore: ObservableObject {
     }
 
     func createSnippet() {
+        guard settings.snippetsEnabled else { return }
         palette.enterSubscreen(.snippetEditor)
     }
 
     func editSnippet(_ snippet: Snippet) {
+        guard settings.snippetsEnabled else { return }
         palette.enterSubscreen(.snippetEditor)
         palette.snippetEditingID = snippet.id
         palette.snippetEditorReturnsToSearch = true
     }
 
     func searchSnippets() {
+        guard settings.snippetsEnabled else { return }
         palette.enterSubscreen(.snippets)
     }
 
@@ -997,16 +1003,18 @@ final class AppCore: ObservableObject {
         }
         switch CommandRegistry.command(for: entry) {
         case .clipboardHistory:
+            guard settings.clipboardEnabled else { return }
             palette.enterSubscreen(.clipboard)
         case .searchSnippets:
-            palette.enterSubscreen(.snippets)
+            searchSnippets()
         case .createSnippet:
-            palette.enterSubscreen(.snippetEditor)
+            createSnippet()
         case .searchQuicklinks:
             searchQuicklinks()
         case .createQuicklink:
             createQuicklink()
         case .searchEmoji:
+            guard settings.emojiEnabled else { return }
             palette.enterSubscreen(.emoji)
         case .store:
             palette.enterSubscreen(.store)
@@ -1115,6 +1123,15 @@ final class AppCore: ObservableObject {
             id,
             target: target,
             gap: WindowMover.currentGap(respectSystemMargins: settings.windowRespectSystemMargins))
+    }
+
+    private func runHotKeyCommand(id: String) {
+        guard
+            let entry = appIndex.apps.first(where: { $0.id == id })
+                ?? CommandRegistry.all.first(where: { $0.id == id })
+        else { return }
+        if !windowController.isVisible { showPalette(mode: .launcher) }
+        launch(entry)
     }
 
     /// Enter on the inline calculator card: copy the answer and dismiss.

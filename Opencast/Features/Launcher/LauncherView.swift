@@ -254,7 +254,7 @@ struct AppIconView: View {
                     size: Theme.Size.rowIcon
                 )
             } else if app.isSymbolIcon {
-                FeatureIcon(
+                CommandIcon(
                     systemImage: app.symbolIconName,
                     tint: iconTint,
                     size: Theme.Size.rowIcon

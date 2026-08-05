@@ -6,22 +6,23 @@ struct QuicklinkSettingsView: View {
     var body: some View {
         SettingsPane(
             title: "Quicklinks",
-            subtitle: "Save and open URLs, files, and folders faster.",
+            subtitle: "Open saved URLs, files, and folders from the launcher.",
             systemImage: "link",
-            tint: Theme.Colors.systemAccent
+            tint: Theme.Colors.launcherAccent
         ) {
-            SettingsSection(header: "Quicklinks") {
-                SettingsControlRow(
-                    title: "Enable Quicklinks",
-                    subtitle: "Show and open saved quicklinks in Opencast.",
-                    systemImage: "link",
-                    tint: Theme.Colors.systemAccent,
-                    destination: .quicklinksEnabled
-                ) {
-                    Toggle("", isOn: $settings.quicklinksEnabled)
-                        .labelsHidden()
-                }
-            }
+            SettingsFeatureToggleRow(
+                title: "Quicklinks",
+                systemImage: "link",
+                tint: Theme.Colors.launcherAccent,
+                isEnabled: $settings.quicklinksEnabled
+            )
+
+            FeatureCommandsSettingsSection(
+                commandIDs: [.searchQuicklinks, .createQuicklink],
+                tint: Theme.Colors.launcherAccent
+            )
+            .disabled(!settings.quicklinksEnabled)
+            .opacity(settings.quicklinksEnabled ? 1 : 0.42)
         }
     }
 }

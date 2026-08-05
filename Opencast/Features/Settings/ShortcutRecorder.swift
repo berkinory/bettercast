@@ -163,6 +163,13 @@ struct ShortcutRecorder: View {
             return featureIcon(named: "doc.on.clipboard", description: "Clipboard History")
         case .toggleEmoji:
             return featureIcon(named: "face.smiling", description: "Emoji & Symbols")
+        case .command(let id):
+            let entry =
+                AppCore.shared.appIndex.apps.first { $0.id == id }
+                ?? CommandRegistry.all.first { $0.id == id }
+            return featureIcon(
+                named: entry?.symbolIconName ?? "command",
+                description: entry?.name ?? "Command")
         case .windowCommand(let id):
             let command = WindowCommandCatalog.command(id: id)
             return featureIcon(
@@ -379,7 +386,7 @@ private struct ShortcutCapturePopover: View {
         case .togglePalette:
             FeatureIcon(systemImage: "magnifyingglass", tint: Theme.Colors.launcherAccent, size: Theme.Size.rowIcon)
         case .toggleClipboard:
-            FeatureIcon(systemImage: "doc.on.clipboard", tint: Theme.Colors.clipboardAccent, size: Theme.Size.rowIcon)
+            FeatureIcon(systemImage: "clipboard", tint: Theme.Colors.clipboardAccent, size: Theme.Size.rowIcon)
         case .toggleEmoji:
             FeatureIcon(systemImage: "face.smiling", tint: Theme.Colors.emojiAccent, size: Theme.Size.rowIcon)
         case .app, .settingsPane:
@@ -387,8 +394,16 @@ private struct ShortcutCapturePopover: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: Theme.Size.rowIcon, height: Theme.Size.rowIcon)
+        case .command(let id):
+            let entry =
+                AppCore.shared.appIndex.apps.first { $0.id == id }
+                ?? CommandRegistry.all.first { $0.id == id }
+            CommandIcon(
+                systemImage: entry?.symbolIconName ?? "command",
+                tint: Theme.Colors.systemAccent,
+                size: Theme.Size.rowIcon)
         case .windowCommand(let id):
-            FeatureIcon(
+            CommandIcon(
                 systemImage: WindowCommandCatalog.command(id: id)?.sfSymbol ?? "macwindow",
                 tint: Theme.Colors.launcherAccent,
                 size: Theme.Size.rowIcon)

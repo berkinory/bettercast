@@ -50,17 +50,20 @@ struct AppEntry: Identifiable, Hashable, Sendable {
         kind == .command && id.hasPrefix("extension:")
     }
 
-    /// The global-hotkey action that opens this entry, or `nil` when it has no bundle ID to key the binding on.
+    /// The global-hotkey action that opens this entry.
     var hotKeyAction: HotKeyAction? {
-        guard let bundleID else { return nil }
         switch kind {
-        case .application: return .app(bundleID: bundleID)
-        case .systemSettings: return .settingsPane(bundleID: bundleID)
+        case .application:
+            return bundleID.map(HotKeyAction.app)
+        case .systemSettings:
+            return bundleID.map(HotKeyAction.settingsPane)
         case .command:
+            if id == CommandID.clipboardHistory.rawValue { return .toggleClipboard }
+            if id == CommandID.searchEmoji.rawValue { return .toggleEmoji }
             if let command = WindowCommandCatalog.command(forEntryID: id) {
                 return .windowCommand(id: command.id)
             }
-            return nil
+            return .command(id: id)
         }
     }
 
@@ -200,6 +203,23 @@ final class AppIndex: ObservableObject {
         let appCache: AppScanCache
     }
 
+    private struct FeatureAvailability: Sendable {
+        let clipboard: Bool
+        let snippets: Bool
+        let quicklinks: Bool
+        let emoji: Bool
+
+        func includes(_ command: CommandID) -> Bool {
+            switch command {
+            case .clipboardHistory: return clipboard
+            case .searchSnippets, .createSnippet: return snippets
+            case .searchQuicklinks, .createQuicklink: return quicklinks
+            case .searchEmoji: return emoji
+            default: return true
+            }
+        }
+    }
+
     private var matchMemo = Memo<MatchKey, [AppEntry]>()
     private var resultsMemo = Memo<ResultsKey, [AppEntry]>()
     private var entriesRevision = 0
@@ -221,8 +241,7 @@ final class AppIndex: ObservableObject {
 
     func start(settings: AppSettings) {
         self.settings = settings
-        windowCommandsVisible =
-            settings.windowManagementEnabled && settings.windowManagementShowInLauncher
+        windowCommandsVisible = settings.windowManagementEnabled
         settings.$searchScopes
             .dropFirst()
             .sink { [weak self] _ in
@@ -233,16 +252,28 @@ final class AppIndex: ObservableObject {
             }
             .store(in: &cancellables)
         settings.$windowManagementEnabled
-            .combineLatest(settings.$windowManagementShowInLauncher)
             .dropFirst()
-            .sink { [weak self] enabled, visible in
+            .sink { [weak self] enabled in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    self.windowCommandsVisible = enabled && visible
+                    self.windowCommandsVisible = enabled
                     Task { await self.refresh() }
                 }
             }
             .store(in: &cancellables)
+        Publishers.MergeMany(
+            settings.$clipboardEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            settings.$snippetsEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            settings.$quicklinksEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            settings.$emojiEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        )
+        .sink { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                Task { await self.refresh() }
+            }
+        }
+        .store(in: &cancellables)
     }
 
     func setCaffeinationActive(_ active: Bool) {
@@ -272,6 +303,12 @@ final class AppIndex: ObservableObject {
             let includeWindowCommands = windowCommandsVisible
             let caffeinationActive = self.caffeinationActive
             let extensionCommands = self.extensionCommands
+            let featureAvailability = FeatureAvailability(
+                clipboard: settings?.clipboardEnabled ?? true,
+                snippets: settings?.snippetsEnabled ?? true,
+                quicklinks: settings?.quicklinksEnabled ?? true,
+                emoji: settings?.emojiEnabled ?? true
+            )
             let reusingPaneCache = paneCache
             let reusingAppCache = appCache
             let result = await Task.detached(priority: .utility) {
@@ -279,6 +316,7 @@ final class AppIndex: ObservableObject {
                     scopes: scopes,
                     includeWindowCommands: includeWindowCommands,
                     caffeinationActive: caffeinationActive,
+                    featureAvailability: featureAvailability,
                     extensionCommands: extensionCommands,
                     paneCache: reusingPaneCache,
                     appCache: reusingAppCache)
@@ -293,7 +331,8 @@ final class AppIndex: ObservableObject {
 
     nonisolated private static func scan(
         scopes: [String], includeWindowCommands: Bool, caffeinationActive: Bool,
-        extensionCommands: [ExtensionCommand], paneCache: SettingsPaneScanner.Cache?,
+        featureAvailability: FeatureAvailability, extensionCommands: [ExtensionCommand],
+        paneCache: SettingsPaneScanner.Cache?,
         appCache: AppScanCache?
     ) -> ScanResult {
         let appURLs = SearchScopes.appBundles(in: scopes)
@@ -338,7 +377,10 @@ final class AppIndex: ObservableObject {
                 symbolIconOverride: command.icon)
         }
         let launcherCommands = CommandRegistry.all.compactMap { entry -> AppEntry? in
-            switch CommandRegistry.command(for: entry) {
+            guard let command = CommandRegistry.command(for: entry),
+                featureAvailability.includes(command)
+            else { return nil }
+            switch command {
             case .caffeinate:
                 guard caffeinationActive else { return entry }
                 return AppEntry(

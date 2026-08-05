@@ -9,12 +9,10 @@ enum SettingsDestination: Hashable, Sendable {
     case launchAtLogin
     case showInMenuBar
     case returnToLauncher
-    case welcomeGuide
     case clipboardShortcut
     case clipboardRetention
     case clipboardExcludedApps
     case clipboardClearHistory
-    case snippetExpansion
     case snippetDisabledApps
     case quicklinksEnabled
     case emojiShortcut
@@ -35,12 +33,10 @@ enum SettingsDestination: Hashable, Sendable {
         case .launchAtLogin: return "launch-at-login"
         case .showInMenuBar: return "show-in-menu-bar"
         case .returnToLauncher: return "return-to-launcher"
-        case .welcomeGuide: return "welcome-guide"
         case .clipboardShortcut: return "clipboard-shortcut"
         case .clipboardRetention: return "clipboard-retention"
         case .clipboardExcludedApps: return "clipboard-excluded-apps"
         case .clipboardClearHistory: return "clipboard-clear-history"
-        case .snippetExpansion: return "snippet-expansion"
         case .snippetDisabledApps: return "snippet-disabled-apps"
         case .quicklinksEnabled: return "quicklinks-enabled"
         case .emojiShortcut: return "emoji-shortcut"

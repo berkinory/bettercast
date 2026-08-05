@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Revised Settings with clearer pages, controls, shortcuts, and denser lists.
+- Refreshed About with project, contact, and update links.
 - Improved keyboard selection across calculator results, sections, and empty result sets.
 - Improved launcher responsiveness during repeated searches and refreshes.
 - Improved launcher refreshes by reusing unchanged app metadata.

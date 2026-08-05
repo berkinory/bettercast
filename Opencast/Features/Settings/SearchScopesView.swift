@@ -6,7 +6,13 @@ struct SearchScopesView: View {
     @State private var missingScopes = Set<String>()
 
     var body: some View {
-        SettingsSection(header: "Search", destination: .searchScopes) {
+        SettingsSection(
+            header: "Search locations",
+            subtitle: "Folders and apps included in launcher search.",
+            systemImage: "folder",
+            tint: Theme.Colors.launcherAccent,
+            destination: .searchScopes
+        ) {
             if settings.searchScopes.isEmpty {
                 Text("No application locations are being searched.")
                     .font(Theme.Typography.caption)
@@ -31,23 +37,20 @@ struct SearchScopesView: View {
                 SettingsRowDivider()
             }
 
-            HStack(spacing: Theme.Spacing.lg) {
-                Text("Search folders or individual application bundles.")
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
+            HStack(spacing: Theme.Spacing.md) {
                 Spacer(minLength: Theme.Spacing.md)
 
                 if settings.searchScopes != SearchScopes.defaults {
-                    Button("Restore Defaults") {
+                    Button("Reset") {
                         settings.searchScopes = SearchScopes.defaults
                     }
                     .controlSize(.small)
                 }
 
-                Button("Add…", action: addScopes)
-                    .controlSize(.small)
+                Button(action: addScopes) {
+                    Label("Add Location", systemImage: "plus")
+                }
+                .controlSize(.small)
             }
             .padding(.horizontal, Theme.Settings.Layout.rowHorizontal)
             .padding(.vertical, Theme.Settings.Layout.rowVertical)
@@ -90,12 +93,17 @@ private struct SearchScopeRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: Theme.Settings.Layout.rowGap) {
-            FeatureIcon(
-                systemImage: isApplication ? "app" : "folder",
-                tint: isMissing ? Theme.Colors.warning : Theme.Colors.launcherAccent,
-                size: Theme.Settings.Size.controlIcon
-            )
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: isApplication ? "app" : "folder")
+                .font(Theme.Typography.iconSmall)
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(
+                    isMissing ? Theme.Colors.warning : Theme.Colors.launcherAccent
+                )
+                .frame(
+                    width: Theme.Settings.Size.applicationIcon,
+                    height: Theme.Settings.Size.applicationIcon
+                )
 
             Text(scope)
                 .font(Theme.Typography.callout)
@@ -112,8 +120,14 @@ private struct SearchScopeRow: View {
             }
 
             Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
+                Image(systemName: "xmark")
+                    .font(Theme.Typography.iconTiny)
                     .foregroundStyle(.tertiary)
+                    .frame(
+                        width: Theme.Settings.Size.controlIcon,
+                        height: Theme.Settings.Size.controlIcon
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
@@ -121,7 +135,7 @@ private struct SearchScopeRow: View {
             .accessibilityLabel("Remove \(scope)")
         }
         .padding(.horizontal, Theme.Settings.Layout.rowHorizontal)
-        .padding(.vertical, Theme.Settings.Layout.rowVertical)
+        .padding(.vertical, Theme.Spacing.xs)
     }
 
     private var isApplication: Bool {

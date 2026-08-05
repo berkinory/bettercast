@@ -3,30 +3,35 @@ import SwiftUI
 
 struct LauncherSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
-    @ObservedObject private var launcherRanking = AppCore.shared.launcherRanking
 
     var body: some View {
         SettingsPane(
             title: "Launcher",
-            subtitle: "Choose how Opencast opens and resets.",
-            systemImage: "magnifyingglass",
-            tint: .blue
+            subtitle: "Shape the search experience and the results it learns from you.",
+            systemImage: "command",
+            tint: Theme.Colors.launcherAccent
         ) {
-            SearchScopesView()
-
-            SettingsSection(header: "Shortcut") {
+            SettingsSection(
+                header: "Shortcut",
+                subtitle: "Open the launcher from any application.",
+                systemImage: "keyboard",
+                tint: Theme.Colors.launcherAccent
+            ) {
                 SettingsControlRow(
-                    title: "App Launcher",
-                    subtitle: "Open Opencast from anywhere.",
-                    systemImage: "keyboard",
-                    tint: .blue,
+                    title: "Open launcher",
+                    subtitle: "Search applications, commands, and System Settings.",
                     destination: .launcherShortcut
                 ) {
                     ShortcutRecorder(action: .togglePalette)
                 }
             }
 
-            SettingsSection(header: "Appearance") {
+            SettingsSection(
+                header: "Appearance",
+                subtitle: "Choose how much information appears when the launcher opens.",
+                systemImage: "rectangle.3.group",
+                tint: Theme.Colors.launcherAccent
+            ) {
                 LauncherModeSelector(compactMode: $settings.compactMode)
                     .padding(Theme.Settings.Layout.rowHorizontal)
                     .settingsDestination(.compactMode)
@@ -36,24 +41,23 @@ struct LauncherSettingsView: View {
                     SettingsControlRow(
                         title: "Show favorites",
                         subtitle: "Pin up to five apps in the compact bar.",
-                        systemImage: "star.fill",
-                        tint: .yellow,
                         destination: .compactFavorites
                     ) {
-                        Toggle("", isOn: $settings.showFavoritesInCompactMode)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
+                        Toggle("Show favorites", isOn: $settings.showFavoritesInCompactMode)
+                            .settingsToggle()
                     }
                 }
             }
 
-            SettingsSection(header: "Behavior") {
+            SettingsSection(
+                header: "Behavior",
+                subtitle: "Control what Opencast remembers between sessions.",
+                systemImage: "arrow.counterclockwise",
+                tint: Theme.Colors.systemAccent
+            ) {
                 SettingsControlRow(
-                    title: "Return to Launcher",
-                    subtitle: "Reset the palette after it closes.",
-                    systemImage: "arrow.uturn.backward",
-                    tint: .indigo,
+                    title: "Pop to Root Search",
+                    subtitle: "Choose when a closed palette returns to its main search.",
                     destination: .returnToLauncher
                 ) {
                     Picker("", selection: $settings.popToRootTimeout) {
@@ -64,32 +68,11 @@ struct LauncherSettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                SettingsRowDivider()
-                SettingsControlRow(
-                    title: "Learned Ranking",
-                    subtitle: "Reset privately learned result ordering.",
-                    systemImage: "chart.line.uptrend.xyaxis",
-                    tint: .blue,
-                    destination: .learnedRanking
-                ) {
-                    Button("Reset…", role: .destructive) {
-                        guard
-                            AppCore.shared.presentDialog(
-                                message: "Reset learned launcher ranking?",
-                                informativeText:
-                                    "Opencast will relearn your preferred results as you use the launcher.",
-                                primaryTitle: "Reset Ranking",
-                                secondaryTitle: "Cancel",
-                                style: .warning,
-                                primaryIsDestructive: true
-                            ) == .primary
-                        else { return }
-                        launcherRanking.resetAll()
-                    }
-                    .controlSize(.small)
-                    .disabled(launcherRanking.isEmpty)
-                }
             }
+
+            SearchScopesView()
+
+            LauncherItemsSettingsSection()
         }
     }
 }

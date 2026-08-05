@@ -1,256 +1,92 @@
-import AppKit
 import SwiftUI
 
 struct ClipboardSettingsView: View {
     @ObservedObject private var settings = AppCore.shared.settings
-    @State private var showingAppPicker = false
 
     var body: some View {
         SettingsPane(
             title: "Clipboard",
-            subtitle: "Control retention and which apps are recorded.",
-            systemImage: "doc.on.clipboard",
-            tint: .orange
+            subtitle: "Decide how long history stays and which apps remain private.",
+            systemImage: "clipboard",
+            tint: Theme.Colors.clipboardAccent
         ) {
-            SettingsSection(header: "Shortcut") {
-                SettingsControlRow(
-                    title: "Clipboard History",
-                    subtitle: "Open saved text and images from anywhere.",
-                    systemImage: "keyboard",
-                    tint: .orange,
-                    destination: .clipboardShortcut
-                ) {
-                    ShortcutRecorder(action: .toggleClipboard)
-                }
-            }
+            SettingsFeatureToggleRow(
+                title: "Clipboard history",
+                systemImage: "clipboard",
+                tint: Theme.Colors.clipboardAccent,
+                isEnabled: $settings.clipboardEnabled
+            )
 
-            SettingsSection(header: "History") {
-                SettingsControlRow(
-                    title: "Keep history for",
-                    subtitle: "Older entries are deleted automatically.",
+            Group {
+                FeatureCommandsSettingsSection(
+                    commandIDs: [.clipboardHistory],
+                    tint: Theme.Colors.clipboardAccent
+                )
+
+                SettingsSection(
+                    header: "History",
+                    subtitle: "Older entries are removed automatically.",
                     systemImage: "clock.arrow.circlepath",
-                    tint: .orange,
-                    destination: .clipboardRetention
+                    tint: Theme.Colors.clipboardAccent
                 ) {
-                    Picker("", selection: $settings.clipboardRetention) {
-                        ForEach(ClipboardRetention.allCases) { retention in
-                            Text(retention.title).tag(retention)
-                        }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    .onChange(of: settings.clipboardRetention) {
-                        let store = AppCore.shared.clipboardStore
-                        store.maxAge = settings.clipboardRetention.maxAge
-                        store.enforceLimits()
-                    }
-                }
-            }
-
-            SettingsSection(
-                header: "Excluded Applications",
-                destination: .clipboardExcludedApps
-            ) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                    if settings.clipboardDisabledApps.isEmpty {
-                        Text("Clipboard changes from every app are recorded.")
-                            .font(Theme.Typography.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        LazyVGrid(
-                            columns: [
-                                GridItem(
-                                    .adaptive(
-                                        minimum: Theme.Settings.Size.excludedAppChipMinimum
-                                    ),
-                                    spacing: Theme.Spacing.md
-                                )
-                            ],
-                            spacing: Theme.Spacing.md
-                        ) {
-                            ForEach(settings.clipboardDisabledApps, id: \.self) { bundleID in
-                                ExcludedAppChip(bundleID: bundleID) {
-                                    settings.clipboardDisabledApps.removeAll { $0 == bundleID }
-                                }
+                    SettingsControlRow(
+                        title: "Keep history for",
+                        subtitle: "Text and images follow the same retention period.",
+                        destination: .clipboardRetention
+                    ) {
+                        Picker("Keep history for", selection: $settings.clipboardRetention) {
+                            ForEach(ClipboardRetention.allCases) { retention in
+                                Text(retention.title).tag(retention)
                             }
                         }
-                    }
-
-                    Button {
-                        showingAppPicker = true
-                    } label: {
-                        Label("Add Application…", systemImage: "plus")
-                            .font(Theme.Typography.captionSemibold)
-                    }
-                    .buttonStyle(.borderless)
-                    .popover(isPresented: $showingAppPicker, arrowEdge: .bottom) {
-                        AppPickerPopover(excluded: Set(settings.clipboardDisabledApps)) { bundleID in
-                            settings.clipboardDisabledApps.append(bundleID)
-                            showingAppPicker = false
+                        .labelsHidden()
+                        .fixedSize()
+                        .onChange(of: settings.clipboardRetention) {
+                            let store = AppCore.shared.clipboardStore
+                            store.maxAge = settings.clipboardRetention.maxAge
+                            store.enforceLimits()
                         }
                     }
                 }
-                .padding(Theme.Settings.Layout.rowHorizontal)
-            }
 
-            SettingsStatusCard(
-                title: "Clear clipboard history",
-                message: "Permanently remove every saved clip and image.",
-                systemImage: "trash",
-                tint: .red
-            ) {
-                Button("Clear…", role: .destructive) {
-                    guard
-                        AppCore.shared.presentDialog(
-                            message: "Clear clipboard history?",
-                            informativeText: "This can't be undone.",
-                            primaryTitle: "Clear History",
-                            secondaryTitle: "Cancel",
-                            style: .warning,
-                            primaryIsDestructive: true
-                        ) == .primary
-                    else { return }
-                    AppCore.shared.clipboardStore.clearAll()
-                }
-                .controlSize(.small)
-            }
-            .settingsDestination(.clipboardClearHistory)
-        }
-    }
-}
-
-private struct ExcludedAppChip: View {
-    let bundleID: String
-    let onRemove: () -> Void
-
-    @EnvironmentObject private var appIndex: AppIndex
-    @State private var hovering = false
-
-    var body: some View {
-        let (name, icon) = resolve()
-        HStack(spacing: Theme.Spacing.md) {
-            Image(nsImage: icon)
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 22, height: 22)
-            Text(name)
-                .font(Theme.Typography.captionMedium)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(Theme.Typography.iconSmall)
-                    .foregroundStyle(.tertiary)
-                    .frame(
-                        width: Theme.Settings.Size.visibilityButton,
-                        height: Theme.Settings.Size.visibilityButton
+                SettingsSection(
+                    header: "Private applications",
+                    subtitle: "Clipboard changes from these apps are never recorded.",
+                    systemImage: "eye.slash",
+                    tint: Theme.Colors.systemAccent,
+                    destination: .clipboardExcludedApps
+                ) {
+                    SettingsExcludedApplications(
+                        bundleIDs: $settings.clipboardDisabledApps,
+                        emptyMessage: "Clipboard changes from every app are recorded."
                     )
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .settingsFocusRing(cornerRadius: Theme.Settings.Radius.controlIcon)
-            .opacity(hovering ? 1 : 0.55)
-            .help("Remove \(name)")
-            .accessibilityLabel("Remove \(name)")
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .frame(height: Theme.Settings.Size.excludedAppChipHeight)
-        .background(
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.controlIcon,
-                style: .continuous
-            )
-            .fill(Theme.Settings.Colors.searchFill)
-        )
-        .overlay(
-            RoundedRectangle(
-                cornerRadius: Theme.Settings.Radius.controlIcon,
-                style: .continuous
-            )
-            .strokeBorder(Theme.Settings.Colors.searchStroke, lineWidth: 1)
-        )
-        .onHover { hovering = $0 }
-    }
+                }
 
-    private func resolve() -> (String, NSImage) {
-        if let app = appIndex.apps.first(where: { $0.bundleID == bundleID }) {
-            return (app.name, app.icon)
-        }
-        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-            return (
-                url.deletingPathExtension().lastPathComponent,
-                IconCache.icon(forFile: url.path)
-            )
-        }
-        return (bundleID, NSWorkspace.shared.icon(for: .applicationBundle))
-    }
-}
-
-private struct AppPickerPopover: View {
-    let excluded: Set<String>
-    let onSelect: (String) -> Void
-
-    @EnvironmentObject private var appIndex: AppIndex
-    @State private var query = ""
-    @FocusState private var queryFocused: Bool
-
-    private var candidates: [AppEntry] {
-        (query.isEmpty ? appIndex.apps : appIndex.matches(query))
-            .filter { $0.kind == .application }
-            .filter { $0.bundleID.map { !excluded.contains($0) } ?? false }
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: Theme.Spacing.sm) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("Search applications", text: $query)
-                    .textFieldStyle(.plain)
-                    .focused($queryFocused)
-            }
-            .padding(Theme.Spacing.lg)
-
-            Rectangle()
-                .fill(Theme.Settings.Colors.rowDivider)
-                .frame(height: 1)
-
-            ScrollView {
-                LazyVStack(spacing: Theme.Spacing.xxs) {
-                    ForEach(candidates) { app in
-                        Button {
-                            if let id = app.bundleID { onSelect(id) }
-                        } label: {
-                            HStack(spacing: Theme.Spacing.lg) {
-                                Image(nsImage: app.icon)
-                                    .resizable()
-                                    .interpolation(.high)
-                                    .frame(width: 22, height: 22)
-                                Text(app.name)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.horizontal, Theme.Spacing.md)
-                            .padding(.vertical, Theme.Spacing.sm)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .settingsFocusRing(cornerRadius: Theme.Radius.row)
+                SettingsStatusCard(
+                    title: "Clear clipboard history",
+                    message: "Permanently remove every saved clip and image.",
+                    systemImage: "trash",
+                    tint: Theme.Colors.destructive
+                ) {
+                    Button("Clear…", role: .destructive) {
+                        guard
+                            AppCore.shared.presentDialog(
+                                message: "Clear clipboard history?",
+                                informativeText: "This can't be undone.",
+                                primaryTitle: "Clear History",
+                                secondaryTitle: "Cancel",
+                                style: .warning,
+                                primaryIsDestructive: true
+                            ) == .primary
+                        else { return }
+                        AppCore.shared.clipboardStore.clearAll()
                     }
+                    .controlSize(.small)
                 }
-                .padding(Theme.Spacing.sm)
-                .frame(maxWidth: .infinity)
+                .settingsDestination(.clipboardClearHistory)
             }
-            .overlay {
-                if candidates.isEmpty {
-                    Text(query.isEmpty ? "No applications available." : "No matching applications.")
-                        .font(Theme.Typography.callout)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .overlayScroller(disablesElasticity: true)
+            .disabled(!settings.clipboardEnabled)
+            .opacity(settings.clipboardEnabled ? 1 : 0.42)
         }
-        .frame(width: 280, height: 320)
-        .onAppear { queryFocused = true }
     }
 }
