@@ -334,6 +334,11 @@ final class AppCore: ObservableObject {
         }
     }
 
+    func shutdown() {
+        extensionHost.stop()
+        extensionScheduler.stop()
+    }
+
     func reloadExtensions() {
         extensionHost.stop()
         extensionCatalog.setDisabledNames(extensionStore.disabledNames)

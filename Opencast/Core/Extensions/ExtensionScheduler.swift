@@ -57,6 +57,12 @@ final class ExtensionScheduler: ObservableObject {
         }
     }
 
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        cancelRunners()
+    }
+
     func command(for snapshot: ExtensionMenuBarSnapshot) -> ExtensionCommand? {
         commands.first { $0.id == snapshot.commandID }
     }
