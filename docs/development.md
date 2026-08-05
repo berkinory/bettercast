@@ -103,6 +103,9 @@ swiftc -swift-version 6 Opencast/Core/WindowManagement/WindowCommand.swift \
     Opencast/Core/WindowManagement/WindowLayout.swift \
     Opencast/Core/WindowManagement/WindowActionMemory.swift Tools/window-command-test.swift \
     -o /tmp/window-command-test && /tmp/window-command-test        # window geometry
+swiftc -swift-version 6 Opencast/Core/PaletteSelectionIndex.swift \
+    Tools/palette-selection-test.swift \
+    -o /tmp/palette-selection-test && /tmp/palette-selection-test  # palette selection geometry
 ```
 
 `Tools/fuzz-test.swift` holds a **copy** of `FuzzyMatch` from `Opencast/Core/AppIndex.swift` —

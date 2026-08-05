@@ -107,21 +107,38 @@ struct RootPaletteView: View {
     private var calcCount: Int { calcResult == nil ? 0 : 1 }
 
     private var resultCount: Int {
-        switch vm.mode {
-        case .launcher: return appResults.count + launcherQuicklinkResults.count + calcCount
-        case .clipboard: return clipResults.count
-        case .emoji: return emojiResults.count
-        case .snippets: return snippetResults.count
-        case .snippetEditor: return 0
-        case .quicklinks: return quicklinkResults.count
-        case .quicklinkEditor: return 0
-        case .uninstall: return uninstall.phase == .selecting ? uninstallResults.count : 0
-        case .extensionCommand: return extensionResults.count
-        case .store: return storeResults.count
-        }
+        selectionIndex.count
     }
     /// Selection clamped into the current results — the single source of truth for highlight, preview and activation so the list and preview can never disagree.
-    private var selection: Int { resultCount == 0 ? 0 : min(max(vm.selection, 0), resultCount - 1) }
+    private var selection: Int {
+        selectionIndex.clamped(vm.selection)
+    }
+
+    private var selectionIndex: PaletteSelectionIndex {
+        switch vm.mode {
+        case .launcher:
+            return PaletteSelectionIndex(
+                hasCalculator: calcResult != nil,
+                sectionCounts: [appResults.count, launcherQuicklinkResults.count])
+        case .clipboard:
+            return PaletteSelectionIndex(sectionCounts: [clipResults.count])
+        case .emoji:
+            return PaletteSelectionIndex(sectionCounts: [emojiResults.count])
+        case .snippets:
+            return PaletteSelectionIndex(sectionCounts: [snippetResults.count])
+        case .quicklinks:
+            return PaletteSelectionIndex(sectionCounts: [quicklinkResults.count])
+        case .uninstall:
+            return PaletteSelectionIndex(
+                sectionCounts: [uninstall.phase == .selecting ? uninstallResults.count : 0])
+        case .extensionCommand:
+            return PaletteSelectionIndex(sectionCounts: [extensionResults.count])
+        case .store:
+            return PaletteSelectionIndex(sectionCounts: [storeResults.count])
+        case .snippetEditor, .quicklinkEditor:
+            return PaletteSelectionIndex(sectionCounts: [])
+        }
+    }
 
     private var menuOpen: Bool { showActions || showAppMenu || showSortMenu }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0]
+
+### Improved
+
+- Improved palette selection consistency across calculator results, sections, and empty result sets.
+
 ## [0.1.6]
 
 ### Added
