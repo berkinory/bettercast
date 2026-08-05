@@ -158,7 +158,10 @@ final class ClipboardStore: ObservableObject {
 
     /// Under ~/Library/Caches/<bundle-id> since clipboard history is regenerable; "Clear History" is the durable control.
     private static var defaultDirectory: URL {
-        AppPaths.caches()
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
+        return FileManager.default
+            .urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(bundleID, isDirectory: true)
     }
 
     // Isolated so teardown may touch the main-actor statement/db pointers; AppCore only ever releases the store on the main actor, so no hop.
