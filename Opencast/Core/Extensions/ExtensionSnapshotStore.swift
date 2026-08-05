@@ -9,7 +9,8 @@ final class ExtensionSnapshotStore {
     init(directory: URL? = nil) {
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
         let base = directory ?? AppPaths.applicationSupport()
-        let scoped = directory == nil
+        let scoped =
+            directory == nil
             ? base
             : base.appendingPathComponent(bundleID, isDirectory: true)
         self.directory = scoped.appendingPathComponent("ExtensionSnapshots", isDirectory: true)

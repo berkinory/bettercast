@@ -40,10 +40,12 @@ final class ExtensionCapabilityBroker: ObservableObject {
     init(storageDirectory: URL? = nil) {
         let bundleID = Bundle.main.bundleIdentifier ?? "com.opencast.app"
         let base = storageDirectory ?? AppPaths.applicationSupport()
-        let scoped = storageDirectory == nil
+        let scoped =
+            storageDirectory == nil
             ? base
             : base.appendingPathComponent(bundleID, isDirectory: true)
-        self.storageDirectory = scoped
+        self.storageDirectory =
+            scoped
             .appendingPathComponent("ExtensionStorage", isDirectory: true)
         auditURL = self.storageDirectory
             .deletingLastPathComponent()

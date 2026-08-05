@@ -173,8 +173,8 @@ final class HotKeyManager: ObservableObject {
     private func performDoubleModifier(_ modifier: DoubleModifier) {
         guard
             let action = candidateActions.first(where: {
-            binding(for: $0) == .doubleModifier(modifier)
-        })
+                binding(for: $0) == .doubleModifier(modifier)
+            })
         else { return }
         perform(action)
     }
