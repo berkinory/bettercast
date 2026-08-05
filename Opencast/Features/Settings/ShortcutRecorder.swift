@@ -205,7 +205,14 @@ struct ShortcutRecorder: View {
                 HotkeyInlineValue(caps: caps)
             }
         } else if let binding {
-            HotkeyInlineValue(caps: binding.keycaps)
+            HStack(spacing: Theme.Spacing.xs) {
+                HotkeyInlineValue(caps: binding.keycaps)
+                if hotKeys.isRegistrationUnavailable(for: action) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Theme.Colors.warning)
+                        .help("This hotkey could not be registered by macOS")
+                }
+            }
         } else {
             Text("Record Hotkey")
                 .font(Theme.Typography.calloutMedium)

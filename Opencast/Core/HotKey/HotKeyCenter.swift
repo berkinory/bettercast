@@ -63,6 +63,17 @@ final class HotKeyCenter {
         idToKey.removeValue(forKey: entry.carbonID)
     }
 
+    func isRegistered(id: String) -> Bool {
+        entries[id]?.ref != nil
+    }
+
+    func retryUnregistered() {
+        guard !isPaused else { return }
+        for id in entries.keys where !isRegistered(id: id) {
+            activate(id)
+        }
+    }
+
     private func activate(_ id: String) {
         guard var entry = entries[id], entry.ref == nil else { return }
         installEventHandlerIfNeeded()

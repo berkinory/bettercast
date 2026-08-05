@@ -2,7 +2,7 @@ import Foundation
 
 /// Owns all global shortcut bindings: persistence, Carbon registration (via `HotKeyCenter`), conflict lookup, and dispatch.
 @MainActor
-final class HotKeyManager: ObservableObject {
+final class HotKeyManager: ObservableObject, HealthCheckable {
     var onTogglePalette: (() -> Void)?
     var onToggleClipboard: (() -> Void)?
     var onToggleEmoji: (() -> Void)?
@@ -25,13 +25,19 @@ final class HotKeyManager: ObservableObject {
     private let encoder = JSONEncoder()
     private var bindings: [HotKeyAction: HotKeyBinding] = [:]
     private var candidateActionsCache: [HotKeyAction]?
+    @Published private(set) var unavailableActions: Set<HotKeyAction> = []
     weak var healthTicker: HealthTicker? {
-        didSet { doubleModifierMonitor.healthTicker = healthTicker }
+        didSet {
+            oldValue?.unsubscribe(self)
+            healthTicker?.subscribe(self)
+            doubleModifierMonitor.healthTicker = healthTicker
+        }
     }
 
     func start() {
         bindings.removeAll(keepingCapacity: true)
         candidateActionsCache = nil
+        unavailableActions.removeAll(keepingCapacity: true)
         for action in candidateActions { bindings[action] = storedBinding(for: action) }
         register(.togglePalette)
         register(.toggleClipboard)
@@ -59,6 +65,18 @@ final class HotKeyManager: ObservableObject {
 
     func binding(for action: HotKeyAction) -> HotKeyBinding? {
         bindings[action]
+    }
+
+    func isRegistrationUnavailable(for action: HotKeyAction) -> Bool {
+        unavailableActions.contains(action)
+    }
+
+    func healthCheck() {
+        center.retryUnregistered()
+        for action in candidateActions {
+            guard case .key = binding(for: action) else { continue }
+            setRegistrationState(for: action)
+        }
     }
 
     private func storedBinding(for action: HotKeyAction) -> HotKeyBinding? {
@@ -89,6 +107,7 @@ final class HotKeyManager: ObservableObject {
                 let json = String(data: data, encoding: .utf8)
             else { return }
             bindings[action] = binding
+            unavailableActions.remove(action)
             UserDefaults.standard.set(json, forKey: action.defaultsKey)
             register(action)
         case .doubleModifier(let modifier):
@@ -99,10 +118,12 @@ final class HotKeyManager: ObservableObject {
             case .control: value = "doubleControl"
             }
             bindings[action] = binding
+            unavailableActions.remove(action)
             UserDefaults.standard.set(value, forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         case nil:
             bindings[action] = nil
+            unavailableActions.remove(action)
             UserDefaults.standard.removeObject(forKey: action.defaultsKey)
             center.unregister(id: action.defaultsKey)
         }
@@ -167,6 +188,17 @@ final class HotKeyManager: ObservableObject {
         guard case .key(let shortcut) = binding(for: action) else { return }
         center.register(id: action.defaultsKey, shortcut: shortcut) { [weak self] in
             self?.perform(action)
+        }
+        setRegistrationState(for: action)
+    }
+
+    private func setRegistrationState(for action: HotKeyAction) {
+        let unavailable = !center.isRegistered(id: action.defaultsKey)
+        guard unavailableActions.contains(action) != unavailable else { return }
+        if unavailable {
+            unavailableActions.insert(action)
+        } else {
+            unavailableActions.remove(action)
         }
     }
 

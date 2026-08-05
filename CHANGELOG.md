@@ -8,6 +8,7 @@
 - Improved launcher responsiveness during repeated searches and refreshes.
 - Improved launcher refreshes by reusing unchanged app metadata.
 - Improved hotkey settings and paste reliability.
+- Improved hotkey reliability when another app is using the same shortcut.
 - Improved separation between installed and development app data.
 - Improved uninstall responsiveness for applications with many files.
 - Improved confirmation flows and reliability of hotkeys and snippets.
