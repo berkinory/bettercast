@@ -11,6 +11,8 @@ enum Theme {
         static let lg: CGFloat = 10
         static let xl: CGFloat = 12
         static let xxl: CGFloat = 20
+        static let feedbackToastHorizontal: CGFloat = 8
+        static let feedbackToastVertical: CGFloat = 8
         static let rowVertical: CGFloat = 7
         /// Calculator answer card's roomier vertical breathing room.
         static let xxxl: CGFloat = 28
@@ -59,6 +61,8 @@ enum Theme {
         static let recorderKeyCap: CGFloat = 16
         static let menuButton: CGFloat = 36
         static let feedbackHalo: CGFloat = 18
+        static let feedbackToastMaxWidth: CGFloat = 420
+        static let feedbackToastBottomInset: CGFloat = 48
         /// Minimum height for each value column so badges sit near the card's lower edge.
         static let calcCardColumnHeight: CGFloat = 88
         static let clipboardListWidth: CGFloat = 290
@@ -117,6 +121,8 @@ enum Theme {
         static let calcArrow = Font.callout.weight(.semibold)
         static let keyCap = Font.caption
         static let bar = Font.callout.weight(.medium)
+        static let feedbackToast = Font.callout.weight(.medium)
+        static let feedbackToastTitle = Font.callout.weight(.medium)
         static let menuRow = Font.body
         static let menuShortcut = Font.callout
         static let menuIcon = Font.body

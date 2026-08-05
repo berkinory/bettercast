@@ -35,15 +35,15 @@ struct ExtensionSessionView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .top) {
-            if let feedback = host.feedback, feedback.kind == "toast" || feedback.kind == "toastUpdate" {
-                VStack(spacing: Theme.Spacing.xxs) {
-                    if let title = feedback.title { Text(title).font(Theme.Typography.calloutMedium) }
-                    if let message = feedback.message { Text(message).font(Theme.Typography.caption) }
-                }
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .padding(.horizontal, Theme.Spacing.md)
-                .padding(.vertical, Theme.Spacing.sm)
-                .background(Theme.Colors.cardFill, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+            if let feedback = host.feedback, feedback.kind == "toast",
+                let message = feedback.message
+            {
+                FeedbackToastView(
+                    title: feedback.title,
+                    message: message,
+                    tone: FeedbackToastTone(style: feedback.style),
+                    compact: true
+                )
                 .padding(.top, Theme.Spacing.sm)
             }
         }

@@ -230,7 +230,15 @@ final class ExtensionHostManager: ObservableObject {
             armWatchdog(duration: 60)
         case "feedback":
             let kind = message["feedback"] as? String ?? "toast"
-            if kind == "confirm", let requestID = message["requestID"] as? String {
+            if kind == "hud" {
+                guard let hudMessage = message["message"] as? String else { return }
+                AppCore.shared.showHUD(
+                    hudMessage,
+                    id: message["toastID"] as? String,
+                    style: message["style"] as? String
+                )
+                feedback = nil
+            } else if kind == "confirm", let requestID = message["requestID"] as? String {
                 let confirmed = AppCore.shared.confirmExtensionAction(
                     message: message["title"] as? String ?? "Confirm",
                     informativeText: message["message"] as? String ?? "Are you sure?",

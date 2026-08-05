@@ -233,6 +233,7 @@ final class AppCore: ObservableObject {
     let extensionCapabilities: ExtensionCapabilityBroker
     let extensionHost: ExtensionHostManager
     let extensionScheduler: ExtensionScheduler
+    private let toastWindowController = ToastWindowController()
 
     private lazy var windowController = PaletteWindowController(core: self)
 
@@ -392,6 +393,22 @@ final class AppCore: ObservableObject {
 
     func hidePalette(restoreFocus: Bool = true) {
         windowController.hide(restoreFocus: restoreFocus)
+    }
+
+    func showHUD(
+        _ message: String,
+        id: String? = nil,
+        style: String? = nil
+    ) {
+        toastWindowController.show(
+            id: id,
+            message: message,
+            tone: FeedbackToastTone(style: style)
+        )
+    }
+
+    func hideHUD(id: String? = nil) {
+        toastWindowController.hide(id: id)
     }
 
     func resetPaletteToLauncher() {

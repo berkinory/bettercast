@@ -68,7 +68,8 @@ Always `RoundedRectangle(cornerRadius:, style: .continuous)` — continuous corn
 ### Size (`Theme.Size`)
 
 `panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `rowIcon 24` ·
-`keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` · `menuWidth 276` · `menuIcon 20`
+`keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `feedbackToast max 420` ·
+`clipboardListWidth 290` · `menuWidth 276` · `menuIcon 20`
 
 Settings metrics live in the nested `Theme.Settings` namespace so changing its compact fixed-window UI cannot drift the palette: window `760×560`, sidebar `200`, header icon `38`, row icon `28`, and control height `32`.
 
@@ -115,6 +116,7 @@ the dark surface). **Selection always beats hover** when a row is both.
 - **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Clipboard and Emoji show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
 - **Bottom bar** (`bottomBarHeight 52`): the launcher has a menu circle on the left; sub-screens replace it with a floating mode pill showing their icon and title. Both open the same About / Settings menu. The action group stays on the right — all controls use the same appearance-aware footer surface, with no bar background. The action group is one `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
+- **Feedback**: `PaletteFeedbackButton` is the compact footer-only state. `FeedbackToastView` is the shared capsule/glass presentation for extension toasts and the screen-level HUD; `ToastWindowController` places the HUD at the active screen's bottom center so it survives palette dismissal.
 
 ---
 

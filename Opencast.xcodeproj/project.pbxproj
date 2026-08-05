@@ -51,6 +51,7 @@
 		54515A7F930A137BECE6E4F8 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76039AA68B80956493E3A313 /* Permissions.swift */; };
 		5659B21346819C3643D3F18F /* SnippetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 875391F4D0BC13ECB4B3D591 /* SnippetViews.swift */; };
 		575FFC5E74A97CD36BFBE214 /* UninstallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07FD0F81328FD899D97306F5 /* UninstallView.swift */; };
+		57E9B7D889342FD708DD5B06 /* ToastWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2353AC86F3DE1C1E355785AD /* ToastWindowController.swift */; };
 		58949640CE888D2C72C0B96B /* CommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DEF47A59B3327DC1643DCE /* CommandRegistry.swift */; };
 		5F5CA7F40954BD868D149F28 /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 921F4FD1DAC16E63203F4FF2 /* HotKeyManager.swift */; };
 		5FEC9C9BB6C1A52EE9CAE203 /* ClipboardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9F4C5BEB9EAB57292AE8D9 /* ClipboardStore.swift */; };
@@ -84,6 +85,7 @@
 		A51481832B801FF992FDFEC9 /* SettingsSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552B88B452A49B746957A344 /* SettingsSearchView.swift */; };
 		A522A053EBE25A5D2E1C45B4 /* ExtensionSystemMetricsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB777BDE132593A3740B8580 /* ExtensionSystemMetricsProvider.swift */; };
 		A584EFE4141003F5DAD76D4C /* CalculatorSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1231005DCD5DC3AC9DA5E76 /* CalculatorSettingsView.swift */; };
+		A8DB8C4F5C63787C17DDEB2C /* FeedbackToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC2F5B04DBE7AA3635AFEB8 /* FeedbackToastView.swift */; };
 		A913F9A18C911AE02F93801E /* SearchScopes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF9CFC02CA375AA38898D7CD /* SearchScopes.swift */; };
 		AAB8870580A2D2459D3C12F6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCCF4ED60F487B6C9945F732 /* AppDelegate.swift */; };
 		ABDE57D93CA64D915B19D012 /* ExtensionPackageValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E632015D24FAAED93A619F9F /* ExtensionPackageValidator.swift */; };
@@ -159,6 +161,7 @@
 		1E22307E0EE7F6765A45F140 /* OverlayScroller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayScroller.swift; sourceTree = "<group>"; };
 		1E2FC873E8D2002ED435AC90 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		1FD014B0B84946CC2A7625D8 /* PaletteDetailLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteDetailLayout.swift; sourceTree = "<group>"; };
+		2353AC86F3DE1C1E355785AD /* ToastWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastWindowController.swift; sourceTree = "<group>"; };
 		24327BF95ACECC0F482B1D25 /* WindowManagementSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManagementSettingsView.swift; sourceTree = "<group>"; };
 		2532A8FB6D907F1108CA2CAB /* ExtensionScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionScheduler.swift; sourceTree = "<group>"; };
 		27005C975775529D2439B4A4 /* LauncherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherView.swift; sourceTree = "<group>"; };
@@ -233,6 +236,7 @@
 		B983EC78B091FC8A5C092600 /* WindowActionMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowActionMemory.swift; sourceTree = "<group>"; };
 		BB3776CBF11EBD27E3E049DD /* PaletteActionLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteActionLayout.swift; sourceTree = "<group>"; };
 		BBA57190DA7686EC2772D796 /* WindowCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommand.swift; sourceTree = "<group>"; };
+		BBC2F5B04DBE7AA3635AFEB8 /* FeedbackToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackToastView.swift; sourceTree = "<group>"; };
 		BE38B042EDB9B428B0371B97 /* CalculatorCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculatorCardView.swift; sourceTree = "<group>"; };
 		BEAE804EA9078EB30594C959 /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		BF2C2438BF265801370AA7B9 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -354,6 +358,7 @@
 				3CED9EC495D19176519299CA /* SystemCommandRunner.swift */,
 				A3B28C27C4D1D851AF7CFA9B /* Theme.swift */,
 				650473070118DCCC6747E680 /* ThinScrollbar.swift */,
+				2353AC86F3DE1C1E355785AD /* ToastWindowController.swift */,
 				76ADE3404D990B7BB714E5DA /* UninstallSession.swift */,
 				AC19B6E19F6F3282B7A219E3 /* VisibilityStore.swift */,
 				57AA268C40A0175260ACF1D0 /* VisualEffectView.swift */,
@@ -525,6 +530,7 @@
 				69A928147921F47661C44D3A /* Clipboard */,
 				0A9CF0EDF6E04195D99499AF /* Emoji */,
 				116D21BD203F5BDC30A67EFB /* Extensions */,
+				D8CB4C1CBA3A9A3898436857 /* Feedback */,
 				E11E724E329AA8B8EDFC74B5 /* Launcher */,
 				650292D621836C25E5044AA3 /* Onboarding */,
 				8A67314C74EB9C56F89733AF /* Quicklinks */,
@@ -541,6 +547,14 @@
 				B151ADB1745C55478B2669EA /* RootPaletteView.swift */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		D8CB4C1CBA3A9A3898436857 /* Feedback */ = {
+			isa = PBXGroup;
+			children = (
+				BBC2F5B04DBE7AA3635AFEB8 /* FeedbackToastView.swift */,
+			);
+			path = Feedback;
 			sourceTree = "<group>";
 		};
 		E11E724E329AA8B8EDFC74B5 /* Launcher */ = {
@@ -762,6 +776,7 @@
 				A522A053EBE25A5D2E1C45B4 /* ExtensionSystemMetricsProvider.swift in Sources */,
 				8D1F63DBBFA004AB085AF480 /* ExtensionViews.swift in Sources */,
 				FAF439E4B55A7C8029CC2ADC /* FavoritesStore.swift in Sources */,
+				A8DB8C4F5C63787C17DDEB2C /* FeedbackToastView.swift in Sources */,
 				53DB7872C2658604C4D07B54 /* FrequentEmojiStore.swift in Sources */,
 				F721F63A6940A983F12C41FE /* GeneralSettingsView.swift in Sources */,
 				2DAB5D91FB875D07BAC33D5F /* HotKeyCenter.swift in Sources */,
@@ -817,6 +832,7 @@
 				FE64DBD74E48437F2AF83F4E /* SystemCommandRunner.swift in Sources */,
 				2A1AD8900FBB3E8643E82377 /* Theme.swift in Sources */,
 				30C8F07C5742A2CE2A55A398 /* ThinScrollbar.swift in Sources */,
+				57E9B7D889342FD708DD5B06 /* ToastWindowController.swift in Sources */,
 				D4401BC0B07BCE4E86F33F01 /* UninstallSession.swift in Sources */,
 				575FFC5E74A97CD36BFBE214 /* UninstallView.swift in Sources */,
 				E49DCB29750199A787B557D3 /* UpdateInstaller.swift in Sources */,

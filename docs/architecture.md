@@ -31,6 +31,9 @@ imperatively from AppKit.
 - **Settings / About** — plain `NSWindow`s via `AuxWindowController` (in
   `Features/About/AboutView.swift`). SwiftUI `Settings` / `Window` scenes are unreliable for accessory
   apps, so this is deliberate.
+- **Feedback HUD** — a non-activating, screen-level `NSPanel` owned by `AppCore` and managed by
+  `ToastWindowController`. It hosts the shared `FeedbackToastView`, stays visible after the palette
+  closes, and is used by extension `showHUD` feedback.
 - **Modal dialogs** — every confirmation and system-command error uses `Core/NativeConfirmation.swift`.
   The primary action is on the right and bound to Return; the secondary action is on the left and bound
   to Escape. Do not add direct `NSAlert` or SwiftUI `confirmationDialog` calls elsewhere.
