@@ -9,7 +9,7 @@
 - Improved hotkey settings and paste reliability.
 - Improved separation between installed and development app data.
 - Improved uninstall responsiveness for applications with many files.
-- Improved confirmation flows and recovery when hotkeys or snippets lose their event monitor.
+- Improved confirmation flows and reliability of hotkeys and snippets.
 
 ## [0.1.6]
 
