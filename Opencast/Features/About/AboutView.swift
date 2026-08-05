@@ -75,42 +75,101 @@ struct AboutView: View {
     }
 
     private var updatesBar: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            Image(systemName: "arrow.triangle.2.circlepath")
-                .font(Theme.Typography.iconMedium)
-                .foregroundStyle(Theme.Colors.launcherAccent)
-                .frame(
-                    width: Theme.Settings.Size.statusIcon,
-                    height: Theme.Settings.Size.statusIcon
-                )
-                .background(
-                    Circle().fill(Theme.Colors.launcherAccent.opacity(0.10))
-                )
+        VStack(spacing: 0) {
+            HStack(spacing: Theme.Spacing.lg) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(Theme.Typography.iconMedium)
+                    .foregroundStyle(Theme.Colors.launcherAccent)
+                    .frame(
+                        width: Theme.Settings.Size.statusIcon,
+                        height: Theme.Settings.Size.statusIcon
+                    )
+                    .background(
+                        Circle().fill(Theme.Colors.launcherAccent.opacity(0.10))
+                    )
 
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                Text("Updates")
-                    .font(Theme.Typography.calloutMedium)
-                Text("Connects to GitHub only when you check.")
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                    Text("Updates")
+                        .font(Theme.Typography.calloutMedium)
+                    Text(updateSubtitle)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+
+                Spacer(minLength: Theme.Spacing.md)
+
+                if updates.supportsSparkle {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Text("Allow")
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                        Toggle("Allow update checks", isOn: updateConsentBinding)
+                            .settingsToggle()
+                    }
+                }
+
+                Button("Check Now") { AppCore.shared.checkForUpdates() }
+                    .controlSize(.small)
+                    .disabled(!updates.isHomebrewManaged && !updates.supportsSparkle)
             }
+            .padding(.horizontal, Theme.Spacing.xl)
+            .padding(.vertical, Theme.Spacing.lg)
 
-            Spacer(minLength: Theme.Spacing.md)
+            if updates.supportsSparkle {
+                Rectangle()
+                    .fill(Theme.Settings.Colors.rowDivider)
+                    .frame(height: 1)
+                    .padding(.horizontal, Theme.Spacing.xl)
 
-            HStack(spacing: Theme.Spacing.sm) {
-                Text("Allow")
-                    .font(Theme.Typography.caption)
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                Toggle("Allow update checks", isOn: updateConsentBinding)
-                    .settingsToggle()
+                HStack(spacing: Theme.Spacing.xl) {
+                    updatePreference(
+                        title: "Check automatically",
+                        subtitle: "Look for signed updates once a day.",
+                        isOn: automaticChecksBinding
+                    )
+                    updatePreference(
+                        title: "Update automatically",
+                        subtitle: "Download and install in the background.",
+                        isOn: automaticDownloadsBinding
+                    )
+                    .disabled(!updates.automaticallyChecksForUpdates)
+                    .opacity(updates.automaticallyChecksForUpdates ? 1 : 0.45)
+                }
+                .padding(.horizontal, Theme.Spacing.xl)
+                .padding(.vertical, Theme.Spacing.lg)
             }
-
-            Button("Check Now") { AppCore.shared.checkForUpdates() }
-                .controlSize(.small)
         }
-        .padding(.horizontal, Theme.Spacing.xl)
-        .padding(.vertical, Theme.Spacing.lg)
         .background(aboutSurface)
+    }
+
+    private var updateSubtitle: String {
+        if updates.isHomebrewManaged {
+            return "Managed by Homebrew. Checks never install anything."
+        }
+        if updates.supportsSparkle {
+            return "Signed updates delivered securely by Sparkle."
+        }
+        return "Unavailable in development builds."
+    }
+
+    private func updatePreference(
+        title: String,
+        subtitle: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack(spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text(title)
+                    .font(Theme.Typography.captionMedium)
+                Text(subtitle)
+                    .font(Theme.Typography.caption2)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+            Spacer(minLength: Theme.Spacing.sm)
+            Toggle(title, isOn: isOn)
+                .settingsToggle()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var updateConsentBinding: Binding<Bool> {
@@ -125,13 +184,27 @@ struct AboutView: View {
                     AppCore.shared.presentDialog(
                         message: "Allow update checks?",
                         informativeText:
-                            "Opencast will contact GitHub only when you check for a newer release. No usage data is sent.",
+                            "Sparkle will use GitHub to check for signed Opencast updates. Automatic checks run once a day when enabled. Only the app version and normal connection information leave your Mac; no usage data or system profile is sent.",
                         primaryTitle: "Allow",
                         secondaryTitle: "Cancel"
                     ) == .primary
                 else { return }
-                updates.setNetworkConsent(true)
+                updates.grantNetworkConsent()
             }
+        )
+    }
+
+    private var automaticChecksBinding: Binding<Bool> {
+        Binding(
+            get: { updates.automaticallyChecksForUpdates },
+            set: { updates.setAutomaticallyChecksForUpdates($0) }
+        )
+    }
+
+    private var automaticDownloadsBinding: Binding<Bool> {
+        Binding(
+            get: { updates.automaticallyDownloadsUpdates },
+            set: { updates.setAutomaticallyDownloadsUpdates($0) }
         )
     }
 

@@ -271,7 +271,6 @@ final class AppCore: ObservableObject {
 
     private let auxWindows = AuxWindowController()
     private var systemCommandState = SystemCommandRunner.State()
-    private var updateTask: Task<Void, Never>?
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -320,6 +319,7 @@ final class AppCore: ObservableObject {
         if settings.calculatorEnabled && settings.currencyConversionEnabled {
             currencyRates.start(cryptoEnabled: settings.cryptoConversionEnabled)
         }
+        updates.start()
 
         hotKeys.onTogglePalette = { [weak self] in self?.togglePalette() }
         hotKeys.onToggleClipboard = { [weak self] in self?.toggleClipboard() }
@@ -506,77 +506,26 @@ final class AppCore: ObservableObject {
     }
 
     func checkForUpdates() {
-        guard updateTask == nil else { return }
         if updates.isHomebrewManaged {
             checkHomebrewUpdates()
+            return
+        }
+        guard updates.supportsSparkle else {
+            palette.postFeedback("Updates are unavailable in development builds", tone: .warning)
             return
         }
         if !updates.networkConsentGranted {
             let response = windowController.presentConfirmationResponse(
                 message: "Allow update checks?",
                 informativeText:
-                    "Opencast will contact GitHub to check for a newer release. No data about your usage is sent.",
+                    "Opencast will ask Sparkle to check the signed GitHub update feed now. No usage data or system profile is sent.",
                 primaryTitle: "Allow",
                 secondaryTitle: "Cancel"
             )
             guard response == .primary else { return }
             updates.grantNetworkConsent()
         }
-
-        let task = Task { [weak self] in
-            guard let self else { return }
-            defer { updateTask = nil }
-            do {
-                guard let update = try await updates.checkNow() else {
-                    if case .upToDate = updates.state {
-                        palette.postFeedback("Opencast is up to date")
-                    }
-                    return
-                }
-                let response = windowController.presentConfirmationResponse(
-                    message: "Opencast \(update.version) is available",
-                    informativeText: "Download and prepare the update from GitHub?",
-                    primaryTitle: "Update",
-                    secondaryTitle: "Later"
-                )
-                guard response == .primary else { return }
-
-                do {
-                    let prepared = try await updates.downloadAndPrepare(update)
-                    let installResponse = windowController.presentConfirmationResponse(
-                        message: "Ready to install Opencast \(update.version)",
-                        informativeText: "Opencast will restart automatically to finish the update.",
-                        primaryTitle: "Install & Relaunch",
-                        secondaryTitle: "Later"
-                    )
-                    guard installResponse == .primary else {
-                        UpdateInstaller.discard(prepared)
-                        return
-                    }
-                    try updates.install(prepared)
-                    NSApp.terminate(nil)
-                } catch is CancellationError {
-                    return
-                } catch {
-                    showUpdateError(error)
-                }
-            } catch is CancellationError {
-                return
-            } catch {
-                showUpdateError(error)
-            }
-        }
-        updateTask = task
-    }
-
-    private func showUpdateError(_ error: Error) {
-        let message = error.localizedDescription
-        palette.postFeedback("Update failed: \(message)", tone: .error)
-        _ = windowController.presentConfirmationResponse(
-            message: "Could not update Opencast",
-            informativeText: message,
-            primaryTitle: "OK"
-        )
+        updates.checkNow()
     }
 
     private func checkHomebrewUpdates() {

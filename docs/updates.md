@@ -1,19 +1,21 @@
 # Updates
 
-Opencast checks GitHub Releases only after the user grants consent and runs `Check for Updates`. Automatic
-checks are off by default. The consent flag belongs to `UpdateStore`, not `AppSettings`, and every network
-entry point checks it before and after awaiting the request.
+Direct installations use Sparkle 2.9.5. `UpdateStore` owns the updater controller and the network-consent
+flag. Sparkle does not start until the user grants consent. Automatic checks and automatic installation are
+off by default, system profiling is disabled, and revoking consent disables both automatic options.
 
-The release workflow uploads both the Homebrew DMG and an app ZIP. The updater prefers the ZIP and accepts
-the DMG for older releases. It verifies the GitHub-provided SHA-256 digest while streaming the download,
-then verifies that the extracted bundle has the same bundle ID, version, and designated code-signing
-requirement as the running app. The archive is staged before asking to install.
+Users can check manually, enable one daily background check, and optionally let Sparkle install updates in
+the background. Sparkle owns the update window, download progress, archive verification, installation,
+rollback, and relaunch. Development builds do not create an updater.
 
-Installation runs the existing executable in a short-lived updater mode. It waits for the parent app to exit,
-atomically swaps the verified bundle with a rollback path, and relaunches Opencast. No updater framework or
-SwiftPM dependency is embedded.
+The release workflow builds and notarizes the app, creates its ZIP, signs the archive with Sparkle's EdDSA
+key, embeds the matching `CHANGELOG.md` section, signs the appcast, and uploads the ZIP, DMG, and
+`appcast.xml` to the GitHub Release. The app reads the stable latest-release appcast URL. Sparkle verifies
+the EdDSA signature before extraction and macOS verifies the Developer ID signature.
 
-Versions use SemVer ordering, including prerelease identifiers. Homebrew casks write a marker outside the
-app bundle. A Homebrew-managed installation does not self-update; an explicit check asks Homebrew for its
-outdated cask status and shows the user the `brew update && brew upgrade --cask opencast` command when needed.
-Homebrew remains the owner of that install. Development builds have no update feed.
+Homebrew remains the owner of Homebrew installations. An explicit check runs `brew outdated` with automatic
+Homebrew updates disabled. When a newer cask is available, Opencast shows and copies
+`brew update && brew upgrade --cask opencast`; it never runs the upgrade itself.
+
+The public Sparkle key is committed in `Opencast/Info.plist`. The private key stays in the maintainer's
+keychain and in the protected `SPARKLE_PRIVATE_KEY` GitHub Actions secret. Never commit or print it.

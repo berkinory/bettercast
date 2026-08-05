@@ -2,6 +2,10 @@
 
 ## [0.2.0]
 
+### Added
+
+- Added Sparkle updates with optional automatic checks and background installation.
+
 ### Improved
 
 - Revised Settings with clearer pages, controls, shortcuts, and denser lists.
@@ -18,6 +22,10 @@
 - Improved separation between installed and development app data.
 - Improved uninstall responsiveness for applications with many files.
 - Improved confirmation flows and reliability of hotkeys and snippets.
+
+### Fixed
+
+- Fixed updates not installing by replacing the previous update flow with Sparkle.
 
 ## [0.1.6]
 

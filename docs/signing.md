@@ -109,6 +109,7 @@ notarytool with the Team Key. Add these GitHub Actions secrets:
 - `NOTARY_API_KEY_ID` — App Store Connect API key ID.
 - `NOTARY_API_ISSUER_ID` — App Store Connect API issuer ID.
 - `NOTARY_API_KEY_P8_BASE64` — base64-encoded `.p8` private key.
+- `SPARKLE_PRIVATE_KEY` — the private EdDSA key used to sign Sparkle update archives and the appcast.
 
 Export the Developer ID identity from Xcode's **Manage Certificates…** as a `.p12`, then encode it without
 line breaks before adding the secret:
@@ -119,6 +120,18 @@ base64 -i ~/Downloads/OpencastDeveloperID.p12 | tr -d '\n' | pbcopy
 
 Paste that value into `DEVELOPER_ID_P12_BASE64`. Keep the `.p12` password in
 `DEVELOPER_ID_P12_PASSWORD`; never put it in the repository.
+
+Sparkle keeps its signing key in the maintainer's login keychain. Export it only long enough to create the
+GitHub Actions secret, then remove the exported file:
+
+```sh
+generate_keys --account berkinory-opencast -x private-key
+gh secret set SPARKLE_PRIVATE_KEY < private-key
+rm private-key
+```
+
+The matching public key is committed as `SUPublicEDKey` in `Opencast/Info.plist`. Never commit or print the
+private key.
 
 The release workflow never uses Apple Development signing, Apple Distribution signing, self-signed
 certificates, or plaintext Apple passwords. It signs one universal release with Developer ID Application,

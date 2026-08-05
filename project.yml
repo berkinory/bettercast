@@ -29,12 +29,18 @@ settings:
       STRIP_SWIFT_SYMBOLS: YES
       DEAD_CODE_STRIPPING: YES
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.9.5
+
 targets:
   Opencast:
     type: application
     platform: macOS
     dependencies:
       - target: OpencastExtensionHost
+      - package: Sparkle
     postBuildScripts:
       - name: Embed Extension Host
         basedOnDependencyAnalysis: false

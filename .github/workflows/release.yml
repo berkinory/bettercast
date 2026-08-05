@@ -217,21 +217,11 @@ jobs:
           ln -s /Applications "$STAGE/Applications"
           diskutil image create from "$STAGE" --format UDZO --volumeName "$DISPLAY_NAME" "dist/${DMG_FILE}"
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Opencast-${{ steps.meta.outputs.version }}
-          path: |
-            dist/${{ steps.meta.outputs.dmg_file }}
-            dist/${{ steps.meta.outputs.zip_file }}
-
-      - name: Publish GitHub Release
+      - name: Prepare release notes
         env:
-          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          TAG="v${VERSION}"
-          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
           CHANGELOG_NOTES="$RUNNER_TEMP/changelog-notes.md"
           : > "$CHANGELOG_NOTES"
 
@@ -252,8 +242,6 @@ jobs:
 
           {
             if [ -s "$CHANGELOG_NOTES" ] && grep -q '[^[:space:]]' "$CHANGELOG_NOTES"; then
-              echo "## Changelog"
-              echo
               cat "$CHANGELOG_NOTES"
               echo
             fi
@@ -261,13 +249,67 @@ jobs:
             echo
             echo "- macOS 15+"
             echo "- Intel or Apple Silicon CPU"
-          } > "$NOTES_FILE"
+          } > dist/release-notes.md
+
+      - name: Generate signed Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          ZIP_FILE: ${{ steps.meta.outputs.zip_file }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "::error::SPARKLE_PRIVATE_KEY secret is required to publish updates."
+            exit 1
+          fi
+
+          SPARKLE_VERSION="2.9.5"
+          SPARKLE_DIR="$RUNNER_TEMP/Sparkle"
+          APPCAST_DIR="$RUNNER_TEMP/appcast"
+          mkdir -p "$SPARKLE_DIR" "$APPCAST_DIR"
+          curl -fsSL \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
+            -o "$RUNNER_TEMP/Sparkle.tar.xz"
+          tar -xJf "$RUNNER_TEMP/Sparkle.tar.xz" -C "$SPARKLE_DIR"
+
+          cp "dist/${ZIP_FILE}" "$APPCAST_DIR/${ZIP_FILE}"
+          cp dist/release-notes.md "$APPCAST_DIR/Opencast-${VERSION}.md"
+          printf '%s\n' "$SPARKLE_PRIVATE_KEY" | "$SPARKLE_DIR/bin/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/" \
+            --embed-release-notes \
+            --maximum-deltas 0 \
+            --maximum-versions 1 \
+            --link "https://github.com/${GITHUB_REPOSITORY}" \
+            --full-release-notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/latest" \
+            -o dist/appcast.xml \
+            "$APPCAST_DIR"
+
+          grep -q 'sparkle:edSignature=' dist/appcast.xml
+          grep -q '<!-- sparkle-signatures:' dist/appcast.xml
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Opencast-${{ steps.meta.outputs.version }}
+          path: |
+            dist/${{ steps.meta.outputs.dmg_file }}
+            dist/${{ steps.meta.outputs.zip_file }}
+            dist/appcast.xml
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
 
           gh release create "$TAG" \
             "dist/${{ steps.meta.outputs.dmg_file }}" \
             "dist/${{ steps.meta.outputs.zip_file }}" \
+            dist/appcast.xml \
             --title "Opencast ${VERSION}" \
-            --notes-file "$NOTES_FILE"
+            --notes-file dist/release-notes.md
 
       - name: Update Homebrew cask
         env:

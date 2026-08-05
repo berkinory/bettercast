@@ -149,8 +149,9 @@ Do not distribute that artifact.
 
 ## Release notes
 
-The release workflow reads the matching version section from `CHANGELOG.md` when it exists. Add the
-section in the same change as the `MARKETING_VERSION` bump:
+The release workflow reads the matching version section from `CHANGELOG.md` when it exists. The same text
+appears on the GitHub Release and in the Sparkle update window. Add the section in the same change as the
+`MARKETING_VERSION` bump:
 
 ```md
 ## [0.1.0] - 2026-08-01
