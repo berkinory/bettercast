@@ -6,6 +6,7 @@
 
 - Improved keyboard selection across calculator results, sections, and empty result sets.
 - Improved launcher responsiveness during repeated searches and refreshes.
+- Improved launcher refreshes by reusing unchanged app metadata.
 - Improved hotkey settings and paste reliability.
 - Improved separation between installed and development app data.
 - Improved uninstall responsiveness for applications with many files.

@@ -182,10 +182,29 @@ final class AppIndex: ObservableObject {
         let favoritesRevision: Int
     }
 
+    private struct AppFingerprint: Equatable, Sendable {
+        let path: String
+        let modified: Date?
+        let size: Int64?
+    }
+
+    private struct AppScanCache: Sendable {
+        let scopes: [String]
+        let fingerprint: [AppFingerprint]
+        let apps: [AppEntry]
+    }
+
+    private struct ScanResult: Sendable {
+        let entries: [AppEntry]
+        let panesCache: SettingsPaneScanner.Cache?
+        let appCache: AppScanCache
+    }
+
     private var matchMemo = Memo<MatchKey, [AppEntry]>()
     private var resultsMemo = Memo<ResultsKey, [AppEntry]>()
     private var entriesRevision = 0
     private var paneCache: SettingsPaneScanner.Cache?
+    private var appCache: AppScanCache?
 
     private var isRefreshing = false
     private var refreshPending = false
@@ -254,45 +273,38 @@ final class AppIndex: ObservableObject {
             let caffeinationActive = self.caffeinationActive
             let extensionCommands = self.extensionCommands
             let reusingPaneCache = paneCache
-            let (found, panesCache) = await Task.detached(priority: .utility) {
+            let reusingAppCache = appCache
+            let result = await Task.detached(priority: .utility) {
                 AppIndex.scan(
                     scopes: scopes,
                     includeWindowCommands: includeWindowCommands,
                     caffeinationActive: caffeinationActive,
                     extensionCommands: extensionCommands,
-                    paneCache: reusingPaneCache)
+                    paneCache: reusingPaneCache,
+                    appCache: reusingAppCache)
             }.value
-            paneCache = panesCache
-            guard found != apps else { continue }
-            apps = found
+            paneCache = result.panesCache
+            appCache = result.appCache
+            guard result.entries != apps else { continue }
+            apps = result.entries
             entriesRevision &+= 1
         } while refreshPending
     }
 
     nonisolated private static func scan(
         scopes: [String], includeWindowCommands: Bool, caffeinationActive: Bool,
-        extensionCommands: [ExtensionCommand], paneCache: SettingsPaneScanner.Cache?
-    ) -> ([AppEntry], SettingsPaneScanner.Cache?) {
-        var seenBundleIDs = Set<String>()
-        var result: [AppEntry] = []
-        for url in SearchScopes.appBundles(in: scopes) {
-            let bundle = Bundle(url: url)
-            let bundleID = bundle?.bundleIdentifier
-            // Dedup by bundle ID; the earliest scope wins.
-            if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
-
-            let name = appName(bundle: bundle, url: url)
-            let aliases = Romanization.aliases(for: name) + alternateNames(for: url, displayName: name)
-            result.append(
-                AppEntry(
-                    id: url.path, name: name, url: url, bundleID: bundleID,
-                    kind: .application, searchAliases: aliases))
+        extensionCommands: [ExtensionCommand], paneCache: SettingsPaneScanner.Cache?,
+        appCache: AppScanCache?
+    ) -> ScanResult {
+        let appURLs = SearchScopes.appBundles(in: scopes)
+        let fingerprint = appFingerprint(for: appURLs)
+        let apps: [AppEntry]
+        if let appCache, appCache.scopes == scopes, appCache.fingerprint == fingerprint {
+            apps = appCache.apps
+        } else {
+            apps = scanApps(appURLs)
         }
 
-        // Apps, then Settings panes, then synthetic commands — the sectioned launcher relies on this order so its flat selection index maps 1:1 onto rows.
-        let apps = result.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-        }
         let systemCommands = SystemCommandCatalog.all.map { command in
             AppEntry(
                 id: command.entryID,
@@ -343,7 +355,43 @@ final class AppIndex: ObservableObject {
             }
         }
         let (panes, updatedPaneCache) = SettingsPaneScanner.scan(cache: paneCache)
-        return (apps + panes + commands + extensionEntries + launcherCommands, updatedPaneCache)
+        let entries = apps + panes + commands + extensionEntries + launcherCommands
+        return ScanResult(
+            entries: entries,
+            panesCache: updatedPaneCache,
+            appCache: AppScanCache(scopes: scopes, fingerprint: fingerprint, apps: apps))
+    }
+
+    private nonisolated static func scanApps(_ urls: [URL]) -> [AppEntry] {
+        var seenBundleIDs = Set<String>()
+        var result: [AppEntry] = []
+        for url in urls {
+            let bundle = Bundle(url: url)
+            let bundleID = bundle?.bundleIdentifier
+            // Dedup by bundle ID; the earliest scope wins.
+            if let bundleID, !seenBundleIDs.insert(bundleID).inserted { continue }
+
+            let name = appName(bundle: bundle, url: url)
+            let aliases = Romanization.aliases(for: name) + alternateNames(for: url, displayName: name)
+            result.append(
+                AppEntry(
+                    id: url.path, name: name, url: url, bundleID: bundleID,
+                    kind: .application, searchAliases: aliases))
+        }
+        return result.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
+    }
+
+    private nonisolated static func appFingerprint(for urls: [URL]) -> [AppFingerprint] {
+        urls.map { url in
+            let values = try? url.resourceValues(
+                forKeys: [.contentModificationDateKey, .fileSizeKey])
+            return AppFingerprint(
+                path: url.path,
+                modified: values?.contentModificationDate,
+                size: values?.fileSize.map(Int64.init))
+        }.sorted { $0.path < $1.path }
     }
 
     private nonisolated static func appName(bundle: Bundle?, url: URL) -> String {
