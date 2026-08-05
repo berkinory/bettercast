@@ -88,7 +88,7 @@ struct GeneralSettingsView: View {
                     return
                 }
                 guard
-                    NativeConfirmation.show(
+                    AppCore.shared.presentDialog(
                         message: "Allow update checks?",
                         informativeText:
                             "Opencast will contact GitHub only when you check for a newer release. No usage data is sent.",

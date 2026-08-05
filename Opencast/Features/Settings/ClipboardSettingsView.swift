@@ -101,11 +101,14 @@ struct ClipboardSettingsView: View {
             ) {
                 Button("Clear…", role: .destructive) {
                     guard
-                        NativeConfirmation.present(
+                        AppCore.shared.presentDialog(
                             message: "Clear clipboard history?",
                             informativeText: "This can't be undone.",
-                            confirmTitle: "Clear History"
-                        )
+                            primaryTitle: "Clear History",
+                            secondaryTitle: "Cancel",
+                            style: .warning,
+                            primaryIsDestructive: true
+                        ) == .primary
                     else { return }
                     AppCore.shared.clipboardStore.clearAll()
                 }

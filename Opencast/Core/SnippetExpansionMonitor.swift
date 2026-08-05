@@ -2,11 +2,12 @@ import AppKit
 import Carbon.HIToolbox
 
 @MainActor
-final class SnippetExpansionMonitor {
+final class SnippetExpansionMonitor: HealthCheckable {
     private let store: SnippetStore
     private let settings: AppSettings
     private var monitors: [Any] = []
     private var typedBuffer = ""
+    weak var healthTicker: HealthTicker?
 
     init(store: SnippetStore, settings: AppSettings) {
         self.store = store
@@ -30,12 +31,19 @@ final class SnippetExpansionMonitor {
         ) {
             monitors.append(monitor)
         }
+        healthTicker?.subscribe(self)
     }
 
     func stop() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors = []
         typedBuffer = ""
+        healthTicker?.unsubscribe(self)
+    }
+
+    func healthCheck() {
+        guard monitors.isEmpty else { return }
+        start()
     }
 
     private func handle(_ event: NSEvent) {

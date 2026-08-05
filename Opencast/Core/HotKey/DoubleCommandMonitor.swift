@@ -11,8 +11,9 @@ extension DoubleModifier {
 }
 
 @MainActor
-final class DoubleModifierMonitor {
+final class DoubleModifierMonitor: HealthCheckable {
     var onDoubleModifier: ((DoubleModifier) -> Void)?
+    weak var healthTicker: HealthTicker?
     var isPaused = false {
         didSet {
             if isPaused { resetDetectors() }
@@ -42,12 +43,19 @@ final class DoubleModifierMonitor {
         ) {
             monitors.append(monitor)
         }
+        healthTicker?.subscribe(self)
     }
 
     func stop() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors = []
         resetDetectors()
+        healthTicker?.unsubscribe(self)
+    }
+
+    func healthCheck() {
+        guard !isPaused, monitors.isEmpty else { return }
+        start()
     }
 
     private func handle(_ event: NSEvent) {

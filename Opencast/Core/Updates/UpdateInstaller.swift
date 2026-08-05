@@ -118,7 +118,7 @@ enum UpdateInstaller {
             launchApplication(at: currentAppURL)
         } catch {
             logger.error("Update installation failed: \(error.localizedDescription, privacy: .public)")
-            _ = NativeConfirmation.show(
+            _ = AppCore.shared.presentDialog(
                 message: "Could not install the update",
                 informativeText: error.localizedDescription,
                 primaryTitle: "OK",

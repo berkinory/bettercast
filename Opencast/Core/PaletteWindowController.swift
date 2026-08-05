@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class PaletteWindowController: NSObject, NSWindowDelegate {
     private unowned let core: AppCore
+    private let dialogs: DialogController
     private var panel: PalettePanel?
     private(set) var previousApp: NSRunningApplication?
     private var popToRootTimer: Timer?
@@ -14,8 +15,9 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Left/top edge of the panel, resolved once per show and reused across compact↔expanded resizes so both states share an exact top edge (only the height changes). Cleared on hide so the next summon re-resolves for the current screen.
     private var anchor: (x: CGFloat, topEdgeY: CGFloat)?
 
-    init(core: AppCore) {
+    init(core: AppCore, dialogs: DialogController) {
         self.core = core
+        self.dialogs = dialogs
     }
 
     var isVisible: Bool { panel?.isVisible ?? false }
@@ -121,7 +123,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     ) -> NativeConfirmation.Response {
         isPresentingConfirmation = true
         defer { isPresentingConfirmation = false }
-        return NativeConfirmation.show(
+        return dialogs.show(
             message: message,
             informativeText: informativeText,
             primaryTitle: primaryTitle,

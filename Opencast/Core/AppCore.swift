@@ -235,9 +235,29 @@ final class AppCore: ObservableObject {
     let extensionScheduler: ExtensionScheduler
     private let toastWindowController = ToastWindowController()
 
-    private lazy var windowController = PaletteWindowController(core: self)
+    private let dialogs = DialogController()
+    private let healthTicker = HealthTicker()
+    private lazy var windowController = PaletteWindowController(core: self, dialogs: dialogs)
 
     var previousApplicationForExtension: NSRunningApplication? { windowController.previousApp }
+
+    func presentDialog(
+        message: String,
+        informativeText: String,
+        primaryTitle: String,
+        secondaryTitle: String? = nil,
+        style: NSAlert.Style = .informational,
+        primaryIsDestructive: Bool = false
+    ) -> NativeConfirmation.Response {
+        dialogs.show(
+            message: message,
+            informativeText: informativeText,
+            primaryTitle: primaryTitle,
+            secondaryTitle: secondaryTitle,
+            style: style,
+            primaryIsDestructive: primaryIsDestructive
+        )
+    }
 
     func confirmExtensionAction(
         message: String, informativeText: String, confirmTitle: String
@@ -281,6 +301,8 @@ final class AppCore: ObservableObject {
         clipboardStore.maxAge = settings.clipboardRetention.maxAge
         // Defer the initial SQLite read + stale-image prune off the synchronous launch path so the menu bar is interactive immediately; `items` is @Published, so the palette fills in when it lands.
         Task { clipboardStore.load() }
+        hotKeys.healthTicker = healthTicker
+        snippetExpansionMonitor.healthTicker = healthTicker
         clipboardManager.start()
         snippetExpansionMonitor.start()
 
@@ -915,7 +937,7 @@ final class AppCore: ObservableObject {
             } else {
                 nil
             }
-        let response = NativeConfirmation.show(
+        let response = dialogs.show(
             message: "“\(name)” Failed",
             informativeText: failure.message,
             primaryTitle: "OK",

@@ -4,12 +4,12 @@
 
 ### Improved
 
-- Improved palette selection consistency across calculator results, sections, and empty result sets.
-- Improved repeated launcher searches by reusing unchanged ranked and ordered results.
-- Improved launcher refreshes by reusing unchanged System Settings metadata.
-- Improved hotkey settings so saved bindings are decoded once per session.
-- Improved local storage isolation by centralizing app-specific cache and support paths.
-- Improved uninstall scans by measuring leftover folders concurrently.
+- Improved keyboard selection across calculator results, sections, and empty result sets.
+- Improved launcher responsiveness during repeated searches and refreshes.
+- Improved hotkey settings.
+- Improved separation between installed and development app data.
+- Improved uninstall responsiveness for applications with many files.
+- Improved confirmation flows and recovery when hotkeys or snippets lose their event monitor.
 
 ## [0.1.6]
 

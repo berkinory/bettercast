@@ -74,12 +74,15 @@ struct LauncherSettingsView: View {
                 ) {
                     Button("Reset…", role: .destructive) {
                         guard
-                            NativeConfirmation.present(
+                            AppCore.shared.presentDialog(
                                 message: "Reset learned launcher ranking?",
                                 informativeText:
                                     "Opencast will relearn your preferred results as you use the launcher.",
-                                confirmTitle: "Reset Ranking"
-                            )
+                                primaryTitle: "Reset Ranking",
+                                secondaryTitle: "Cancel",
+                                style: .warning,
+                                primaryIsDestructive: true
+                            ) == .primary
                         else { return }
                         launcherRanking.resetAll()
                     }

@@ -25,6 +25,9 @@ final class HotKeyManager: ObservableObject {
     private let encoder = JSONEncoder()
     private var bindings: [HotKeyAction: HotKeyBinding] = [:]
     private var candidateActionsCache: [HotKeyAction]?
+    weak var healthTicker: HealthTicker? {
+        didSet { doubleModifierMonitor.healthTicker = healthTicker }
+    }
 
     func start() {
         bindings.removeAll(keepingCapacity: true)
