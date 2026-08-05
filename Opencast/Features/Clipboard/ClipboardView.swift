@@ -7,7 +7,7 @@ struct ClipboardList: View {
     /// Present only when the list should follow selection or return to its origin.
     let scrollIntent: ListScrollIntent?
     let onSelect: (ClipboardItem) -> Void
-    let onActivate: () -> Void
+    let onActivate: (ClipboardItem) -> Void
     let onActions: (ClipboardItem) -> Void
     @EnvironmentObject private var store: ClipboardStore
 
@@ -58,7 +58,7 @@ struct ClipboardList: View {
                                 .simultaneousGesture(
                                     TapGesture(count: 2).onEnded {
                                         onSelect(item)
-                                        onActivate()
+                                        onActivate(item)
                                     }
                                 )
                                 .onRightClick { onActions(item) }

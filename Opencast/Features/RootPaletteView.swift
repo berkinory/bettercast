@@ -160,9 +160,6 @@ struct RootPaletteView: View {
         let index = selection - calcCount - appResults.count
         return launcherQuicklinkResults.indices.contains(index) ? launcherQuicklinkResults[index] : nil
     }
-    private var selectedClipItem: ClipboardItem? {
-        clipResults.indices.contains(selection) ? clipResults[selection] : nil
-    }
     private var selectedEmojiEntry: EmojiEntry? {
         emojiResults.indices.contains(selection) ? emojiResults[selection] : nil
     }
@@ -270,12 +267,7 @@ struct RootPaletteView: View {
             }
             return nil
         case .clipboard:
-            if let clip = selectedClipItem {
-                return ClipboardActionsMenu.content(
-                    item: clip, core: core, target: vm.pasteTarget,
-                    onFeedback: { showFeedback($0) })
-            }
-            return nil
+            return clipboardScreen(items: clipResults, selection: selection).actionsContent
         case .emoji:
             if let emoji = selectedEmojiEntry {
                 return EmojiActionsMenu.content(
@@ -410,8 +402,6 @@ struct RootPaletteView: View {
         let emojiSections = vm.mode == .emoji ? emojiSections : []
         let emojis = emojiSections.flatMap(\.entries)
         let uninstallItems = vm.mode == .uninstall ? uninstallResults : []
-        // Newest stored clip + the reorder token: the pair changes only when the store mutates, never when a query filters the list.
-        let clipFollow = ClipFollowKey(id: store.items.first?.id, token: vm.followToken)
         // Every count/selection below derives from this one calc/offset pair — the flat selection index must always match the visible row order, calc card included.
         let calc = calcResult
         let offset = calc == nil ? 0 : 1
@@ -523,17 +513,6 @@ struct RootPaletteView: View {
         }
         // Opening either menu highlights its first row and closes the other, so exactly one menu is ever open and always has a highlight.
         .onChange(of: menuOpen) { vm.menuOpen = menuOpen }
-        // Follow a row the store moved: a fresh capture (or promote-on-paste) lands at the head of its section, and pinning lifts a row into the Pinned section. With a query typed the highlight stays put; `AppCore` has already placed it for pin/paste.
-        .onChange(of: clipFollow) { old, new in
-            // A nil `old.id` is the first load landing, not a row that moved.
-            guard vm.mode == .clipboard, old.id != nil else { return }
-            if isQueryEmpty, old.id != new.id, let id = new.id,
-                let index = clips.firstIndex(where: { $0.id == id })
-            {
-                vm.selection = index
-            }
-            listScroll = ListScrollIntent(kind: .follow)
-        }
         .onAppear {
             searchFocused = vm.mode != .snippetEditor && vm.mode != .quicklinkEditor
             vm.onInlineArgumentsTab = handleInlineArgumentTab
@@ -701,7 +680,7 @@ struct RootPaletteView: View {
             }
             switch vm.mode {
             case .clipboard:
-                deleteSelectedClip()
+                _ = clipboardScreen(items: clipResults, selection: selection).delete()
             case .launcher, .emoji, .snippets, .snippetEditor, .quicklinks, .quicklinkEditor, .uninstall,
                 .extensionCommand, .store:
                 return .ignored
@@ -713,11 +692,14 @@ struct RootPaletteView: View {
             guard press.modifiers.intersection([.command, .option, .control, .shift]) == .command
             else { return .ignored }
             switch vm.mode {
-            case .clipboard where clipResults.indices.contains(selection):
-                core.togglePinnedClip(clipResults[selection])
-            case .snippets where snippetResults.indices.contains(selection):
+            case .clipboard:
+                guard clipboardScreen(items: clipResults, selection: selection).togglePinned()
+                else { return .ignored }
+            case .snippets:
+                guard snippetResults.indices.contains(selection) else { return .ignored }
                 togglePinnedSnippet(snippetResults[selection])
-            case .quicklinks where quicklinkResults.indices.contains(selection):
+            case .quicklinks:
+                guard quicklinkResults.indices.contains(selection) else { return .ignored }
                 togglePinnedQuicklink(quicklinkResults[selection])
             case .launcher:
                 guard let quicklink = selectedLauncherQuicklink else { return .ignored }
@@ -878,6 +860,28 @@ struct RootPaletteView: View {
         .onSubmit(activateSelection)
     }
 
+    private func clipboardScreen(
+        items: [ClipboardItem], selection: Int
+    ) -> ClipboardPaletteScreen {
+        ClipboardPaletteScreen(
+            items: items,
+            selection: selection,
+            scrollIntent: listScroll,
+            store: store,
+            core: core,
+            pasteTarget: vm.pasteTarget,
+            followKey: ClipFollowKey(id: store.items.first?.id, token: vm.followToken),
+            isQueryEmpty: isQueryEmpty,
+            onSelect: { vm.selection = $0 },
+            onFollow: { index in
+                if let index { vm.selection = index }
+                listScroll = ListScrollIntent(kind: .follow)
+            },
+            onOpenActions: openActions,
+            onFeedback: { showFeedback($0) }
+        )
+    }
+
     @ViewBuilder
     private func content(
         apps: [AppEntry], launcherQuicklinks: [Quicklink], clips: [ClipboardItem],
@@ -937,38 +941,7 @@ struct RootPaletteView: View {
                 }
             )
         case .clipboard:
-            // Empty history: center one message across the whole panel rather than wedging it into the narrow list column beside a blank preview.
-            if clips.isEmpty {
-                EmptyResults(text: "Clipboard history is empty")
-            } else {
-                let selected = clips.indices.contains(selection) ? clips[selection] : nil
-                PaletteDetailLayout(
-                    listWidth: Theme.Size.clipboardListWidth,
-                    detailTitle: "Preview",
-                    sidebar: {
-                        ClipboardList(
-                            results: clips,
-                            selectedID: selected?.id,
-                            scrollIntent: listScroll,
-                            onSelect: { item in vm.selection = clips.firstIndex(of: item) ?? 0 },
-                            onActivate: activateSelection,
-                            onActions: { item in
-                                if let index = clips.firstIndex(of: item) { vm.selection = index }
-                                openActions()
-                            }
-                        )
-                    },
-                    detail: {
-                        ClipboardPreview(item: selected)
-                    },
-                    metadata: {
-                        if let selected {
-                            ClipboardMetadata(
-                                item: selected, imageURL: store.imageURL(for: selected))
-                        }
-                    }
-                )
-            }
+            clipboardScreen(items: clips, selection: selection)
         case .snippets:
             SnippetSearchView(
                 results: snippets,
@@ -1323,12 +1296,6 @@ struct RootPaletteView: View {
         .opacity.combined(with: .scale(scale: 0.96, anchor: anchor))
     }
 
-    private func deleteSelectedClip() {
-        guard clipResults.indices.contains(selection) else { return }
-        core.deleteClipboardEntry(clipResults[selection])
-        showFeedback("Deleted entry")
-    }
-
     // MARK: - Actions
 
     private func handleModifiedReturn(_ press: KeyPress) -> Bool {
@@ -1349,8 +1316,8 @@ struct RootPaletteView: View {
                 core.pasteEmojiKeepingWindowOpen(emoji)
             }
         case .clipboard:
-            guard command, clipResults.indices.contains(selection) else { return false }
-            core.copyToClipboard(clipResults[selection])
+            guard command else { return false }
+            return clipboardScreen(items: clipResults, selection: selection).copy()
         case .snippets:
             guard command, snippetResults.indices.contains(selection) else { return false }
             core.copySnippet(snippetResults[selection])
@@ -1654,8 +1621,7 @@ struct RootPaletteView: View {
             guard launcherQuicklinkResults.indices.contains(quicklinkIndex) else { return }
             core.openQuicklink(launcherQuicklinkResults[quicklinkIndex])
         case .clipboard:
-            guard clipResults.indices.contains(selection) else { return }
-            core.paste(clipResults[selection])
+            clipboardScreen(items: clipResults, selection: selection).activate()
         case .snippets:
             guard snippetResults.indices.contains(selection) else {
                 core.createSnippet()
@@ -1705,12 +1671,6 @@ struct RootPaletteView: View {
             searchQuery: vm.query,
             inlineArgumentValues: inlineArgumentValues)
     }
-}
-
-/// Change key for the clipboard list's follow-the-moved-row handler: the newest stored clip (a capture or promote puts a different row there) plus the token an action bumps when it reorders the list (pin/unpin). Deliberately read from the store, not the filtered results, so typing a query never reads as a row that moved.
-private struct ClipFollowKey: Equatable {
-    let id: ClipboardItem.ID?
-    let token: UUID
 }
 
 /// The active sub-screen label in the footer; it opens the same app menu as the root footer button.
