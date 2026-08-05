@@ -137,6 +137,14 @@ struct OnboardingView: View {
                         .labelsHidden().toggleStyle(.switch).controlSize(.small)
                 }
             }
+            if let error = settings.launchAtLoginError {
+                SettingsStatusCard(
+                    title: "Launch at login is unavailable",
+                    message: error,
+                    systemImage: "exclamationmark.triangle",
+                    tint: Theme.Colors.warning
+                )
+            }
             caption("You can change these anytime in Settings.")
         }
     }

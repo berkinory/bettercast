@@ -27,6 +27,7 @@ enum PopToRootTimeout: Int, CaseIterable, Identifiable, Sendable {
 @MainActor
 final class AppSettings: ObservableObject {
     private let defaults = UserDefaults.standard
+    private var isUpdatingLaunchAtLogin = false
     private enum Key {
         static let clipboardRetention = "clipboardRetentionDays"
         static let clipboardDisabledApps = "clipboardDisabledApps"
@@ -59,8 +60,24 @@ final class AppSettings: ObservableObject {
     }
 
     @Published var launchAtLogin: Bool {
-        didSet { LaunchAtLogin.set(launchAtLogin) }
+        didSet {
+            guard !isUpdatingLaunchAtLogin else { return }
+            do {
+                try LaunchAtLogin.set(launchAtLogin)
+                launchAtLoginError = nil
+            } catch {
+                NSLog("Opencast: launch-at-login change failed: \(error.localizedDescription)")
+                launchAtLoginError =
+                    "macOS rejected the change. Check System Settings > General > Login Items."
+                let actualValue = LaunchAtLogin.isEnabled
+                guard launchAtLogin != actualValue else { return }
+                isUpdatingLaunchAtLogin = true
+                launchAtLogin = actualValue
+                isUpdatingLaunchAtLogin = false
+            }
+        }
     }
+    @Published private(set) var launchAtLoginError: String?
 
     /// Preferred skin tone applied to modifier-capable emoji at render and copy time.
     @Published var emojiSkinTone: EmojiSkinTone {

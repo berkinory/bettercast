@@ -40,6 +40,15 @@ struct GeneralSettingsView: View {
                 }
             }
 
+            if let error = settings.launchAtLoginError {
+                SettingsStatusCard(
+                    title: "Launch at login is unavailable",
+                    message: error,
+                    systemImage: "exclamationmark.triangle",
+                    tint: Theme.Colors.warning
+                )
+            }
+
             SettingsSection(header: "Updates") {
                 SettingsControlRow(
                     title: "Allow update checks",
