@@ -590,7 +590,15 @@ final class AppCore: ObservableObject {
         hidePalette(restoreFocus: false)
         switch app.kind {
         case .application:
-            AppLauncher.launch(app.url)
+            Task { [weak self] in
+                do {
+                    try await AppLauncher.launch(app.url)
+                } catch {
+                    guard let self else { return }
+                    showPalette(mode: .launcher)
+                    palette.postFeedback("Could not open \(app.name)", tone: .error)
+                }
+            }
         case .systemSettings:
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)

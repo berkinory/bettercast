@@ -3,8 +3,19 @@ import AppKit
 enum AppLauncher {
 
     @MainActor
-    static func launch(_ url: URL) {
-        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    static func launch(_ url: URL) async throws {
+        let workspace = NSWorkspace.shared
+        let focusGuard = LaunchFocusGuard(workspace: workspace)
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        let application = try await workspace.openApplication(at: url, configuration: configuration)
+
+        guard (try? await Task.sleep(for: .milliseconds(500))) != nil,
+            focusGuard.shouldRetryActivation(of: application, workspace: workspace)
+        else { return }
+
+        application.unhide()
+        application.activate()
     }
 
     @MainActor
@@ -51,9 +62,8 @@ enum AppLauncher {
         if let url = running?.bundleURL
             ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
         {
-            // Dock-click semantics: activates, raises, unhides, and reopens a window — none of which a bare `activate()` reliably does under cooperative activation (macOS 14+).
-            NSWorkspace.shared.openApplication(
-                at: url, configuration: NSWorkspace.OpenConfiguration())
+            // Preserve Dock-click semantics while guarding the rare launch that misses its foreground handoff.
+            Task { try? await launch(url) }
         } else if let running {
             // Running app whose bundle URL can't be resolved (moved or deleted since launch).
             running.unhide()
@@ -83,5 +93,43 @@ enum AppLauncher {
                 && app.processIdentifier != ownPID
                 && !quitAllExclusions.contains(app.bundleIdentifier ?? "")
         }
+    }
+}
+
+@MainActor
+private final class LaunchFocusGuard {
+    private let initialFrontmostPID: pid_t?
+    private var observedDifferentActivation = false
+    private var activationToken: NotificationToken?
+
+    init(workspace: NSWorkspace) {
+        initialFrontmostPID = workspace.frontmostApplication?.processIdentifier
+        let center = workspace.notificationCenter
+        let token = center.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard
+                let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication
+            else { return }
+            let activatedPID = application.processIdentifier
+            MainActor.assumeIsolated {
+                guard let self, activatedPID != self.initialFrontmostPID else { return }
+                self.observedDifferentActivation = true
+            }
+        }
+        activationToken = NotificationToken(token, center: center)
+    }
+
+    func shouldRetryActivation(
+        of application: NSRunningApplication,
+        workspace: NSWorkspace
+    ) -> Bool {
+        !observedDifferentActivation
+            && !application.isActive
+            && !application.isTerminated
+            && workspace.frontmostApplication?.processIdentifier == initialFrontmostPID
     }
 }

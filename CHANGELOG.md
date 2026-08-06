@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- Fixed some applications opening without coming to the front.
 - Fixed updates not installing by replacing the previous update flow with Sparkle.
 
 ## [0.1.6]
