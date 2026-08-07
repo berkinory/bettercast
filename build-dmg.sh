@@ -52,6 +52,11 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 DMG="build/Opencast-${VERSION}.dmg"
 
+if [[ "$SKIP_SIGNING" != "1" ]]; then
+    echo "▸ Re-signing Sparkle helpers…"
+    bash Tools/sign-sparkle.sh "$APP" "$IDENTITY"
+fi
+
 if [[ "$SKIP_NOTARIZATION" != "1" ]]; then
     codesign --verify --deep --strict --verbose=2 "$APP"
     echo "▸ Submitting app for notarization…"

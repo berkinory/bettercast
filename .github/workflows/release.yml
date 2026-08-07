@@ -132,6 +132,13 @@ jobs:
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             ONLY_ACTIVE_ARCH=NO build
 
+      - name: Re-sign Sparkle helpers
+        env:
+          DISPLAY_NAME: ${{ steps.meta.outputs.display_name }}
+        run: |
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release/${DISPLAY_NAME}.app"
+          bash Tools/sign-sparkle.sh "$APP" "Developer ID Application"
+
       - name: Verify universal binary
         env:
           DISPLAY_NAME: ${{ steps.meta.outputs.display_name }}

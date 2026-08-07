@@ -85,11 +85,12 @@ A local release build requires the Developer ID certificate and the notary profi
 The script performs this sequence:
 
 1. Build the Release app with Developer ID Application signing and a secure timestamp.
-2. Verify the code signature.
-3. Zip and submit the app with `notarytool`.
-4. Wait up to 25 minutes for acceptance and staple the ticket to the app.
-5. Validate the stapled app.
-6. Package the stapled app in a DMG and run a Gatekeeper assessment.
+2. Re-sign Sparkle's helpers, XPC services, framework, and the app from the inside out.
+3. Verify every component uses Developer ID Application and has a secure timestamp.
+4. Zip and submit the app with `notarytool`.
+5. Wait up to 25 minutes for acceptance and staple the ticket to the app.
+6. Validate the stapled app.
+7. Package the stapled app in a DMG and run a Gatekeeper assessment.
 
 For a local signed-but-not-notarized smoke test only:
 
@@ -135,8 +136,9 @@ private key.
 
 The release workflow never uses Apple Development signing, Apple Distribution signing, self-signed
 certificates, or plaintext Apple passwords. It signs one universal release with Developer ID Application,
-submits it to notarytool, waits up to 25 minutes, fetches the notary log on failure, staples its ticket,
-and only then creates the DMG. The GitHub job has a 30-minute hard limit.
+re-signs Sparkle's nested components with `Tools/sign-sparkle.sh`, submits the app to notarytool, waits up
+to 25 minutes, fetches the notary log on failure, staples its ticket, and only then creates the DMG. The
+GitHub job has a 30-minute hard limit.
 
 ## 5. self-hosting
 
